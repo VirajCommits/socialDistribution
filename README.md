@@ -11,6 +11,7 @@ Make a distributed social network!
 ## License
 
 * Choose an OSI approved license, name it here, and copy the license text to a file called `LICENSE`.
+* LICENSE USED -> Apache License 2.0
 
 ## Copyright
 
@@ -18,3 +19,4 @@ The authors claiming copyright, if they wish to be known, can list their names h
 
 * Sanket Lamba
 * Gordon Chiang
+* Pranav Mehra
