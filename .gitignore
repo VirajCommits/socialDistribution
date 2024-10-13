@@ -272,3 +272,4 @@ dist
 *.min.js
 *.min.js.map
 *.db
+static/
