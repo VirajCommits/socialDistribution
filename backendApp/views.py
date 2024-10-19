@@ -8,9 +8,8 @@ from django.shortcuts import get_object_or_404
 from urllib.parse import urlparse
 # from django.utils import timezone
 from django.shortcuts import render
-from urllib.parse import unquote , urljoin
-from django.conf import settings
-import re
+from urllib.parse import unquote
+from rest_framework.pagination import PageNumberPagination
 
 
 def defaultPath(request):
@@ -58,7 +57,7 @@ def vueTest(request):
 
 @api_view(['GET' , 'DELETE' , 'PUT'])
 def post_detail(request , author_serial , post_serial):
-    print(author_serial)
+    print("GET POST DETAILS" , author_serial)
 
     parsed_author_serial = urlparse(author_serial)
     author_serial = f"{parsed_author_serial.scheme}://{parsed_author_serial.netloc}"
@@ -97,42 +96,17 @@ def post_detail(request , author_serial , post_serial):
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+@api_view(['GET'])
+def get_all_posts(request, author_serial):
+    print("TRYING TO GET ALL POSTS")
+    author_serial = unquote(author_serial)
+    author = get_object_or_404(Author, id=author_serial)
+    posts = Post.objects.filter(author=author).order_by('-published')
 
+    # Pagination
+    paginator = PageNumberPagination()
+    paginator.page_size = 10  # Adjust as needed
+    result_page = paginator.paginate_queryset(posts, request)
 
-
-# @api_view(['POST'])
-# @permission_classes([IsAuthenticatedOrReadOnly])
-# def create_post(request , author_serial):
-#     # ensure that post being created is authenticated or authorised(either author themselves or read-only user)
-    
-#     # first check if the Author exists or not
-#     try:
-#         author = Author.objects.get(id = author_serial)
-#     except Author.DoesNotExist:
-#         # we could find the author
-#         return Response({'error': 'Author not found.'}, status=status.HTTP_404_NOT_FOUND)
-    
-#     # Ensure that the authenticated user is the author
-
-#     if request.user != author.user:
-#         # user is not authorised
-#         return Response({'error': 'You are not authorized to create posts for this author.'}, status=status.HTTP_403_FORBIDDEN)
-    
-#     # add author info for the post request later
-#     data = request.data
-#     data['author'] = AuthorSerializer(author).data
-
-#     # Generate post IDs and URLs(Each post needs to have a unique URL and timestamp)
-#     # post_id = urljoin(settings.SITE_URL, f'api/authors/{author_serial}/posts/{timezone.now().timestamp()}')
-#     data['id'] = author.id
-#     data['type'] = 'post'
-#     data['page'] = urljoin(settings.SITE_URL, f'authors/{author_serial}/posts/{timezone.now().timestamp()}')
-#     data['published'] = timezone.now().isoformat()
-    
-#     serializer = PostSerializer(data = data)
-
-#     if serializer.is_valid():
-#         serializer.save()
-#         return Response(serializer.data, status=status.HTTP_201_CREATED)
-#     else:
-#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    serializer = PostSerializer(result_page, many=True)
+    return paginator.get_paginated_response({'type': 'posts', 'items': serializer.data})

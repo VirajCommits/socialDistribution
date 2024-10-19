@@ -1,9 +1,11 @@
 from django.db import models
 from django.utils import timezone
+from django.contrib.auth.models import User
 
 import uuid
 
 class Author(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='author' , null=True, blank=True)
     type = models.CharField(max_length=6,default="author",editable=False) 
     id = models.URLField(primary_key=True)
     host = models.URLField()
@@ -20,6 +22,7 @@ class Post(models.Model):
         ('PUBLIC', 'Public'),
         ('FRIENDS', 'Friends'),
         ('PRIVATE', 'Private'),
+        ('INVISIBLE', 'Invisible'),
     ]
 
     CONTENT_TYPE_CHOICES = [
@@ -48,6 +51,7 @@ class Post(models.Model):
             # Generate a unique post ID based on the author's host and a new UUID
             post_uuid = uuid.uuid4()
             self.id = f"{self.author.host}/authors/{self.author.id.split('/')[-1]}/posts/{post_uuid}"
+            print("This is self.id" , self.id)
         if not self.page:
             # Set the page URL to the post's ID or modify as needed
             self.page = self.id

@@ -74,6 +74,7 @@ export default {
         });
 
         this.response = response.data;
+        console.log(" -- +", this.reponse);
       } catch (error) {
         console.error("Error creating post:", error.response || error);
         alert("An error occurred while creating the post.");
