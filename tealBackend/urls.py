@@ -16,8 +16,20 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
+from backendApp import views
 
 urlpatterns = [
+    path("", views.index, name="index"),
     path("admin/", admin.site.urls),
     path("project/", include("backendApp.urls")),
+    path(
+        "api/authors/<str:author_id>/posts/<str:post_id>/comments/add/",
+        views.add_comment,
+        name="add_comment",
+    ),
+    path(
+        "api/authors/<str:author_id>/posts/<str:post_id>/likes/add/",
+        views.like_post,
+        name="like_post",
+    ),
 ]
