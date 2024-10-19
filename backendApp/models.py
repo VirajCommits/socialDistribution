@@ -1,4 +1,7 @@
 from django.db import models
+from django.utils import timezone
+
+import uuid
 
 class Author(models.Model):
     type = models.CharField(max_length=6,default="author",editable=False) 
@@ -11,6 +14,7 @@ class Author(models.Model):
 
     def __str__(self):
         return self.displayName
+
 class Post(models.Model):
     VISIBILITY_CHOICES = [
         ('PUBLIC', 'Public'),
@@ -39,3 +43,14 @@ class Post(models.Model):
 
     def __str__(self):
         return self.title
+    def save(self, *args, **kwargs):
+        if not self.id:
+            # Generate a unique post ID based on the author's host and a new UUID
+            post_uuid = uuid.uuid4()
+            self.id = f"{self.author.host}/authors/{self.author.id.split('/')[-1]}/posts/{post_uuid}"
+        if not self.page:
+            # Set the page URL to the post's ID or modify as needed
+            self.page = self.id
+        if not self.published:
+            self.published = timezone.now()
+        super(Post, self).save(*args, **kwargs)

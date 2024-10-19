@@ -3,9 +3,15 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 from .serializers import PostSerializer
-from .models import Author
+from .models import Author , Post
 from django.shortcuts import get_object_or_404
-from django.utils import timezone
+from urllib.parse import urlparse
+# from django.utils import timezone
+from django.shortcuts import render
+from urllib.parse import unquote , urljoin
+from django.conf import settings
+import re
+
 
 def defaultPath(request):
     return render(request, "index.html")
@@ -18,33 +24,115 @@ def sample_data(request):
     return Response(data)
 
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
 def create_post(request, author_serial):
-    # Ensure the authenticated user is the author
-    if not hasattr(request.user, 'author') or request.user.author.id != author_serial:
-        return Response({'error': 'You are not authorized to create posts for this author.'}, status=status.HTTP_403_FORBIDDEN)
+    author_serial = unquote(author_serial)
+    print("This is serial author --------------------  " , author_serial)
     
     data = request.data.copy()
     
-    # Add the author data to the request data
+    # Fetch the author instance
     author = get_object_or_404(Author, id=author_serial)
-    data['author'] = {
-        'id': author.id,
-        'type': 'author',
-        'host': author.host,
-        'displayName': author.displayName,
-        'page': author.page,
-        'github': author.github,
-        'profileImage': author.profileImage
-    }
-
-    # Set the published date
-    data['published'] = timezone.now().isoformat()
-
+    
+    # Set the 'author_id' field to the author's ID (URL)
+    data['author_id'] = author.id  # This will be accepted by the serializer
+    
+    # Remove fields that are generated automatically and 'author' if present
+    data.pop('id', None)
+    data.pop('page', None)
+    data.pop('published', None)
+    data.pop('type', None)
+    data.pop('author', None)
+    
     serializer = PostSerializer(data=data)
+    
     if serializer.is_valid():
         post = serializer.save()
         response_serializer = PostSerializer(post)
         return Response(response_serializer.data, status=status.HTTP_201_CREATED)
     else:
+        print(serializer.errors)  # For debugging purposes
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+def vueTest(request):
+    return render(request, "index.html")
+
+
+@api_view(['GET' , 'DELETE' , 'PUT'])
+def post_detail(request , author_serial , post_serial):
+    print(author_serial)
+
+    parsed_author_serial = urlparse(author_serial)
+    author_serial = f"{parsed_author_serial.scheme}://{parsed_author_serial.netloc}"
+
+    full_url = request.build_absolute_uri()
+    posts_index = full_url.find('/posts/')
+
+    # Extract the post_serial by slicing the string from the start of '/posts/'
+    
+    post_serial = full_url[posts_index + len('/posts/'):] if posts_index != -1 else None
+
+
+    # Get the author object or return 404 if not found
+    author = get_object_or_404(Author, id=author_serial)
+    
+    # Get the post object or return 404 if not found
+    post = get_object_or_404(Post, author=author, id=post_serial)
+
+    print(" --------- " , request.method)
+    # Handle GET request
+    if request.method == 'GET':
+        # Directly allow access to public and friends-only posts
+        serializer = PostSerializer(post)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    # Handle DELETE request
+    elif request.method == 'DELETE':
+        # Directly delete the post without requiring authentication
+        post.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    # Handle PUT request
+    elif request.method == 'PUT':
+        # Directly update the post without requiring authentication
+        serializer = PostSerializer(post, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+
+# @api_view(['POST'])
+# @permission_classes([IsAuthenticatedOrReadOnly])
+# def create_post(request , author_serial):
+#     # ensure that post being created is authenticated or authorised(either author themselves or read-only user)
+    
+#     # first check if the Author exists or not
+#     try:
+#         author = Author.objects.get(id = author_serial)
+#     except Author.DoesNotExist:
+#         # we could find the author
+#         return Response({'error': 'Author not found.'}, status=status.HTTP_404_NOT_FOUND)
+    
+#     # Ensure that the authenticated user is the author
+
+#     if request.user != author.user:
+#         # user is not authorised
+#         return Response({'error': 'You are not authorized to create posts for this author.'}, status=status.HTTP_403_FORBIDDEN)
+    
+#     # add author info for the post request later
+#     data = request.data
+#     data['author'] = AuthorSerializer(author).data
+
+#     # Generate post IDs and URLs(Each post needs to have a unique URL and timestamp)
+#     # post_id = urljoin(settings.SITE_URL, f'api/authors/{author_serial}/posts/{timezone.now().timestamp()}')
+#     data['id'] = author.id
+#     data['type'] = 'post'
+#     data['page'] = urljoin(settings.SITE_URL, f'authors/{author_serial}/posts/{timezone.now().timestamp()}')
+#     data['published'] = timezone.now().isoformat()
+    
+#     serializer = PostSerializer(data = data)
+
+#     if serializer.is_valid():
+#         serializer.save()
+#         return Response(serializer.data, status=status.HTTP_201_CREATED)
+#     else:
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

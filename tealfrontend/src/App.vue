@@ -1,16 +1,19 @@
 <template>
   <HelloWorld />
+  <CreatePost />
 </template>
 
 <script>
-import HelloWorld from './components/HelloWorld.vue'
+import HelloWorld from "./components/HelloWorld.vue";
+import CreatePost from "./components/CreatePost.vue";
 
 export default {
-  name: 'App',
+  name: "App",
   components: {
-    HelloWorld
-  }
-}
+    HelloWorld,
+    CreatePost,
+  },
+};
 </script>
 
 <style>
