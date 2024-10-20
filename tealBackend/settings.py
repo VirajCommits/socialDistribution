@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "rest_framework",
+    'corsheaders',
     "rest_framework.authtoken",  # Added if using TokenAuthentication
 ]
 
@@ -52,7 +53,10 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
 ]
+
+CORS_ALLOW_ALL_ORIGINS = True
 
 ROOT_URLCONF = "tealBackend.urls"
 
@@ -138,7 +142,7 @@ LOGOUT_REDIRECT_URL = 'login'
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.SessionAuthentication',
-        # 'rest_framework.authentication.TokenAuthentication',  # Uncomment if using TokenAuthentication
+        'rest_framework.authentication.TokenAuthentication',  # Uncomment if using TokenAuthentication
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticatedOrReadOnly',
@@ -147,3 +151,5 @@ REST_FRAMEWORK = {
 
 # HOST_URL setting for constructing full IDs
 HOST_URL = 'http://localhost:8000/'
+
+CSRF_TRUSTED_ORIGINS = ['http://localhost:8080']

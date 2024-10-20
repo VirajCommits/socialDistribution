@@ -1,16 +1,11 @@
 <template>
-  <HelloWorld />
+  <router-view /> <!-- Displays the current route component -->
 </template>
 
 <script>
-import HelloWorld from './components/HelloWorld.vue'
-
 export default {
   name: 'App',
-  components: {
-    HelloWorld
-  }
-}
+};
 </script>
 
 <style>

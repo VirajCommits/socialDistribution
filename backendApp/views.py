@@ -1,11 +1,52 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.urls import reverse
-from .models import Author
+from .models import Author, Post
 from django.contrib.auth.models import User
 from rest_framework import generics, permissions
-from .serializers import AuthorSerializer
+from rest_framework import viewsets, permissions, status
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from .serializers import AuthorSerializer, PostSerializer
+from rest_framework.authtoken.views import ObtainAuthToken
+from rest_framework.authtoken.models import Token
+
+
+class AuthorViewSet(viewsets.ModelViewSet):
+    queryset = Author.objects.all()
+    serializer_class = AuthorSerializer
+    lookup_field = 'uuid'
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
+    def follow(self, request, uuid=None):
+        current_author = request.user.author
+        target_author = get_object_or_404(Author, uuid=uuid)
+
+        if target_author != current_author:
+            current_author.following.add(target_author)
+            current_author.save()
+            return Response({'status': 'following'}, status=status.HTTP_200_OK)
+        else:
+            return Response({'error': 'You cannot follow yourself.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
+    def unfollow(self, request, uuid=None):
+        current_author = request.user.author
+        target_author = get_object_or_404(Author, uuid=uuid)
+
+        if target_author != current_author:
+            current_author.following.remove(target_author)
+            current_author.save()
+            return Response({'status': 'unfollowed'}, status=status.HTTP_200_OK)
+        else:
+            return Response({'error': 'You cannot unfollow yourself.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated])
+    def me(self, request):
+        serializer = self.get_serializer(request.user.author)
+        return Response(serializer.data)
 
 class AuthorListView(generics.ListAPIView):
     queryset = Author.objects.all()
@@ -24,12 +65,22 @@ class AuthorUpdateView(generics.UpdateAPIView):
     lookup_field = 'uuid'
     permission_classes = [permissions.IsAuthenticated]
 
+class PostViewSet(viewsets.ModelViewSet):
+    queryset = Post.objects.filter(unlisted=False)
+    serializer_class = PostSerializer
+    lookup_field = 'uuid'
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+
+    def perform_create(self, serializer):
+        serializer.save(author=self.request.user.author)
+
+
 def login_view(request):
     if request.method == "POST":
         username = request.POST['username']
         password = request.POST['password']
         user = authenticate(request, username=username, password=password)
-        
+
         if user is not None:
             login(request, user)
             # Get the logged-in user's Author profile via user relationship
@@ -40,9 +91,22 @@ def login_view(request):
             except Author.DoesNotExist:
                 return render(request, 'login.html', {'error': 'Author profile not found.'})
         else:
+            # Add proper redirection for login failure
             return render(request, 'login.html', {'error': 'Invalid username or password.'})
     else:
         return render(request, 'login.html')
+
+
+# Modify CustomAuthToken to return author details
+class CustomAuthToken(ObtainAuthToken):
+    def post(self, request, *args, **kwargs):
+        response = super(CustomAuthToken, self).post(request, *args, **kwargs)
+        token = Token.objects.get(key=response.data['token'])
+        author = Author.objects.get(user=token.user)
+        return Response({
+            'token': token.key,
+            'uuid': author.uuid,  # Add UUID of the author for the frontend
+        })
 
 @login_required
 def author_detail(request, uuid):
