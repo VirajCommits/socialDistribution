@@ -98,7 +98,7 @@ def post_detail(request , author_serial , post_serial):
 
 @api_view(['GET'])
 def get_all_posts(request, author_serial):
-    print("TRYING TO GET ALL POSTS")
+    print(author_serial)
     author_serial = unquote(author_serial)
     author = get_object_or_404(Author, id=author_serial)
     posts = Post.objects.filter(author=author).order_by('-published')
