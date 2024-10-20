@@ -63,6 +63,50 @@ def add_comment(request, author_id, post_id):
     return HttpResponseBadRequest("Invalid request method.")
 
 
+def get_comments_by_post(request, post_id):
+    print(f"Looking for Post with ID: {post_id}")
+
+    try:
+        # Try finding the post using the post_id format
+        post = Post.objects.filter(id__endswith=post_id).first()
+
+        if not post:
+            print("No Post matches the given ID.")
+            return JsonResponse(
+                {"error": "No Post matches the given query."}, status=404
+            )
+
+        print(f"Found Post: {post}")
+
+        # Retrieve all comments for the post
+        comments = post.comments.all()
+        comments_data = [
+            {
+                "type": "comment",
+                "id": f"{comment.author.host}/api/authors/{comment.author.id.split('/')[-1]}/commented/{comment.id}",
+                "author": {
+                    "type": "author",
+                    "id": comment.author.id,
+                    "page": comment.author.page,
+                    "host": comment.author.host,
+                    "displayName": comment.author.displayName,
+                    "github": comment.author.github,
+                    "profileImage": comment.author.profileImage,
+                },
+                "comment": comment.content,
+                "contentType": "text/plain",
+                "published": comment.published.isoformat(),
+                "post": post.id,
+                "page": f"{post.page}",
+            }
+            for comment in comments
+        ]
+        return JsonResponse({"type": "comments", "items": comments_data}, safe=False)
+    except Exception as e:
+        print(f"Error in get_comments_by_post: {e}")
+        return JsonResponse({"error": str(e)}, status=500)
+
+
 @csrf_exempt
 def like_post(request, author_id, post_id):
     if request.method == "POST":
@@ -102,3 +146,30 @@ def like_post(request, author_id, post_id):
         except (KeyError, ValueError):
             return HttpResponseBadRequest("Invalid data format.")
     return HttpResponseBadRequest("Invalid request method.")
+
+
+def get_likes_for_public_post(request, post_id):
+    try:
+        # Retrieve the post based on the full post ID
+        post = get_object_or_404(Post, id__endswith=post_id, visibility="PUBLIC")
+
+        # Get all the likes for this post
+        likes = post.likes.all()
+        likes_data = [
+            {
+                "type": "Like",
+                "author": {
+                    "id": like.author.id,
+                    "displayName": like.author.displayName,
+                    "profileImage": like.author.profileImage,
+                },
+                "timestamp": like.created_at.isoformat(),
+            }
+            for like in likes
+        ]
+        return JsonResponse({"type": "likes", "items": likes_data}, safe=False)
+    except Post.DoesNotExist:
+        return JsonResponse({"error": "Post not found or is not public."}, status=404)
+    except Exception as e:
+        print(f"Error retrieving likes: {e}")
+        return JsonResponse({"error": str(e)}, status=500)

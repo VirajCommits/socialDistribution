@@ -32,4 +32,14 @@ urlpatterns = [
         views.like_post,
         name="like_post",
     ),
+    path(
+        "api/posts/<str:post_id>/public/likes/",
+        views.get_likes_for_public_post,
+        name="get_likes_for_public_post",
+    ),
+    path(
+        "api/posts/<str:post_id>/comments/",
+        views.get_comments_by_post,
+        name="get_comments_by_post",
+    ),
 ]
