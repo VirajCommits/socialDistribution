@@ -90,6 +90,7 @@ export default {
   },
   methods: {
     async fetchPosts() {
+      console.log(this.authorId);
       try {
         const apiUrl = `${
           process.env.VUE_APP_API_BASE_URL
