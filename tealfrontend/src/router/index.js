@@ -1,16 +1,20 @@
 // src/router/index.js
 import { createRouter, createWebHistory } from 'vue-router';
-import AuthorPosts from '@/components/AuthorPosts.vue';
-import CreatePost from '@/components/CreatePost.vue';
-import EditPost from '@/components/EditPost.vue';
+import AuthorPosts from '../components/AuthorPosts.vue';
+import CreatePost from '../components/CreatePost.vue';
+import EditPost from '../components/EditPost.vue';
 
 const routes = [
   {
     path: '/posts/all',
     name: 'AuthorPosts',
     component: AuthorPosts,
-    props: route => ({ authorId: 'http://www.github.com' }), // Replace with dynamic authorId as needed
+    props: () => {
+      console.log("AuthorPosts route props function called");
+      return { authorId: 'http://www.github.com' };
+    }, // Removed 'route'
   },
+  
   {
     path: '/posts/create',
     name: 'CreatePost',
@@ -25,8 +29,9 @@ const routes = [
 ];
 
 const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHistory(process.env.BASE_URL),
   routes,
 });
+
 
 export default router;

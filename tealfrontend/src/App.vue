@@ -1,28 +1,23 @@
 <template>
-  <HelloWorld />
-  <CreatePost />
-  <div>
-    <AuthorPosts :authorId="authorId" />
+  <div id="app">
+    <nav>
+      <ul>
+        <li>
+          <RouterLink to="/posts/all">All Posts</RouterLink>
+        </li>
+        <li>
+          <RouterLink to="/posts/create">Create Post</RouterLink>
+        </li>
+      </ul>
+    </nav>
+
+    <router-view />
   </div>
 </template>
 
 <script>
-import HelloWorld from "./components/HelloWorld.vue";
-import CreatePost from "./components/CreatePost.vue";
-import AuthorPosts from "./components/AuthorPosts.vue";
-
 export default {
   name: "App",
-  components: {
-    HelloWorld,
-    CreatePost,
-    AuthorPosts,
-  },
-  data() {
-    return {
-      authorId: "http://www.github.com", // Replace with the actual author ID
-    };
-  },
 };
 </script>
 
@@ -33,6 +28,28 @@ export default {
   -moz-osx-font-smoothing: grayscale;
   text-align: center;
   color: #2c3e50;
-  margin-top: 60px;
+  margin-top: 20px;
+}
+
+nav ul {
+  list-style-type: none;
+  padding: 0;
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+}
+
+nav ul li {
+  display: inline;
+}
+
+router-link {
+  text-decoration: none;
+  color: #42b983;
+  font-weight: bold;
+}
+
+router-link:hover {
+  text-decoration: underline;
 }
 </style>
