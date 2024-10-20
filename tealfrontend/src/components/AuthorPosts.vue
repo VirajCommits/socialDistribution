@@ -86,7 +86,6 @@ export default {
     },
   },
   mounted() {
-    console.log("AuthorPosts component has been mounted.");
     this.fetchPosts();
   },
   methods: {
@@ -96,10 +95,7 @@ export default {
           process.env.VUE_APP_API_BASE_URL
         }/authors/${encodeURIComponent(this.authorId)}/posts/all/`;
 
-        console.log("Fetching posts from:", apiUrl);
-
         const response = await axios.get(apiUrl);
-        console.log("Posts fetched successfully:", response.data);
         // Adjust based on your actual API response structure
         this.posts = response.data.results.items || [];
         this.loading = false;
@@ -111,7 +107,6 @@ export default {
     },
 
     async setPostInvisible(post) {
-      console.log("POST TO EDIT:", post);
       const authorId = post.author.id; // Ensure correct author ID path
       const postId = post.id;
 

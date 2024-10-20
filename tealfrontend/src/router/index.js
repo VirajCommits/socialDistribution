@@ -10,7 +10,6 @@ const routes = [
     name: 'AuthorPosts',
     component: AuthorPosts,
     props: () => {
-      console.log("AuthorPosts route props function called");
       return { authorId: 'http://www.github.com' };
     }, // Removed 'route'
   },

@@ -95,13 +95,9 @@ export default {
       this.errorMessage = "";
 
       try {
-        console.log("Attempting to create a new post:", this.form);
-
         // TODO - replace authorId with actual authorID
         const authorId = encodeURIComponent("http://www.github.com"); // Replace with the actual author ID
         const apiUrl = `http://localhost:8000/project/service/api/authors/${authorId}/posts/`;
-
-        console.log("Sending POST request to:", apiUrl);
 
         const response = await axios.post(apiUrl, this.form, {
           headers: {
