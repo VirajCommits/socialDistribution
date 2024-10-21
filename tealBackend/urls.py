@@ -18,28 +18,34 @@ from django.contrib import admin
 from django.urls import path, include
 from backendApp import views
 
+from django.conf import settings
+from django.conf.urls.static import static
+
 urlpatterns = [
-    path("", views.index, name="index"),
+    # path("", views.index, name="index"),
     path("admin/", admin.site.urls),
     path("project/", include("backendApp.urls")),
     path(
-        "api/authors/<str:author_id>/posts/<str:post_id>/comments/add/",
-        views.add_comment,
-        name="add_comment",
+        "service/api/authors/<slug:author_id>/posts/<slug:post_id>/comments/",
+        views.create_comment,
+        name="create_comment",
     ),
     path(
-        "api/authors/<str:author_id>/posts/<str:post_id>/likes/add/",
+        "service/api/authors/<slug:author_id>/posts/<slug:post_id>/comments/list/",
+        views.get_comments,
+        name="get_comments",
+    ),
+    path(
+        "service/api/authors/<slug:author_id>/posts/<slug:post_id>/like/",
         views.like_post,
         name="like_post",
     ),
     path(
-        "api/posts/<str:post_id>/public/likes/",
-        views.get_likes_for_public_post,
-        name="get_likes_for_public_post",
-    ),
-    path(
-        "api/posts/<str:post_id>/comments/",
-        views.get_comments_by_post,
-        name="get_comments_by_post",
+        "service/api/authors/<slug:author_id>/posts/<slug:post_id>/likes/",
+        views.get_likes,
+        name="get_likes",
     ),
 ]
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

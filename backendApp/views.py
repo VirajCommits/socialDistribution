@@ -1,175 +1,176 @@
-from django.shortcuts import render,get_object_or_404
-from django.http import HttpResponse, JsonResponse,HttpResponseBadRequest
-from django.views.decorators.csrf import csrf_exempt
-from .models import Post, Author, Comment,Like
-import json
-from django.utils import timezone
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework import status
+# from .serializers import PostSerializer
+from .models import Author , Post
+from django.shortcuts import get_object_or_404
+from urllib.parse import urlparse
+# from django.utils import timezone
+from django.shortcuts import render
+from urllib.parse import unquote
+from rest_framework.pagination import PageNumberPagination
+from .models import Comment, Like
+from .serializers import CommentSerializer, LikeSerializer
+
+def defaultPath(request):
+    return render(request, "index.html")
+
+@api_view(['GET'])
+def sample_data(request):
+    data = {
+        'message': 'Hello from Django to Vue!'
+    }
+    return Response(data)
+
+# @api_view(['POST'])
+# def create_post(request, author_serial):
+#     author_serial = unquote(author_serial)
+#     print("This is serial author --------------------  " , author_serial)
+    
+#     data = request.data.copy()
+    
+#     # Fetch the author instance
+#     author = get_object_or_404(Author, id=author_serial)
+    
+#     # Set the 'author_id' field to the author's ID (URL)
+#     data['author_id'] = author.id  # This will be accepted by the serializer
+    
+#     # Remove fields that are generated automatically and 'author' if present
+#     data.pop('id', None)
+#     data.pop('page', None)
+#     data.pop('published', None)
+#     data.pop('type', None)
+#     data.pop('author', None)
+    
+#     serializer = PostSerializer(data=data)
+    
+#     if serializer.is_valid():
+#         post = serializer.save()
+#         response_serializer = PostSerializer(post)
+#         return Response(response_serializer.data, status=status.HTTP_201_CREATED)
+#     else:
+#         print(serializer.errors)  # For debugging purposes
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+# def vueTest(request):
+#     return render(request, "index.html")
 
 
-def index(request):
-    return HttpResponse("Hello, world. This is the index page.")
+# @api_view(['GET' , 'DELETE' , 'PUT'])
+# def post_detail(request , author_serial , post_serial):
+#     print("GET POST DETAILS>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" , author_serial , post_serial)
+
+#     # Get the author object or return 404 if not found
+#     author = get_object_or_404(Author, id=author_serial)
+    
+#     # Get the post object or return 404 if not found
+#     post = get_object_or_404(Post, author=author, id=post_serial)
+
+#     print(" --------- " , request.method)
+#     # Handle GET request
+#     if request.method == 'GET':
+#         # Directly allow access to public and friends-only posts
+#         serializer = PostSerializer(post)
+#         return Response(serializer.data, status=status.HTTP_200_OK)
+#     # Handle DELETE request
+#     elif request.method == 'DELETE':
+#         # Directly delete the post without requiring authentication
+#         post.delete()
+#         return Response(status=status.HTTP_204_NO_CONTENT)
+#     # Handle PUT request
+#     elif request.method == 'PUT':
+#         # Directly update the post without requiring authentication
+#         serializer = PostSerializer(post, data=request.data, partial=True)
+#         if serializer.is_valid():
+#             serializer.save()
+#             return Response(serializer.data, status=status.HTTP_200_OK)
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+# @api_view(['GET'])
+# def get_all_posts(request, author_serial):
+#     print(" ----------- >>>>" , author_serial)
+#     author_serial = unquote(author_serial)
+#     author = get_object_or_404(Author, id=author_serial)
+#     posts = Post.objects.filter(author=author).order_by('-published')
+
+#     # Pagination
+#     paginator = PageNumberPagination()
+#     paginator.page_size = 10  # Adjust as needed
+#     result_page = paginator.paginate_queryset(posts, request)
+
+#     serializer = PostSerializer(result_page, many=True)
+#     return paginator.get_paginated_response({'type': 'posts', 'items': serializer.data})
 
 
-def vueTest(request):
-    # Render the 'index.html' file from your templates directory or return a simple response for testing
-    return HttpResponse(
-        "This is the vueTest view. If you're integrating Vue, replace this with a template rendering function."
-    )
+@api_view(["POST"])
+def create_comment(request, author_id, post_id):
+    print("Received author_id:", author_id)
+    print("Received post_id:", post_id)
+    # Get the author instance or return 404 if not found
+    author = get_object_or_404(Author, id=author_id)
+
+    # Get the post instance or return 404 if not found
+    post = get_object_or_404(Post, id=post_id)
+
+    # Prepare the data for the serializer
+    data = request.data.copy()
+    data["author_id"] = str(author.id)  # Ensure it's passed as a string
+    data["post_id"] = str(post.id)  # Ensure it's passed as a string
+
+    serializer = CommentSerializer(data=data)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    else:
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-@csrf_exempt
-def add_comment(request, author_id, post_id):
-    print("sanket")
-    author_full_url = f"http://127.0.0.1:8000/authors/{author_id}"
-    full_post_id = f"http://127.0.0.1:8000/authors/{author_id}/posts/{post_id}"
-    print("sanky")
-    if request.method == "POST":
-        print("x")
-        try:
-            data = json.loads(request.body)
-            comment_author_id = data.get("author_id")
-            content = data.get("content")
-
-            # Get the post, ensuring it belongs to the specified author
-            post = get_object_or_404(
-                Post, id=full_post_id, author__id=author_full_url, is_deleted=False
-            )
-
-            # Get the author who is making the comment
-            comment_author = get_object_or_404(Author, id=comment_author_id)
-
-            # Create the comment
-            comment = Comment.objects.create(
-                post=post, author=comment_author, content=content
-            )
-
-            comment_data = {
-                "type": "comment",
-                "id": f"{comment_author.host}/api/authors/{comment_author.id.split('/')[-1]}/commented/{comment.id}",
-                "author": {
-                    "type": "author",
-                    "id": comment_author.id,
-                    "displayName": comment_author.displayName,
-                    "github": comment_author.github,
-                    "profileImage": comment_author.profileImage,
-                },
-                "content": comment.content,
-                "published": comment.published.isoformat(),
-                "post": post.id,
-            }
-            return JsonResponse(comment_data, status=201)
-        except (KeyError, ValueError):
-            return HttpResponseBadRequest("Invalid data format.")
-    return HttpResponseBadRequest("Invalid request method.")
-
-
-def get_comments_by_post(request, post_id):
-    print(f"Looking for Post with ID: {post_id}")
-
-    try:
-        # Try finding the post using the post_id format
-        post = Post.objects.filter(id__endswith=post_id).first()
-
-        if not post:
-            print("No Post matches the given ID.")
-            return JsonResponse(
-                {"error": "No Post matches the given query."}, status=404
-            )
-
-        print(f"Found Post: {post}")
-
-        # Retrieve all comments for the post
-        comments = post.comments.all()
-        comments_data = [
-            {
-                "type": "comment",
-                "id": f"{comment.author.host}/api/authors/{comment.author.id.split('/')[-1]}/commented/{comment.id}",
-                "author": {
-                    "type": "author",
-                    "id": comment.author.id,
-                    "page": comment.author.page,
-                    "host": comment.author.host,
-                    "displayName": comment.author.displayName,
-                    "github": comment.author.github,
-                    "profileImage": comment.author.profileImage,
-                },
-                "comment": comment.content,
-                "contentType": "text/plain",
-                "published": comment.published.isoformat(),
-                "post": post.id,
-                "page": f"{post.page}",
-            }
-            for comment in comments
-        ]
-        return JsonResponse({"type": "comments", "items": comments_data}, safe=False)
-    except Exception as e:
-        print(f"Error in get_comments_by_post: {e}")
-        return JsonResponse({"error": str(e)}, status=500)
-
-
-@csrf_exempt
+@api_view(["POST"])
 def like_post(request, author_id, post_id):
-    if request.method == "POST":
-        try:
-            # Construct the full URLs for the author and post
-            author_full_url = f"http://127.0.0.1:8000/authors/{author_id}"
-            full_post_id = f"http://127.0.0.1:8000/authors/{author_id}/posts/{post_id}"
+    # Print the incoming author_id and post_id to verify their values
+    print("Received author_id:", author_id)
+    print("Received post_id:", post_id)
 
-            # Get the author and post objects
-            author = get_object_or_404(Author, id=author_full_url)
-            post = get_object_or_404(Post, id=full_post_id, is_deleted=False)
+    # Get the author instance or return 404 if not found
+    author = get_object_or_404(Author, id=author_id)
 
-            # Check if the like already exists
-            if Like.objects.filter(author=author, post=post).exists():
-                return JsonResponse(
-                    {"message": "Post already liked by this author."}, status=400
-                )
+    # Get the post instance or return 404 if not found
+    post = get_object_or_404(Post, id=post_id)
 
-            # Create the like
-            like = Like.objects.create(author=author, post=post)
+    # Prepare the data for the serializer
+    data = request.data.copy()
+    data["author_id"] = str(author.id)  # Ensure it's passed as a string
+    data["post_id"] = str(post.id)  # Ensure it's passed as a string
+    data["post"] = post.id  # Set the actual post ID
 
-            like_data = {
-                "type": "like",
-                "id": str(like.id),
-                "author": {
-                    "type": "author",
-                    "id": author.id,
-                    "displayName": author.displayName,
-                    "github": author.github,
-                    "profileImage": author.profileImage,
-                },
-                "post": post.id,
-                "created_at": like.created_at.isoformat(),
-            }
+    # Print the data being passed to the serializer for further verification
+    print("Data being passed to serializer:", data)
 
-            return JsonResponse(like_data, status=201)
-        except (KeyError, ValueError):
-            return HttpResponseBadRequest("Invalid data format.")
-    return HttpResponseBadRequest("Invalid request method.")
+    serializer = LikeSerializer(data=data)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    else:
+        # Print the errors if the serializer is invalid
+        print("Serializer errors:", serializer.errors)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-def get_likes_for_public_post(request, post_id):
-    try:
-        # Retrieve the post based on the full post ID
-        post = get_object_or_404(Post, id__endswith=post_id, visibility="PUBLIC")
+@api_view(["GET"])
+def get_comments(request, author_id, post_id):
+    author = get_object_or_404(Author, id=author_id)
+    post = get_object_or_404(Post, id=post_id, author=author)
+    comments = Comment.objects.filter(post=post).order_by("-published")
 
-        # Get all the likes for this post
-        likes = post.likes.all()
-        likes_data = [
-            {
-                "type": "Like",
-                "author": {
-                    "id": like.author.id,
-                    "displayName": like.author.displayName,
-                    "profileImage": like.author.profileImage,
-                },
-                "timestamp": like.created_at.isoformat(),
-            }
-            for like in likes
-        ]
-        return JsonResponse({"type": "likes", "items": likes_data}, safe=False)
-    except Post.DoesNotExist:
-        return JsonResponse({"error": "Post not found or is not public."}, status=404)
-    except Exception as e:
-        print(f"Error retrieving likes: {e}")
-        return JsonResponse({"error": str(e)}, status=500)
+    serializer = CommentSerializer(comments, many=True)
+    return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+@api_view(["GET"])
+def get_likes(request, author_id, post_id):
+    author = get_object_or_404(Author, id=author_id)
+    post = get_object_or_404(Post, id=post_id, author=author)
+    likes = Like.objects.filter(post=post).order_by("-published")
+
+    serializer = LikeSerializer(likes, many=True)
+    return Response(serializer.data, status=status.HTTP_200_OK)

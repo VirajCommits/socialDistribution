@@ -1,17 +1,24 @@
 <template>
-  <img alt="Vue logo" src="./assets/logo.png">
-  <HelloWorld msg="Welcome to Your Vue.js App"/>
+  <div id="app">
+    <nav>
+      <ul>
+        <li>
+          <RouterLink to="/posts/all">All Posts</RouterLink>
+        </li>
+        <li>
+          <RouterLink to="/posts/create">Create Post</RouterLink>
+        </li>
+      </ul>
+    </nav>
+
+    <router-view />
+  </div>
 </template>
 
 <script>
-import HelloWorld from './components/HelloWorld.vue'
-
 export default {
-  name: 'App',
-  components: {
-    HelloWorld
-  }
-}
+  name: "App",
+};
 </script>
 
 <style>
@@ -21,6 +28,28 @@ export default {
   -moz-osx-font-smoothing: grayscale;
   text-align: center;
   color: #2c3e50;
-  margin-top: 60px;
+  margin-top: 20px;
+}
+
+nav ul {
+  list-style-type: none;
+  padding: 0;
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+}
+
+nav ul li {
+  display: inline;
+}
+
+router-link {
+  text-decoration: none;
+  color: #42b983;
+  font-weight: bold;
+}
+
+router-link:hover {
+  text-decoration: underline;
 }
 </style>

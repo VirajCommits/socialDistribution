@@ -12,9 +12,15 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 
 from pathlib import Path
 import os
+import dj_database_url
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+AUTHOR_ID = "45c7cdd3-02be-4f93-9078-5ef5df3e5dbb"
 
 
 # Quick-start development settings - unsuitable for production
@@ -35,14 +41,17 @@ INSTALLED_APPS = [
     "backendApp",
     "django.contrib.admin",
     "django.contrib.auth",
+    'corsheaders',
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "rest_framework",
+
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -51,7 +60,13 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+
+
 ]
+CORS_ALLOWED_ORIGINS = [
+    'http://localhost:8080',  # Your Vue.js app's URL
+]
+
 
 ROOT_URLCONF = "tealBackend.urls"
 
@@ -72,7 +87,6 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = "tealBackend.wsgi.application"
-
 
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
