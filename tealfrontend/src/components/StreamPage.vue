@@ -2,10 +2,13 @@
   <div>
     <h1>Stream/Author-feed Page</h1>
 
-    <!-- Logout and Profile Buttons -->
-    <button class="logout-button" @click="logoutNode">Logout</button>
-    <button class="profile-button" @click="goToProfile">Profile</button>
-    <button class="follow-requests-button" @click="toggleFollowRequests">Follow Requests</button>
+    <!-- Buttons Container -->
+    <div class="buttons-container">
+      <button class="logout-button" @click="logoutNode">Logout</button>
+      <button class="profile-button" @click="goToProfile">Profile</button>
+      <button class="follow-requests-button" @click="toggleFollowRequests">Follow Requests</button>
+      <button class="explore-authors-button" @click="goToExploreAuthors">Explore Authors</button>
+    </div>
 
     <!-- Follow Requests Section (Shown when followRequestsVisible is true) -->
     <div v-if="followRequestsVisible" class="follow-requests-section">
@@ -40,6 +43,10 @@ export default {
     goToProfile() {
       this.$router.push('/profile');
     },
+    // Navigate to Explore Authors
+    goToExploreAuthors() {
+      this.$router.push('/explore');
+    },
     // Logout function
     logoutNode() {
       localStorage.removeItem('token');
@@ -70,10 +77,11 @@ export default {
     // Accept a follow request
     acceptFollowRequest(uuid) {
       axios
-        .post(`http://localhost:8000/service/api/authors/${uuid}/accept_follow_request/`, null, {
+        .post(`http://localhost:8000/project/service/api/authors/${uuid}/accept_follow_request/`, null, {
           headers: { Authorization: `Token ${localStorage.getItem('token')}` },
         })
         .then(() => {
+          console.log("Follow request accepted");
           this.fetchFollowRequests(); // Refresh follow requests after accepting
         })
         .catch((error) => {
@@ -83,10 +91,11 @@ export default {
     // Decline a follow request
     declineFollowRequest(uuid) {
       axios
-        .post(`http://localhost:8000/service/api/authors/${uuid}/decline_follow_request/`, null, {
+        .post(`http://localhost:8000/project/service/api/authors/${uuid}/decline_follow_request/`, null, {
           headers: { Authorization: `Token ${localStorage.getItem('token')}` },
         })
         .then(() => {
+          console.log("Follow request declined");
           this.fetchFollowRequests(); // Refresh follow requests after declining
         })
         .catch((error) => {
@@ -100,47 +109,41 @@ export default {
 <style scoped>
 h1 {
   color: #42b983;
+  text-align: center;
 }
 
-.logout-button, .profile-button, .follow-requests-button {
-  position: absolute;
+.buttons-container {
+  display: flex;
+  justify-content: center;
+  margin-top: 20px;
+}
+
+.logout-button, .profile-button, .follow-requests-button, .explore-authors-button {
   background-color: #42b983;
   color: white;
   border: none;
-  border-radius: 50%;
-  padding: 10px 15px;
+  border-radius: 20px;
+  padding: 10px 20px;
   font-size: 16px;
   cursor: pointer;
   transition: background-color 0.3s ease;
+  margin: 0 10px; /* Add space between buttons */
 }
 
-.logout-button {
-  top: 20px;
-  left: 20px;
-}
-
-.profile-button {
-  top: 20px;
-  right: 20px;
-}
-
-.follow-requests-button {
-  top: 20px;
-  right: 100px;
-}
-
-.profile-button:hover, .logout-button:hover, .follow-requests-button:hover {
+.profile-button:hover, .logout-button:hover, .follow-requests-button:hover, .explore-authors-button:hover {
   background-color: #2c8a6a;
 }
 
 .follow-requests-section {
-  margin-top: 50px;
+  margin-top: 80px;
+  text-align: center;
 }
 
 .follow-request-item {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 10px;
+  margin: 10px auto;
+  width: 300px; /* Width to keep the item centrally aligned */
 }
 
 .follow-request-item button {
@@ -150,5 +153,9 @@ h1 {
   padding: 5px 10px;
   cursor: pointer;
   margin-left: 10px;
+}
+
+.follow-request-item button:hover {
+  background-color: #2c8a6a;
 }
 </style>

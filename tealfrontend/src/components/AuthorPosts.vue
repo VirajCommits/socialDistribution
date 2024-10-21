@@ -97,11 +97,13 @@ export default {
   },
   methods: {
     async fetchPosts() {
-      console.log(this.authorId);
+      this.user = JSON.parse(localStorage.getItem("user"));
+      this.authID = this.user.id.split("/").pop();
+      console.log("))))))))", this.user, this.authID);
       try {
         const apiUrl = `${
           process.env.VUE_APP_API_BASE_URL
-        }/authors/${encodeURIComponent(this.authorId)}/posts/all/`;
+        }/authors/${encodeURIComponent(this.authID)}/posts/all/`;
 
         const response = await axios.get(apiUrl);
         // Adjust based on your actual API response structure

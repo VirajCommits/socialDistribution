@@ -27,10 +27,10 @@ def create_post(request, author_serial):
     data = request.data.copy()
     
     # Fetch the author instance
-    author = get_object_or_404(Author, id=author_serial)
+    author = get_object_or_404(Author, uuid=author_serial)
     
     # Set the 'author_id' field to the author's ID (URL)
-    data['author_id'] = author.id  # This will be accepted by the serializer
+    data['author_id'] = author.uuid  # This will be accepted by the serializer
     
     # Remove fields that are generated automatically and 'author' if present
     data.pop('id', None)
@@ -57,10 +57,12 @@ def post_detail(request , author_serial , post_serial):
     print("GET POST DETAILS>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" , author_serial , post_serial)
 
     # Get the author object or return 404 if not found
-    author = get_object_or_404(Author, id=author_serial)
+    author = get_object_or_404(Author, uuid=author_serial)
     
     # Get the post object or return 404 if not found
     post = get_object_or_404(Post, author=author, id=post_serial)
+
+    print("FOUND AURTHOR AND POSTTTT")
 
     print(" --------- " , request.method)
     # Handle GET request
@@ -86,7 +88,7 @@ def post_detail(request , author_serial , post_serial):
 def get_all_posts(request, author_serial):
     print(" ----------- >>>>" , author_serial)
     author_serial = unquote(author_serial)
-    author = get_object_or_404(Author, id=author_serial)
+    author = get_object_or_404(Author, uuid=author_serial)
     posts = Post.objects.filter(author=author).order_by('-published')
 
     # Pagination
@@ -101,9 +103,9 @@ def get_all_posts(request, author_serial):
 # Follow Request Actions
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
-def send_follow_request(request, author_serial):
-    current_author = request.user.author
-    target_author = get_object_or_404(Author, uuid=unquote(author_serial))
+def send_follow_request(request, author_uuid):
+    current_author = request.user
+    target_author = get_object_or_404(Author, uuid=author_uuid)
 
     if current_author == target_author:
         return Response({'detail': 'You cannot follow yourself.'}, status=status.HTTP_400_BAD_REQUEST)
@@ -121,9 +123,10 @@ def send_follow_request(request, author_serial):
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
-def accept_follow_request(request, author_serial):
-    current_author = request.user.author
-    requesting_author = get_object_or_404(Author, uuid=unquote(author_serial))
+def accept_follow_request(request, author_uuid):
+    current_author = request.user
+    print("This is the current author:", current_author)
+    requesting_author = get_object_or_404(Author, uuid=author_uuid)
 
     follow_request = get_object_or_404(FollowRequest, actor=requesting_author, object=current_author)
     current_author.followers.add(requesting_author)  # Add to followers
@@ -133,13 +136,14 @@ def accept_follow_request(request, author_serial):
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
-def decline_follow_request(request, author_serial):
-    current_author = request.user.author
-    requesting_author = get_object_or_404(Author, uuid=unquote(author_serial))
+def decline_follow_request(request, author_uuid):
+    current_author = request.user
+    requesting_author = get_object_or_404(Author, uuid=author_uuid)
 
     follow_request = get_object_or_404(FollowRequest, actor=requesting_author, object=current_author)
     follow_request.delete()  # Remove the follow request
     return Response({'detail': 'Follow request declined.'}, status=status.HTTP_200_OK)
+
 
 
 @api_view(['GET'])
@@ -148,6 +152,14 @@ def get_follow_requests(request):
     current_author = request.user
     requests = FollowRequest.objects.filter(object=current_author)
     serializer = FollowRequestSerializer(requests, many=True)
+    return Response(serializer.data)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_all_authors(request):
+    current_author = request.user
+    authors = Author.objects.exclude(id=current_author.id)
+    serializer = AuthorSerializer(authors, many=True)
     return Response(serializer.data)
 
 class SignupView(APIView):
