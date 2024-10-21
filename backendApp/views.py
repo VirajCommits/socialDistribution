@@ -100,6 +100,24 @@ def vueTest(request):
 
 @api_view(["GET", "DELETE", "PUT", "POST"])
 def post_detail(request, author_serial, post_serial):
+    """
+    Retrieve, update, delete, or interact with a specific post.
+
+    When to Use:
+    - Use this endpoint to manage individual posts and their likes or comments.
+
+    How to Use:
+    - Send a GET request to retrieve the post.
+    - Send a DELETE request to remove the post.
+    - Send a PUT request to update the post.
+    - Send a POST request with "like" or "comments" action to interact with likes or comments.
+
+    Why to Use:
+    - To manage posts and their interactions effectively.
+
+    Why Not to Use:
+    - If the post or author does not exist, or if the action is not recognized.
+    """
     # print("Request received")
     # Strip the trailing slash and check for any segments like "like" or "comments"
     segments = post_serial.split("/")
@@ -180,6 +198,33 @@ def post_detail(request, author_serial, post_serial):
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def get_all_posts(request, author_serial):
+    """
+    Retrieve all posts by a specific author.
+
+    When to Use:
+    - Use this endpoint to view all posts associated with an author.
+
+    How to Use:
+    - Send a GET request.
+
+    Response:
+    - 200 OK:
+    {
+      "type": "posts",
+      "items": [
+        {
+          "id": "string",
+          "author_id": "string",
+          "title": "string",
+          "content": "string",
+          "published": "datetime"
+        }
+      ]
+    }
+
+    Pagination:
+    - The response is paginated. Use the `page` query parameter to navigate through pages.
+    """
     print(" ----------- >>>>", author_serial)
     author_serial = unquote(author_serial)
     author = get_object_or_404(Author, uuid=author_serial)
@@ -199,6 +244,33 @@ def get_all_posts(request, author_serial):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def send_follow_request(request, author_uuid):
+    """
+    Send a follow request to another author.
+
+    When to Use:
+    - Use this endpoint to establish a follow relationship.
+
+    How to Use:
+    - Send a POST request with no additional data.
+
+    Why to Use:
+    - To request to follow another author.
+
+    Why Not to Use:
+    - If you are trying to follow yourself or if a request has already been sent.
+
+    Response:
+    - 201 Created:
+    {
+      "actor": "string",
+      "object": "string",
+      "summary": "string"
+    }
+    - 400 Bad Request:
+    {
+      "detail": "Error message"
+    }
+    """
     current_author = request.user
     target_author = get_object_or_404(Author, uuid=author_uuid)
 
@@ -219,6 +291,21 @@ def send_follow_request(request, author_uuid):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def accept_follow_request(request, author_uuid):
+    """
+    Accept a follow request.
+
+    When to Use:
+    - Use this endpoint to confirm a follow relationship.
+
+    How to Use:
+    - Send a POST request.
+
+    Response:
+    - 200 OK:
+    {
+      "detail": "Follow request accepted."
+    }
+    """
     current_author = request.user
     print("This is the current author:", current_author)
     requesting_author = get_object_or_404(Author, uuid=author_uuid)
@@ -232,6 +319,21 @@ def accept_follow_request(request, author_uuid):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def decline_follow_request(request, author_uuid):
+    """
+    Decline a follow request.
+
+    When to Use:
+    - Use this endpoint to reject a follow relationship.
+
+    How to Use:
+    - Send a POST request.
+
+    Response:
+    - 200 OK:
+    {
+      "detail": "Follow request declined."
+    }
+    """
     current_author = request.user
     requesting_author = get_object_or_404(Author, uuid=author_uuid)
 
@@ -244,6 +346,25 @@ def decline_follow_request(request, author_uuid):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_follow_requests(request):
+    """
+    Retrieve follow requests sent to the current author.
+
+    When to Use:
+    - Use this endpoint to view incoming follow requests.
+
+    How to Use:
+    - Send a GET request.
+
+    Response:
+    - 200 OK:
+    [
+      {
+        "actor": "string",
+        "object": "string",
+        "summary": "string"
+      }
+    ]
+    """
     current_author = request.user
     requests = FollowRequest.objects.filter(object=current_author)
     serializer = FollowRequestSerializer(requests, many=True)
@@ -252,6 +373,25 @@ def get_follow_requests(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_all_authors(request):
+    """
+    Retrieve all authors except the current user.
+
+    When to Use:
+    - Use this endpoint to view all authors in the system.
+
+    How to Use:
+    - Send a GET request.
+
+    Response:
+    - 200 OK:
+    [
+      {
+        "id": "string",
+        "username": "string",
+        "email": "string"
+      }
+    ]
+    """
     current_author = request.user
     authors = Author.objects.exclude(id=current_author.id)
     serializer = AuthorSerializer(authors, many=True)
