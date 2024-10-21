@@ -1,29 +1,22 @@
 from django.urls import path, include
 from . import views
-from rest_framework.authtoken import views as auth_views
-from rest_framework.routers import DefaultRouter
-from .views import AuthorViewSet, PostViewSet, CustomAuthToken
-
-router = DefaultRouter()
-router.register(r'authors', AuthorViewSet, basename='author')
-router.register(r'posts', PostViewSet, basename='post')
+from django.conf import settings
+from django.conf.urls.static import static
 
 urlpatterns = [
-    # Default path is the login page
-    path('', views.login_view, name='login'),
-    path('author/<uuid:uuid>/', views.author_detail, name='author_detail'),
-    path('logout/', views.logout_view, name='logout'),
-    
-    # API endpoints
-    path('api/', include(router.urls)),
-    path('api/auth/login/', CustomAuthToken.as_view(), name='api-token-auth'),
-    path('api/authors/', views.AuthorListView.as_view(), name='author-list'),
-    path('api/authors/<uuid:uuid>/', views.AuthorDetailView.as_view(), name='author-detail'),
-    path('api/authors/<uuid:uuid>/edit/', views.AuthorUpdateView.as_view(), name='author-update'),
+    path("", views.defaultPath, name="defaultPath"),
+    path("api/signup/", views.SignupView.as_view(), name="signup"),
+    path("api/login/", views.LoginView.as_view(), name="login"),
 
-    # Follow request endpoints
-    path('api/authors/<uuid:uuid>/follow_requests/', AuthorViewSet.as_view({'get': 'follow_requests'}), name='follow-requests'),
-    path('api/authors/<uuid:uuid>/send_follow_request/', AuthorViewSet.as_view({'post': 'send_follow_request'}), name='send-follow-request'),
-    path('api/authors/<uuid:uuid>/accept_follow_request/', AuthorViewSet.as_view({'post': 'accept_follow_request'}), name='accept-follow-request'),
-    path('api/authors/<uuid:uuid>/decline_follow_request/', AuthorViewSet.as_view({'post': 'decline_follow_request'}), name='decline-follow-request'),
-]
+    # Post-related paths
+    path('service/api/authors/<path:author_serial>/posts/', views.create_post, name='create_post'),
+    path('service/api/authors/<path:author_serial>/posts/all/', views.get_all_posts, name='get_all_posts'),
+    path('service/api/authors/<path:author_serial>/posts/<path:post_serial>', views.post_detail, name='post_detail'),
+
+    # Follow request paths
+    path('service/api/authors/<path:author_serial>/send_follow_request/', views.send_follow_request, name='send_follow_request'),
+    path('service/api/authors/<path:author_serial>/accept_follow_request/', views.accept_follow_request, name='accept_follow_request'),
+    path('service/api/authors/<path:author_serial>/decline_follow_request/', views.decline_follow_request, name='decline_follow_request'),
+    path('service/api/authors/follow_requests/', views.get_follow_requests, name='get_follow_requests'),
+    
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

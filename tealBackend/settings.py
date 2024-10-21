@@ -11,10 +11,15 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 """
 
 from pathlib import Path
-import os  # Added to support os.path.join
+import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir' or os.path.join(BASE_DIR, 'subdir')
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+AUTHOR_ID = "45c7cdd3-02be-4f93-9078-5ef5df3e5dbb"
 
 
 # Quick-start development settings - unsuitable for production
@@ -40,21 +45,36 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "rest_framework",
-    'corsheaders',
-    "rest_framework.authtoken",  # Added if using TokenAuthentication
+    "rest_framework_simplejwt",
+    "corsheaders",
 ]
 
+AUTH_USER_MODEL = 'backendApp.Author'
+
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    "corsheaders.middleware.CorsMiddleware",
+
+
 ]
+CORS_ALLOWED_ORIGINS = [
+    'http://localhost:8080',  # Your Vue.js app's URL
+]
+
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    )
+}
 
 CORS_ALLOW_ALL_ORIGINS = True
 
@@ -78,7 +98,6 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = "tealBackend.wsgi.application"
-
 
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
@@ -133,23 +152,9 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# Authentication settings
-LOGIN_URL = 'login'
-LOGIN_REDIRECT_URL = 'author_detail'
-LOGOUT_REDIRECT_URL = 'login'
 
-# REST Framework settings (if needed)
-REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.SessionAuthentication',
-        'rest_framework.authentication.TokenAuthentication',  # Uncomment if using TokenAuthentication
-    ],
-    'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.IsAuthenticatedOrReadOnly',
-    ],
+from datetime import timedelta
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
 }
-
-# HOST_URL setting for constructing full IDs
-HOST_URL = 'http://localhost:8000/'
-
-CSRF_TRUSTED_ORIGINS = ['http://localhost:8080']

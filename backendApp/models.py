@@ -1,41 +1,33 @@
-from django.conf import settings
+from datetime import timezone
+from django.contrib.auth.models import AbstractUser
 from django.db import models
-from django.contrib.auth.models import User
 import uuid
-from django.utils import timezone
 
-class Author(models.Model):
-    # Link to Django's built-in User model
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
-
-    # Primary key using UUID
-    uuid = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-
-    # Full ID constructed from host and UUID
-    id = models.URLField(unique=True, blank=True)
-
-    type = models.CharField(max_length=10, default='author')
-    host = models.URLField(max_length=200, default=settings.HOST_URL)
-    displayName = models.CharField(max_length=100)
-    github = models.URLField(blank=True, null=True)
-    profileImage = models.URLField(blank=True, null=True, default='https://via.placeholder.com/150')
-    page = models.URLField(blank=True, null=True)  # HTML profile page URL
-    following = models.ManyToManyField('self', symmetrical=False, related_name='followers', blank=True)
-
-    def save(self, *args, **kwargs):
-        if not self.id:
-            # Construct the full ID URL
-            self.id = f"{self.host}api/authors/{self.uuid}"
-        if not self.page:
-            # Construct the profile page URL
-            self.page = f"{self.host}authors/{self.uuid}"
-        if not self.displayName:
-            self.displayName = self.user.username
-        super(Author, self).save(*args, **kwargs)
+class Author(AbstractUser):
+    type = models.CharField(max_length=6, default="author", editable=False)
+    uuid = models.UUIDField(unique=True, editable=False, default=uuid.uuid4)
+    id = models.URLField(primary_key=True, max_length=200)
+    host = models.URLField(default="http://localhost:8000/project/")
+    displayName = models.CharField(max_length=255)
+    github = models.URLField(blank=True)
+    profileImage = models.URLField(blank=True)
+    page = models.URLField(max_length=200)
+    followers = models.ManyToManyField('self', symmetrical=False, related_name='following', blank=True)
 
     def __str__(self):
         return self.displayName
-    
+    def save(self, *args, **kwargs):
+        if not self.id:
+            self.id = f"{self.host}authors/{self.uuid}"
+        if not self.page:
+            self.page = f"{self.host.replace('project/', '')}authors/{self.username}"
+        super().save(*args, **kwargs)
+
+    def accept_follow_request(self, requester):
+        """Accept a follow request from another author."""
+        self.followers.add(requester)
+        self.save()
+
 class Post(models.Model):
     VISIBILITY_CHOICES = [
         ('PUBLIC', 'Public'),
@@ -51,18 +43,18 @@ class Post(models.Model):
         ('image/jpeg;base64', 'JPEG Image (Base64)'),
     ]
 
-    id = models.URLField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     type = models.CharField(max_length=10, default='post')
     title = models.CharField(max_length=200)
     page = models.URLField()
-    description = models.TextField(blank=True, null=True)
+    description = models.TextField(blank=True, null=True) 
+    image = models.ImageField(upload_to='posts/images/', blank=True, null=True)  # Field for image
     contentType = models.CharField(max_length=50, choices=CONTENT_TYPE_CHOICES)
     content = models.TextField(blank=True, null=True)
     image = models.ImageField(upload_to='post_images/', blank=True, null=True)
     author = models.ForeignKey(Author, on_delete=models.CASCADE, related_name='posts')
     published = models.DateTimeField()
     visibility = models.CharField(max_length=10, choices=VISIBILITY_CHOICES)
-    unlisted = models.BooleanField(default=False)
 
     def __str__(self):
         return self.title
@@ -78,6 +70,7 @@ class Post(models.Model):
         if not self.published:
             self.published = timezone.now()
         super(Post, self).save(*args, **kwargs)
+
 
 class FollowRequest(models.Model):
     uuid = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

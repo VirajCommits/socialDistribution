@@ -1,158 +1,179 @@
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth import authenticate, login, logout
-from django.contrib.auth.decorators import login_required
-from django.urls import reverse
-from .models import Author, Post, FollowRequest
-from django.contrib.auth.models import User
-from rest_framework import generics, permissions
-from rest_framework import viewsets, permissions, status
-from rest_framework.decorators import action
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from .serializers import AuthorSerializer, PostSerializer, FollowRequestSerializer
-from rest_framework.authtoken.views import ObtainAuthToken
-from rest_framework.authtoken.models import Token
+from rest_framework import status
+from .serializers import PostSerializer, FollowRequestSerializer
+from .models import Author, Post, FollowRequest
+from django.shortcuts import get_object_or_404
+from urllib.parse import urlparse
+# from django.utils import timezone
+from django.shortcuts import render
+from urllib.parse import unquote
+from rest_framework.pagination import PageNumberPagination
 
+from rest_framework import status
+from rest_framework.views import APIView
+from rest_framework_simplejwt.tokens import RefreshToken
+from django.contrib.auth import authenticate
+from .serializers import AuthorSerializer
 
-class AuthorViewSet(viewsets.ModelViewSet):
-    queryset = Author.objects.all()
-    serializer_class = AuthorSerializer
-    lookup_field = 'uuid'
-    permission_classes = [permissions.IsAuthenticated]
-
-    # Send a follow request
-    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
-    def send_follow_request(self, request, uuid=None):
-        current_author = request.user.author
-        target_author = get_object_or_404(Author, uuid=uuid)
-
-        if current_author == target_author:
-            return Response({'detail': 'You cannot follow yourself.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Check if follow request already exists
-        if FollowRequest.objects.filter(actor=current_author, object=target_author).exists():
-            return Response({'detail': 'Follow request already sent.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Create a new follow request
-        follow_request = FollowRequest.objects.create(
-            actor=current_author,
-            object=target_author,
-            summary=f"{current_author.displayName} wants to follow {target_author.displayName}"
-        )
-        return Response(FollowRequestSerializer(follow_request).data, status=status.HTTP_201_CREATED)
-
-    # Accept a follow request
-    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
-    def accept_follow_request(self, request, uuid=None):
-        current_author = request.user.author
-        requesting_author = get_object_or_404(Author, uuid=uuid)
-
-        follow_request = get_object_or_404(FollowRequest, actor=requesting_author, object=current_author)
-        current_author.followers.add(requesting_author)  # Add to followers
-        follow_request.delete()  # Remove the follow request
-        return Response({'detail': 'Follow request accepted.'}, status=status.HTTP_200_OK)
-
-    # Decline a follow request
-    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
-    def decline_follow_request(self, request, uuid=None):
-        current_author = request.user.author
-        requesting_author = get_object_or_404(Author, uuid=uuid)
-
-        follow_request = get_object_or_404(FollowRequest, actor=requesting_author, object=current_author)
-        follow_request.delete()  # Remove the follow request
-        return Response({'detail': 'Follow request declined.'}, status=status.HTTP_200_OK)
-
-    # Unfollow an author
-    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
-    def unfollow(self, request, uuid=None):
-        current_author = request.user.author
-        target_author = get_object_or_404(Author, uuid=uuid)
-
-        current_author.following.remove(target_author)
-        return Response({'status': 'unfollowed'}, status=status.HTTP_200_OK)
-
-    # Get current author's profile
-    @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated])
-    def me(self, request):
-        return Response(AuthorSerializer(request.user.author).data)
-
-    # Get the list of follow requests received by the author
-    @action(detail=True, methods=['get'], permission_classes=[permissions.IsAuthenticated])
-    def follow_requests(self, request, uuid=None):
-        current_author = get_object_or_404(Author, uuid=uuid)
-        requests = FollowRequest.objects.filter(object=current_author)
-        serializer = FollowRequestSerializer(requests, many=True, context={'request': request})
-        return Response(serializer.data)
+def defaultPath(request):
+    return render(request, "index.html")
+@api_view(['POST'])
+def create_post(request, author_serial):
+    author_serial = unquote(author_serial)
+    print("This is serial author --------------------  " , author_serial)
     
-
-class AuthorListView(generics.ListAPIView):
-    queryset = Author.objects.all()
-    serializer_class = AuthorSerializer
-    permission_classes = [permissions.IsAuthenticated]
-
-class AuthorDetailView(generics.RetrieveAPIView):
-    queryset = Author.objects.all()
-    serializer_class = AuthorSerializer
-    lookup_field = 'uuid'
-    permission_classes = [permissions.IsAuthenticated]
-
-class AuthorUpdateView(generics.UpdateAPIView):
-    queryset = Author.objects.all()
-    serializer_class = AuthorSerializer
-    lookup_field = 'uuid'
-    permission_classes = [permissions.IsAuthenticated]
-
-class PostViewSet(viewsets.ModelViewSet):
-    queryset = Post.objects.filter(unlisted=False)
-    serializer_class = PostSerializer
-    lookup_field = 'uuid'
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
-
-    def perform_create(self, serializer):
-        serializer.save(author=self.request.user.author)
-
-
-def login_view(request):
-    if request.method == "POST":
-        username = request.POST['username']
-        password = request.POST['password']
-        user = authenticate(request, username=username, password=password)
-
-        if user is not None:
-            login(request, user)
-            # Get the logged-in user's Author profile via user relationship
-            try:
-                author = Author.objects.get(user=user)
-                # Redirect to /author/<uuid>
-                return redirect(reverse('author_detail', kwargs={'uuid': author.uuid}))
-            except Author.DoesNotExist:
-                return render(request, 'login.html', {'error': 'Author profile not found.'})
-        else:
-            # Add proper redirection for login failure
-            return render(request, 'login.html', {'error': 'Invalid username or password.'})
+    data = request.data.copy()
+    
+    # Fetch the author instance
+    author = get_object_or_404(Author, id=author_serial)
+    
+    # Set the 'author_id' field to the author's ID (URL)
+    data['author_id'] = author.id  # This will be accepted by the serializer
+    
+    # Remove fields that are generated automatically and 'author' if present
+    data.pop('id', None)
+    data.pop('page', None)
+    data.pop('published', None)
+    data.pop('type', None)
+    data.pop('author', None)
+    
+    serializer = PostSerializer(data=data)
+    
+    if serializer.is_valid():
+        post = serializer.save()
+        response_serializer = PostSerializer(post)
+        return Response(response_serializer.data, status=status.HTTP_201_CREATED)
     else:
-        return render(request, 'login.html')
+        print(serializer.errors)  # For debugging purposes
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+def vueTest(request):
+    return render(request, "index.html")
 
 
-# Modify CustomAuthToken to return author details
-class CustomAuthToken(ObtainAuthToken):
-    def post(self, request, *args, **kwargs):
-        response = super(CustomAuthToken, self).post(request, *args, **kwargs)
-        token = Token.objects.get(key=response.data['token'])
-        author = Author.objects.get(user=token.user)
-        return Response({
-            'token': token.key,
-            'uuid': author.uuid,  # Add UUID of the author for the frontend
-        })
+@api_view(['GET' , 'DELETE' , 'PUT'])
+def post_detail(request , author_serial , post_serial):
+    print("GET POST DETAILS>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" , author_serial , post_serial)
 
-@login_required
-def author_detail(request, uuid):
-    try:
-        author = Author.objects.get(uuid=uuid)
-    except Author.DoesNotExist:
-        return render(request, 'error.html', {'message': 'Author not found'})
+    # Get the author object or return 404 if not found
+    author = get_object_or_404(Author, id=author_serial)
+    
+    # Get the post object or return 404 if not found
+    post = get_object_or_404(Post, author=author, id=post_serial)
 
-    return render(request, 'author_detail.html', {'author': author})
+    print(" --------- " , request.method)
+    # Handle GET request
+    if request.method == 'GET':
+        # Directly allow access to public and friends-only posts
+        serializer = PostSerializer(post)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    # Handle DELETE request
+    elif request.method == 'DELETE':
+        # Directly delete the post without requiring authentication
+        post.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    # Handle PUT request
+    elif request.method == 'PUT':
+        # Directly update the post without requiring authentication
+        serializer = PostSerializer(post, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-def logout_view(request):
-    logout(request)
-    return redirect('login')
+@api_view(['GET'])
+def get_all_posts(request, author_serial):
+    print(" ----------- >>>>" , author_serial)
+    author_serial = unquote(author_serial)
+    author = get_object_or_404(Author, id=author_serial)
+    posts = Post.objects.filter(author=author).order_by('-published')
+
+    # Pagination
+    paginator = PageNumberPagination()
+    paginator.page_size = 10  # Adjust as needed
+    result_page = paginator.paginate_queryset(posts, request)
+
+    serializer = PostSerializer(result_page, many=True)
+    return paginator.get_paginated_response({'type': 'posts', 'items': serializer.data})
+
+
+# Follow Request Actions
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def send_follow_request(request, author_serial):
+    current_author = request.user.author
+    target_author = get_object_or_404(Author, uuid=unquote(author_serial))
+
+    if current_author == target_author:
+        return Response({'detail': 'You cannot follow yourself.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if FollowRequest.objects.filter(actor=current_author, object=target_author).exists():
+        return Response({'detail': 'Follow request already sent.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    follow_request = FollowRequest.objects.create(
+        actor=current_author,
+        object=target_author,
+        summary=f"{current_author.displayName} wants to follow {target_author.displayName}"
+    )
+    return Response(FollowRequestSerializer(follow_request).data, status=status.HTTP_201_CREATED)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def accept_follow_request(request, author_serial):
+    current_author = request.user.author
+    requesting_author = get_object_or_404(Author, uuid=unquote(author_serial))
+
+    follow_request = get_object_or_404(FollowRequest, actor=requesting_author, object=current_author)
+    current_author.followers.add(requesting_author)  # Add to followers
+    follow_request.delete()  # Remove the follow request
+    return Response({'detail': 'Follow request accepted.'}, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def decline_follow_request(request, author_serial):
+    current_author = request.user.author
+    requesting_author = get_object_or_404(Author, uuid=unquote(author_serial))
+
+    follow_request = get_object_or_404(FollowRequest, actor=requesting_author, object=current_author)
+    follow_request.delete()  # Remove the follow request
+    return Response({'detail': 'Follow request declined.'}, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_follow_requests(request):
+    current_author = request.user
+    requests = FollowRequest.objects.filter(object=current_author)
+    serializer = FollowRequestSerializer(requests, many=True)
+    return Response(serializer.data)
+
+class SignupView(APIView):
+    def post(self, request):
+        serializer = AuthorSerializer(data=request.data)
+        print(serializer)
+        if serializer.is_valid():
+            user = serializer.save()
+            refresh = RefreshToken.for_user(user)
+            return Response({
+                'refresh': str(refresh),
+                'access': str(refresh.access_token),
+                'user': AuthorSerializer(user).data
+            }, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class LoginView(APIView):
+    def post(self, request):
+        username = request.data.get('username')
+        password = request.data.get('password')
+        user = authenticate(username=username, password=password)
+        if user:
+            refresh = RefreshToken.for_user(user)
+            return Response({
+                'refresh': str(refresh),
+                'access': str(refresh.access_token),
+                'user': AuthorSerializer(user).data
+            })
+        return Response({'error': 'Invalid Credentials'}, status=status.HTTP_401_UNAUTHORIZED)

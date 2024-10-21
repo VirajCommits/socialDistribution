@@ -1,10 +1,10 @@
 <template>
-  <router-view /> <!-- Displays the current route component -->
+  <router-view />
 </template>
 
 <script>
 export default {
-  name: 'App',
+  name: "App",
 };
 </script>
 
@@ -15,6 +15,28 @@ export default {
   -moz-osx-font-smoothing: grayscale;
   text-align: center;
   color: #2c3e50;
-  margin-top: 60px;
+  margin-top: 20px;
+}
+
+nav ul {
+  list-style-type: none;
+  padding: 0;
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+}
+
+nav ul li {
+  display: inline;
+}
+
+router-link {
+  text-decoration: none;
+  color: #42b983;
+  font-weight: bold;
+}
+
+router-link:hover {
+  text-decoration: underline;
 }
 </style>
