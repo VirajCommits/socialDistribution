@@ -152,7 +152,6 @@ export default {
         // Display success message
         this.successMessage = "Post created successfully!";
         alert("Post created successfully.");
-        console.log("response we got:", this.response);
 
         // Reset form
         this.form = {
