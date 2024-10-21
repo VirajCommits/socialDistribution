@@ -20,4 +20,10 @@ urlpatterns = [
     path('api/authors/', views.AuthorListView.as_view(), name='author-list'),
     path('api/authors/<uuid:uuid>/', views.AuthorDetailView.as_view(), name='author-detail'),
     path('api/authors/<uuid:uuid>/edit/', views.AuthorUpdateView.as_view(), name='author-update'),
+
+    # Follow request endpoints
+    path('api/authors/<uuid:uuid>/follow_requests/', AuthorViewSet.as_view({'get': 'follow_requests'}), name='follow-requests'),
+    path('api/authors/<uuid:uuid>/send_follow_request/', AuthorViewSet.as_view({'post': 'send_follow_request'}), name='send-follow-request'),
+    path('api/authors/<uuid:uuid>/accept_follow_request/', AuthorViewSet.as_view({'post': 'accept_follow_request'}), name='accept-follow-request'),
+    path('api/authors/<uuid:uuid>/decline_follow_request/', AuthorViewSet.as_view({'post': 'decline_follow_request'}), name='decline-follow-request'),
 ]

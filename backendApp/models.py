@@ -78,3 +78,14 @@ class Post(models.Model):
         if not self.published:
             self.published = timezone.now()
         super(Post, self).save(*args, **kwargs)
+
+class FollowRequest(models.Model):
+    uuid = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    type = models.CharField(max_length=10, default='follow')
+    summary = models.CharField(max_length=256, blank=True)
+    actor = models.ForeignKey(Author, related_name='sent_follow_requests', on_delete=models.CASCADE)
+    object = models.ForeignKey(Author, related_name='received_follow_requests', on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.actor.displayName} wants to follow {self.object.displayName}"
