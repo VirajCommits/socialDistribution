@@ -6,6 +6,7 @@ import ProfilePage from '../components/ProfilePage.vue';
 import CreatePost from '../components/CreatePost.vue';
 import AuthorPosts from '../components/AuthorPosts.vue';
 import EditPost from '../components/EditPost.vue';
+import ExploreAuthors from '../components/ExploreAuthors.vue';
 
 const routes = [
   { path: '/login', component: UserLogin },
@@ -16,6 +17,7 @@ const routes = [
   {path: '/addPost', component: CreatePost},
   {path: '/posts/all', component: AuthorPosts},
   {path: '/posts/create', component: CreatePost},
+  {path: '/explore', component: ExploreAuthors},
   {
     path: '/edit-post/:id',  // Ensure this path matches the structure you're using
     name: 'EditPost',

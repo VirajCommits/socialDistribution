@@ -33,7 +33,7 @@ export default {
   methods: {
     async fetchLikes() {
       try {
-        const apiUrl = `${process.env.VUE_APP_API_BASE_URL}/authors/${this.authorId}/posts/${this.postId}/likes/`;
+        const apiUrl = `http://localhost:8000/project/service/authors/${this.authorId}/posts/${this.postId}/likes/`;
         const response = await axios.get(apiUrl);
         this.likeCount = response.data.length || 0;
 
@@ -47,7 +47,7 @@ export default {
     },
     async toggleLike() {
       try {
-        const apiUrl = `${process.env.VUE_APP_API_BASE_URL}/authors/${this.authorId}/posts/${this.postId}/like/`;
+        const apiUrl = `http://localhost:8000/project/service/authors/${this.authorId}/posts/${this.postId}/like/`;
         if (this.liked) {
           // Unlike logic can be implemented if needed (requires backend support for DELETE like)
           alert("Unliking not implemented yet.");

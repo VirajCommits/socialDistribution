@@ -2,8 +2,13 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
+
+from .serializers import PostSerializer, FollowRequestSerializer
+from .models import Author, Post, FollowRequest
+
 from .serializers import PostSerializer,CommentSerializer,LikeSerializer
 from .models import Author, Post,Comment,Like
+
 from django.shortcuts import get_object_or_404
 from urllib.parse import urlparse
 from django.shortcuts import render
@@ -186,9 +191,71 @@ def get_all_posts(request, author_serial):
     result_page = paginator.paginate_queryset(posts, request)
 
     serializer = PostSerializer(result_page, many=True)
-    return paginator.get_paginated_response({"type": "posts", "items": serializer.data})
+
+    return paginator.get_paginated_response({'type': 'posts', 'items': serializer.data})
 
 
+# Follow Request Actions
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def send_follow_request(request, author_uuid):
+    current_author = request.user
+    target_author = get_object_or_404(Author, uuid=author_uuid)
+
+    if current_author == target_author:
+        return Response({'detail': 'You cannot follow yourself.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if FollowRequest.objects.filter(actor=current_author, object=target_author).exists():
+        return Response({'detail': 'Follow request already sent.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    follow_request = FollowRequest.objects.create(
+        actor=current_author,
+        object=target_author,
+        summary=f"{current_author.displayName} wants to follow {target_author.displayName}"
+    )
+    return Response(FollowRequestSerializer(follow_request).data, status=status.HTTP_201_CREATED)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def accept_follow_request(request, author_uuid):
+    current_author = request.user
+    print("This is the current author:", current_author)
+    requesting_author = get_object_or_404(Author, uuid=author_uuid)
+
+    follow_request = get_object_or_404(FollowRequest, actor=requesting_author, object=current_author)
+    current_author.followers.add(requesting_author)  # Add to followers
+    follow_request.delete()  # Remove the follow request
+    return Response({'detail': 'Follow request accepted.'}, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def decline_follow_request(request, author_uuid):
+    current_author = request.user
+    requesting_author = get_object_or_404(Author, uuid=author_uuid)
+
+    follow_request = get_object_or_404(FollowRequest, actor=requesting_author, object=current_author)
+    follow_request.delete()  # Remove the follow request
+    return Response({'detail': 'Follow request declined.'}, status=status.HTTP_200_OK)
+
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_follow_requests(request):
+    current_author = request.user
+    requests = FollowRequest.objects.filter(object=current_author)
+    serializer = FollowRequestSerializer(requests, many=True)
+    return Response(serializer.data)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_all_authors(request):
+    current_author = request.user
+    authors = Author.objects.exclude(id=current_author.id)
+    serializer = AuthorSerializer(authors, many=True)
+    return Response(serializer.data)
 
 
 class SignupView(APIView):
@@ -293,7 +360,7 @@ class LoginView(APIView):
         user = authenticate(username=username, password=password)
         if user:
             refresh = RefreshToken.for_user(user)
-<<<<<<< HEAD
+
             return Response(
                 {
                     "refresh": str(refresh),
@@ -304,11 +371,4 @@ class LoginView(APIView):
         return Response(
             {"error": "Invalid Credentials"}, status=status.HTTP_401_UNAUTHORIZED
         )
-=======
-            return Response({
-                'refresh': str(refresh),
-                'access': str(refresh.access_token),
-                'user': AuthorSerializer(user).data
-            })
-        return Response({'error': 'Invalid Credentials'}, status=status.HTTP_401_UNAUTHORIZED)
->>>>>>> f1743f68a5f55f9c0841e89f391d58a45bacf267
+

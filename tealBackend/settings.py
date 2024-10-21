@@ -13,13 +13,11 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 from pathlib import Path
 import os
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
+# Build paths inside the project like this: BASE_DIR / 'subdir' or os.path.join(BASE_DIR, 'subdir')
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
-
-AUTHOR_ID = "45c7cdd3-02be-4f93-9078-5ef5df3e5dbb"
 
 
 # Quick-start development settings - unsuitable for production
@@ -83,7 +81,9 @@ ROOT_URLCONF = "tealBackend.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
+
         "DIRS": [BASE_DIR / "backendApp/static/vue"],
+
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [

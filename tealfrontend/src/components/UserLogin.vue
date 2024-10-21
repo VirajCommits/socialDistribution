@@ -32,6 +32,9 @@ export default {
         });
         localStorage.setItem('token', response.data.access);
         localStorage.setItem('user', JSON.stringify(response.data.user));
+        const userId = response.data.user.id;
+        const uuid = userId.split('/').pop(); // Extract UUID from the ID
+        localStorage.setItem('uuid', uuid);
         this.$router.push('/stream');
       } catch (error) {
         this.error = 'Invalid credentials';
