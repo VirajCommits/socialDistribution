@@ -6,17 +6,28 @@
       <strong>GitHub:</strong>
       <a :href="author.github" target="_blank">{{ author.github }}</a>
     </p>
-    <div v-if="isFollowing">
-      <button @click="unfollowAuthor">Unfollow</button>
+    <div v-if="hasSentRequest">
+      <p>Follow request sent.</p>
+    </div>
+    <div v-else-if="isFollowing">
+      <p>You are following this author.</p>
     </div>
     <div v-else>
-      <button @click="followAuthor">Follow</button>
+      <button @click="sendFollowRequest">Send Follow Request</button>
     </div>
+
+    <!-- Follow Requests button -->
+    <div>
+      <button @click="goToFollowRequests">View Follow Requests</button>
+    </div>
+
     <button @click="$router.go(-1)">Back</button>
   </div>
+
   <div v-else-if="loading">
     <p>Loading author data...</p>
   </div>
+
   <div v-else>
     <p>Error loading author data.</p>
   </div>
@@ -29,72 +40,74 @@ export default {
   props: ['uuid'],
   data() {
     return {
-      author: null,    // The author data
-      isFollowing: false,   // Whether the current user is following this author
-      loading: true,    // Loading state to show loading message
-      error: false,     // Error state to handle API failures
+      author: null,
+      isFollowing: false,
+      hasSentRequest: false,
+      loading: true,
+      error: false,
     };
   },
   created() {
-    console.log("UUID passed to component:", this.uuid);
     this.fetchAuthor();
   },
   methods: {
     fetchAuthor() {
-      this.loading = true;   // Set loading to true while fetching the author
+      this.loading = true;
       axios
-        .get(`/authors/${this.uuid}/`, {
-          headers: { Authorization: `Token ${localStorage.getItem('token')}` },
-        })
+        .get(`/authors/${this.uuid}/`)
         .then((response) => {
-          this.author = response.data;  // Set the author data
-          this.loading = false;         // Set loading to false once data is fetched
-          this.checkFollowing();        // Check if current user is following the author
+          this.author = response.data;
+          this.loading = false;
+          this.checkFollowing();
         })
         .catch((error) => {
           console.error("Error fetching author:", error);
           this.loading = false;
-          this.error = true;            // Set error state if API call fails
+          this.error = true;
         });
     },
     checkFollowing() {
       axios
-        .get('/authors/me/', {
-          headers: { Authorization: `Token ${localStorage.getItem('token')}` },
-        })
+        .get(`/authors/${localStorage.getItem("uuid")}/`)
         .then((response) => {
           const following = response.data.following;
-          if (this.author) {
-            this.isFollowing = following.includes(this.author.uuid);
-          }
+          // Ensure the author object is fetched before checking
+          this.isFollowing = following.includes(this.author.id); 
+          this.checkFollowRequest(); // Fetch follow requests if user is following
         })
         .catch((error) => {
-          console.error("Error checking following status:", error);
+          console.error(error);
         });
     },
-    followAuthor() {
+    checkFollowRequest() {
+      // Check if the current user has sent a follow request to this author
       axios
-        .post(`/authors/${this.uuid}/follow/`, null, {
-          headers: { Authorization: `Token ${localStorage.getItem('token')}` },
-        })
-        .then(() => {
-          this.isFollowing = true;   // Update the follow state
+        .get(`/authors/${this.uuid}/follow_requests/`)
+        .then((response) => {
+          const requests = response.data;
+          // Check if there's a follow request from this author to the current user
+          this.hasSentRequest = requests.some(
+            (req) => req.actor.id === this.author.id
+          );
         })
         .catch((error) => {
-          console.error("Error following author:", error);
+          console.error(error);
         });
     },
-    unfollowAuthor() {
+    sendFollowRequest() {
+      // Send a follow request to this author
       axios
-        .post(`/authors/${this.uuid}/unfollow/`, null, {
-          headers: { Authorization: `Token ${localStorage.getItem('token')}` },
-        })
+        .post(`/authors/${this.uuid}/send_follow_request/`)
         .then(() => {
-          this.isFollowing = false;  // Update the follow state
+          this.hasSentRequest = true; // Update UI after sending request
         })
         .catch((error) => {
-          console.error("Error unfollowing author:", error);
+          console.error(error);
         });
+    },
+    goToFollowRequests() {
+      // Navigate to the follow requests page for this author
+      this.$router.push({ path: `/author/${this.uuid}/follow_requests` });
     },
   },
 };
