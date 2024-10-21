@@ -2,8 +2,8 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
-from .serializers import PostSerializer
-from .models import Author , Post
+from .serializers import PostSerializer, FollowRequestSerializer
+from .models import Author, Post, FollowRequest
 from django.shortcuts import get_object_or_404
 from urllib.parse import urlparse
 # from django.utils import timezone
@@ -96,6 +96,60 @@ def get_all_posts(request, author_serial):
 
     serializer = PostSerializer(result_page, many=True)
     return paginator.get_paginated_response({'type': 'posts', 'items': serializer.data})
+
+
+# Follow Request Actions
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def send_follow_request(request, author_serial):
+    current_author = request.user.author
+    target_author = get_object_or_404(Author, uuid=unquote(author_serial))
+
+    if current_author == target_author:
+        return Response({'detail': 'You cannot follow yourself.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if FollowRequest.objects.filter(actor=current_author, object=target_author).exists():
+        return Response({'detail': 'Follow request already sent.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    follow_request = FollowRequest.objects.create(
+        actor=current_author,
+        object=target_author,
+        summary=f"{current_author.displayName} wants to follow {target_author.displayName}"
+    )
+    return Response(FollowRequestSerializer(follow_request).data, status=status.HTTP_201_CREATED)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def accept_follow_request(request, author_serial):
+    current_author = request.user.author
+    requesting_author = get_object_or_404(Author, uuid=unquote(author_serial))
+
+    follow_request = get_object_or_404(FollowRequest, actor=requesting_author, object=current_author)
+    current_author.followers.add(requesting_author)  # Add to followers
+    follow_request.delete()  # Remove the follow request
+    return Response({'detail': 'Follow request accepted.'}, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def decline_follow_request(request, author_serial):
+    current_author = request.user.author
+    requesting_author = get_object_or_404(Author, uuid=unquote(author_serial))
+
+    follow_request = get_object_or_404(FollowRequest, actor=requesting_author, object=current_author)
+    follow_request.delete()  # Remove the follow request
+    return Response({'detail': 'Follow request declined.'}, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_follow_requests(request):
+    current_author = request.user
+    requests = FollowRequest.objects.filter(object=current_author)
+    serializer = FollowRequestSerializer(requests, many=True)
+    return Response(serializer.data)
+
 class SignupView(APIView):
     def post(self, request):
         serializer = AuthorSerializer(data=request.data)

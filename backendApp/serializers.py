@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
-from .models import Post, Author
+from .models import Post, Author, FollowRequest
 from django.utils import timezone
 from django.shortcuts import get_object_or_404
 
@@ -10,7 +10,7 @@ class AuthorSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Author
-        fields = ['id', 'host', 'displayName', 'github', 'profileImage', 'page', 'username', 'email', 'password']
+        fields = ['id', 'uuid', 'host', 'displayName', 'github', 'profileImage', 'page', 'username', 'email', 'password']
         extra_kwargs = {
             'id': {'read_only': True},
             'page': {'read_only': True},
@@ -54,3 +54,13 @@ class PostSerializer(serializers.ModelSerializer):
         author = get_object_or_404(Author, id=author_id)
         post = Post.objects.create(author=author, **validated_data)
         return post
+    
+
+class FollowRequestSerializer(serializers.ModelSerializer):
+    actor = AuthorSerializer(read_only=True)  # Serialize the actor sending the follow request
+    object = AuthorSerializer(read_only=True)  # Serialize the author receiving the request
+
+    class Meta:
+        model = FollowRequest
+        fields = ['type', 'summary', 'actor', 'object', 'uuid', 'created_at'] 
+        read_only_fields = ['uuid', 'created_at']
