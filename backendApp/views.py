@@ -23,6 +23,44 @@ def defaultPath(request):
 
 @api_view(["POST"])
 def create_post(request, author_serial):
+    """
+    Create a new post for a specific author.
+
+    When to Use:
+    - Use this endpoint to create a new post for the author specified by author_serial.
+
+    How to Use:
+    - Send a POST request with the post data in the request body.
+
+    Why to Use:
+    - To add new content created by an author to the database.
+
+    Why Not to Use:
+    - If the author does not exist or if required fields are missing from the request.
+    
+    Request Body:
+    {
+      "title": "string",         # Title of the post (Required)
+      "content": "string",       # Content of the post (Required)
+      "published": "datetime"    # Date and time when the post was published (Optional)
+    }
+
+    Response:
+    - 201 Created:
+    {
+      "id": "string",
+      "author_id": "string",
+      "title": "string",
+      "content": "string",
+      "published": "datetime"
+    }
+    - 400 Bad Request:
+    {
+      "errors": {
+        "field": ["error message"]
+      }
+    }
+    """
     author_serial = unquote(author_serial)
     print("This is serial author --------------------  ", author_serial)
 
@@ -55,56 +93,6 @@ def create_post(request, author_serial):
 def vueTest(request):
     return render(request, "index.html")
 
-
-# @api_view(["GET", "DELETE", "PUT"])
-# def post_detail(request, author_serial, post_serial):
-#     print(
-#         "GET POST DETAILS>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>", author_serial, post_serial
-#     )
-#     segments = post_serial.split("/")
-#     post_id = segments[0]  # This should be the UUID part
-#     action = segments[1] if len(segments) > 1 else None
-
-#     # Get the author object or return 404 if not found
-#     author = get_object_or_404(Author, uuid=author_serial)
-
-#     # Get the post object or return 404 if not found
-#     post = get_object_or_404(Post, author=author, id=post_serial)
-
-#     print("FOUND AUTHOR AND POST")
-
-#     print(" --------- ", request.method)
-#     if request.method == "GET":
-#         # Serialize the post
-#         post_serializer = PostSerializer(post)
-
-#         # Fetch related comments and likes
-#         comments = Comment.objects.filter(post=post).order_by("-published")
-#         likes = Like.objects.filter(post=post)
-
-#         comments_serializer = CommentSerializer(comments, many=True)
-#         likes_serializer = LikeSerializer(likes, many=True)
-
-#         # Combine post, comments, and likes into one response
-#         response_data = {
-#             "post": post_serializer.data,
-#             "comments": comments_serializer.data,
-#             "likes": likes_serializer.data,
-#         }
-
-#         return Response(response_data, status=status.HTTP_200_OK)
-
-#     elif request.method == "DELETE":
-#         post.delete()
-#         return Response(status=status.HTTP_204_NO_CONTENT)
-
-
-#     elif request.method == "PUT":
-#         serializer = PostSerializer(post, data=request.data, partial=True)
-#         if serializer.is_valid():
-#             serializer.save()
-#             return Response(serializer.data, status=status.HTTP_200_OK)
-#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 @api_view(["GET", "DELETE", "PUT", "POST"])
 def post_detail(request, author_serial, post_serial):
     # print("Request received")
@@ -190,7 +178,7 @@ def get_all_posts(request, author_serial):
     print(" ----------- >>>>", author_serial)
     author_serial = unquote(author_serial)
     author = get_object_or_404(Author, uuid=author_serial)
-    posts = Post.objects.filter(author=author).order_by("-published")
+    posts = Post.objects.filter(author=author).order_by("-edited_at")
 
     # Pagination
     paginator = PageNumberPagination()
@@ -201,113 +189,49 @@ def get_all_posts(request, author_serial):
     return paginator.get_paginated_response({"type": "posts", "items": serializer.data})
 
 
-# UUID_REGEX = re.compile(r"[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}")
-
-
-# def extract_uuid_from_url(url):
-#     parsed_url = urlparse(url)
-#     path_parts = parsed_url.path.split("/")
-#     # Find a UUID in the path
-#     for part in path_parts:
-#         if UUID_REGEX.match(part):
-#             return part
-#     return None
-
-
-# @api_view(["POST"])
-# def create_comment(request, author_id, post_id):
-#     print("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAa")
-#     # Parse the author_id URL and extract the UUID part
-#     parsed_author_id = urlparse(author_id).path.split("/")[-1]
-#     print("Parsed author_id:", parsed_author_id)
-#     print("Received post_id:", post_id)
-
-#     # Get the author instance or return 404 if not found
-#     author = get_object_or_404(Author, uuid=parsed_author_id)
-
-#     # Get the post instance or return 404 if not found
-#     post = get_object_or_404(Post, id=post_id)
-
-#     # Prepare the data for the serializer
-#     data = request.data.copy()
-#     data["author_id"] = str(author.id)
-#     data["post_id"] = str(post.id)
-
-#     serializer = CommentSerializer(data=data)
-#     if serializer.is_valid():
-#         serializer.save()
-#         return Response(serializer.data, status=status.HTTP_201_CREATED)
-#     else:
-#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-# @api_view(["POST"])
-# def like_post(request, author_id, post_id):
-#     # Parse the author_id URL and extract the UUID part
-#     parsed_author_id = urlparse(author_id).path.split("/")[-1]
-#     print("Parsed author_id:", parsed_author_id)
-#     print("Received post_id:", post_id)
-
-#     # Get the author instance or return 404 if not found
-#     author = get_object_or_404(Author, uuid=parsed_author_id)
-
-#     # Get the post instance or return 404 if not found
-#     post = get_object_or_404(Post, id=post_id)
-
-#     # Prepare the data for the serializer
-#     data = request.data.copy()
-#     data["author_id"] = str(author.id)
-#     data["post_id"] = str(post.id)
-#     data["post"] = post.id  # Set the actual post ID
-
-#     print("Data being passed to serializer:", data)
-
-#     serializer = LikeSerializer(data=data)
-#     if serializer.is_valid():
-#         serializer.save()
-#         return Response(serializer.data, status=status.HTTP_201_CREATED)
-#     else:
-#         print("Serializer errors:", serializer.errors)
-#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-# @api_view(["GET"])
-# def get_comments(request, author_id, post_id):
-#     # decoded_author_id = unquote(author_id)
-#     # author_uuid = extract_uuid_from_url(decoded_author_id)
-#     author_uuid = urlparse(author_id).path.split("/")[-1]
-
-#     if not author_uuid:
-#         return Response(
-#             {"detail": "Invalid author ID"}, status=status.HTTP_400_BAD_REQUEST
-#         )
-
-#     author = get_object_or_404(Author, uuid=author_uuid)
-#     post = get_object_or_404(Post, id=post_id, author=author)
-#     comments = Comment.objects.filter(post=post).order_by("-published")
-
-#     serializer = CommentSerializer(comments, many=True, context={'request': request})
-#     return Response(serializer.data, status=status.HTTP_200_OK)
-
-
-# @api_view(["GET"])
-# def get_likes(request, author_id, post_id):
-#     author_uuid = urlparse(author_id).path.split("/")[-1]
-
-#     if not author_uuid:
-#         return Response(
-#             {"detail": "Invalid author ID"}, status=status.HTTP_400_BAD_REQUEST
-#         )
-
-#     author = get_object_or_404(Author, uuid=author_uuid)
-#     post = get_object_or_404(Post, id=post_id, author=author)
-#     likes = Like.objects.filter(post=post).order_by("-published")
-
-#     serializer = LikeSerializer(likes, many=True)
-#     return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class SignupView(APIView):
+    """
+    Create a new author account.
+
+    When to Use:
+    - Use this endpoint to register a new author.
+
+    How to Use:
+    - Send a POST request with user data.
+
+    Why to Use:
+    - To allow new authors to register.
+
+    Why Not to Use:
+    - If required fields are missing or if the user already exists.
+
+    Request Body:
+    {
+      "username": "string",  # Unique username (Required)
+      "password": "string",  # User's password (Required)
+      "email": "string"      # User's email address (Required)
+    }
+
+    Response:
+    - 201 Created:
+    {
+      "refresh": "string",   # Refresh token for authentication
+      "access": "string",     # Access token for authentication
+      "user": {
+        "id": "string",
+        "username": "string",
+        "email": "string"
+      }
+    }
+    - 400 Bad Request:
+    {
+      "errors": {
+        "field": ["error message"]
+      }
+    }
+    """
     def post(self, request):
         serializer = AuthorSerializer(data=request.data)
         print(serializer)
@@ -326,12 +250,50 @@ class SignupView(APIView):
 
 
 class LoginView(APIView):
+    """
+    Authenticate an existing author.
+
+    When to Use:
+    - Use this endpoint for user login.
+
+    How to Use:
+    - Send a POST request with credentials.
+
+    Why to Use:
+    - To log in and receive authentication tokens.
+
+    Why Not to Use:
+    - If credentials are invalid.
+
+    Request Body:
+    {
+      "username": "string",  # User's username (Required)
+      "password": "string"   # User's password (Required)
+    }
+
+    Response:
+    - 200 OK:
+    {
+      "refresh": "string",   # Refresh token for authentication
+      "access": "string",     # Access token for authentication
+      "user": {
+        "id": "string",
+        "username": "string",
+        "email": "string"
+      }
+    }
+    - 401 Unauthorized:
+    {
+      "error": "Invalid Credentials"
+    }
+    """
     def post(self, request):
         username = request.data.get("username")
         password = request.data.get("password")
         user = authenticate(username=username, password=password)
         if user:
             refresh = RefreshToken.for_user(user)
+<<<<<<< HEAD
             return Response(
                 {
                     "refresh": str(refresh),
@@ -342,3 +304,11 @@ class LoginView(APIView):
         return Response(
             {"error": "Invalid Credentials"}, status=status.HTTP_401_UNAUTHORIZED
         )
+=======
+            return Response({
+                'refresh': str(refresh),
+                'access': str(refresh.access_token),
+                'user': AuthorSerializer(user).data
+            })
+        return Response({'error': 'Invalid Credentials'}, status=status.HTTP_401_UNAUTHORIZED)
+>>>>>>> f1743f68a5f55f9c0841e89f391d58a45bacf267

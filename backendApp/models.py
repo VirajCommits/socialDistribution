@@ -54,6 +54,7 @@ class Post(models.Model):
     author = models.ForeignKey(Author, on_delete=models.CASCADE, related_name="posts")
     published = models.DateTimeField()
     visibility = models.CharField(max_length=10, choices=VISIBILITY_CHOICES)
+    edited_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return self.title

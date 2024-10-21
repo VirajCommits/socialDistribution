@@ -24,24 +24,5 @@ urlpatterns = [
         views.post_detail,
         name="create_post",
     ),
-    # path(
-    #     "service/api/authors/<path:author_id>/posts/<slug:post_id>/comments/",
-    #     views.create_comment,
-    #     name="create_comment",
-    # ),
-    # path(
-    #     "service/api/authors/<path:author_id>/posts/<slug:post_id>/comments/list/",
-    #     views.get_comments,
-    #     name="get_comments",
-    # ),
-    # path(
-    #     "service/api/authors/<path:author_id>/posts/<slug:post_id>/like/",
-    #     views.like_post,
-    #     name="like_post",
-    # ),
-    # path(
-    #     "service/api/authors/<path:author_id>/posts/<slug:post_id>/likes/",
-    #     views.get_likes,
-    #     name="get_likes",
-    # ),
+
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
