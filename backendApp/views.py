@@ -57,18 +57,7 @@ def vueTest(request):
 
 @api_view(['GET' , 'DELETE' , 'PUT'])
 def post_detail(request , author_serial , post_serial):
-    print("GET POST DETAILS" , author_serial)
-
-    parsed_author_serial = urlparse(author_serial)
-    author_serial = f"{parsed_author_serial.scheme}://{parsed_author_serial.netloc}"
-
-    full_url = request.build_absolute_uri()
-    posts_index = full_url.find('/posts/')
-
-    # Extract the post_serial by slicing the string from the start of '/posts/'
-    
-    post_serial = full_url[posts_index + len('/posts/'):] if posts_index != -1 else None
-
+    print("GET POST DETAILS>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" , author_serial , post_serial)
 
     # Get the author object or return 404 if not found
     author = get_object_or_404(Author, id=author_serial)

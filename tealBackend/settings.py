@@ -19,6 +19,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
+AUTHOR_ID = "45c7cdd3-02be-4f93-9078-5ef5df3e5dbb"
 
 
 # Quick-start development settings - unsuitable for production

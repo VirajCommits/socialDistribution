@@ -3,5 +3,8 @@ from .models import Author
 
 @admin.register(Author)
 class AuthorAdmin(admin.ModelAdmin):
-    list_display = ('displayName', 'host', 'github','profileImage','page')
+    list_display = ('displayName', 'host', 'github')
     search_fields = ('displayName','github')
+
+    # Read-only fields
+    readonly_fields = ('id', 'page')

@@ -7,7 +7,7 @@ import uuid
 class Author(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='author' , null=True, blank=True)
     type = models.CharField(max_length=6,default="author",editable=False) 
-    id = models.URLField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     host = models.URLField()
     displayName = models.CharField(max_length=255)
     github = models.URLField()
@@ -32,7 +32,7 @@ class Post(models.Model):
         ('image/jpeg;base64', 'JPEG Image (Base64)'),
     ]
 
-    id = models.URLField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     type = models.CharField(max_length=10, default='post')
     title = models.CharField(max_length=200)
     page = models.URLField()

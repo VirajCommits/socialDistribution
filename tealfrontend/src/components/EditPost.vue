@@ -62,7 +62,7 @@ export default {
   methods: {
     async fetchPost() {
       try {
-        const authorId = encodeURIComponent("http://www.github.com"); // Replace with dynamic authorId as needed
+        const authorId = "45c7cdd3-02be-4f93-9078-5ef5df3e5dbb"; // Replace with dynamic authorId as needed
         const apiUrl = `${
           process.env.VUE_APP_API_BASE_URL
         }/authors/${authorId}/posts/${encodeURIComponent(this.id)}`;
@@ -79,7 +79,7 @@ export default {
 
     async savePost() {
       try {
-        const authorId = encodeURIComponent("http://www.github.com"); // Replace with dynamic authorId as needed
+        const authorId = "45c7cdd3-02be-4f93-9078-5ef5df3e5dbb"; // Replace with dynamic authorId as needed
         const apiUrl = `${
           process.env.VUE_APP_API_BASE_URL
         }/authors/${authorId}/posts/${encodeURIComponent(this.post.id)}`;

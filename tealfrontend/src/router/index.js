@@ -10,7 +10,8 @@ const routes = [
     name: 'AuthorPosts',
     component: AuthorPosts,
     props: () => {
-      return { authorId: 'http://www.github.com' };
+      return { authorId: 
+      '45c7cdd3-02be-4f93-9078-5ef5df3e5dbb' };
     }, // Removed 'route'
   },
   

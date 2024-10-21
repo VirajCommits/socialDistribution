@@ -125,7 +125,7 @@ export default {
 
       try {
         // Replace with the actual author ID
-        const authorId = encodeURIComponent("http://www.github.com");
+        const authorId = "45c7cdd3-02be-4f93-9078-5ef5df3e5dbb";
         const apiUrl = `http://localhost:8000/project/service/api/authors/${authorId}/posts/`;
 
         // Create form data to handle both text and image uploads
