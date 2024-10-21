@@ -5,6 +5,7 @@ import StreamPage from '../components/StreamPage.vue';
 import ProfilePage from '../components/ProfilePage.vue';
 import CreatePost from '../components/CreatePost.vue';
 import AuthorPosts from '../components/AuthorPosts.vue';
+import EditPost from '../components/EditPost.vue';
 
 const routes = [
   { path: '/login', component: UserLogin },
@@ -14,6 +15,13 @@ const routes = [
   {path: '/profile', component: ProfilePage},
   {path: '/addPost', component: CreatePost},
   {path: '/posts/all', component: AuthorPosts},
+  {path: '/posts/create', component: CreatePost},
+  {
+    path: '/edit-post/:id',  // Ensure this path matches the structure you're using
+    name: 'EditPost',
+    component: EditPost,
+    props: true,  // Enable route params to be passed as props
+  },
 
 ];
 

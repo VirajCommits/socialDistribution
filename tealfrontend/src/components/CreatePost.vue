@@ -124,9 +124,10 @@ export default {
       this.errorMessage = "";
 
       try {
-        
+        this.user = JSON.parse(localStorage.getItem("user"));
+        this.authID = this.user.id.split("/").pop(-1);
         // Replace with the actual author ID
-        const authorId = "45c7cdd3-02be-4f93-9078-5ef5df3e5dbb";
+        const authorId = this.authID;
         const apiUrl = `http://localhost:8000/project/service/api/authors/${authorId}/posts/`;
 
         // Create form data to handle both text and image uploads

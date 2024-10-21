@@ -27,10 +27,10 @@ def create_post(request, author_serial):
     data = request.data.copy()
     
     # Fetch the author instance
-    author = get_object_or_404(Author, id=author_serial)
+    author = get_object_or_404(Author, uuid=author_serial)
     
     # Set the 'author_id' field to the author's ID (URL)
-    data['author_id'] = author.id  # This will be accepted by the serializer
+    data['author_id'] = author.uuid  # This will be accepted by the serializer
     
     # Remove fields that are generated automatically and 'author' if present
     data.pop('id', None)
@@ -57,10 +57,12 @@ def post_detail(request , author_serial , post_serial):
     print("GET POST DETAILS>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" , author_serial , post_serial)
 
     # Get the author object or return 404 if not found
-    author = get_object_or_404(Author, id=author_serial)
+    author = get_object_or_404(Author, uuid=author_serial)
     
     # Get the post object or return 404 if not found
     post = get_object_or_404(Post, author=author, id=post_serial)
+
+    print("FOUND AURTHOR AND POSTTTT")
 
     print(" --------- " , request.method)
     # Handle GET request
@@ -86,7 +88,7 @@ def post_detail(request , author_serial , post_serial):
 def get_all_posts(request, author_serial):
     print(" ----------- >>>>" , author_serial)
     author_serial = unquote(author_serial)
-    author = get_object_or_404(Author, id=author_serial)
+    author = get_object_or_404(Author, uuid=author_serial)
     posts = Post.objects.filter(author=author).order_by('-published')
 
     # Pagination

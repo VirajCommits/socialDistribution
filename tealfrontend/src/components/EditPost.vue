@@ -62,7 +62,9 @@ export default {
   methods: {
     async fetchPost() {
       try {
-        const authorId = "45c7cdd3-02be-4f93-9078-5ef5df3e5dbb"; // Replace with dynamic authorId as needed
+        this.user = JSON.parse(localStorage.getItem("user"));
+        this.authID = this.user.id.split("/").pop();
+        const authorId = this.authID;
         const apiUrl = `${
           process.env.VUE_APP_API_BASE_URL
         }/authors/${authorId}/posts/${encodeURIComponent(this.id)}`;
@@ -79,10 +81,13 @@ export default {
 
     async savePost() {
       try {
-        const authorId = "45c7cdd3-02be-4f93-9078-5ef5df3e5dbb"; // Replace with dynamic authorId as needed
+        console.log("Inside save post");
+        this.user = JSON.parse(localStorage.getItem("user"));
+        this.authID = this.user.id.split("/").pop();
+        const authorId = this.authID;
         const apiUrl = `${
           process.env.VUE_APP_API_BASE_URL
-        }/authors/${authorId}/posts/${encodeURIComponent(this.post.id)}`;
+        }/authors/${authorId}/posts/${encodeURIComponent(this.id)}`;
 
         await axios.put(apiUrl, this.post, {
           headers: {
