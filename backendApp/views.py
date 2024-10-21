@@ -2,24 +2,26 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
-from .serializers import PostSerializer
-from .models import Author , Post
+from .serializers import PostSerializer,CommentSerializer,LikeSerializer
+from .models import Author, Post,Comment,Like
 from django.shortcuts import get_object_or_404
 from urllib.parse import urlparse
-# from django.utils import timezone
 from django.shortcuts import render
 from urllib.parse import unquote
+import re
 from rest_framework.pagination import PageNumberPagination
-
-from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
 from .serializers import AuthorSerializer
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import AllowAny
 
 def defaultPath(request):
     return render(request, "index.html")
-@api_view(['POST'])
+
+
+@api_view(["POST"])
 def create_post(request, author_serial):
     """
     Create a new post for a specific author.
@@ -60,25 +62,25 @@ def create_post(request, author_serial):
     }
     """
     author_serial = unquote(author_serial)
-    print("This is serial author --------------------  " , author_serial)
-    
+    print("This is serial author --------------------  ", author_serial)
+
     data = request.data.copy()
-    
+
     # Fetch the author instance
     author = get_object_or_404(Author, uuid=author_serial)
-    
+
     # Set the 'author_id' field to the author's ID (URL)
-    data['author_id'] = author.uuid  # This will be accepted by the serializer
-    
+    data["author_id"] = author.uuid  # This will be accepted by the serializer
+
     # Remove fields that are generated automatically and 'author' if present
-    data.pop('id', None)
-    data.pop('page', None)
-    data.pop('published', None)
-    data.pop('type', None)
-    data.pop('author', None)
-    
+    data.pop("id", None)
+    data.pop("page", None)
+    data.pop("published", None)
+    data.pop("type", None)
+    data.pop("author", None)
+
     serializer = PostSerializer(data=data)
-    
+
     if serializer.is_valid():
         post = serializer.save()
         response_serializer = PostSerializer(post)
@@ -86,105 +88,97 @@ def create_post(request, author_serial):
     else:
         print(serializer.errors)  # For debugging purposes
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
 def vueTest(request):
     return render(request, "index.html")
 
+@api_view(["GET", "DELETE", "PUT", "POST"])
+def post_detail(request, author_serial, post_serial):
+    # print("Request received")
+    # Strip the trailing slash and check for any segments like "like" or "comments"
+    segments = post_serial.split("/")
+    post_id = segments[0]  # This should be the UUID part
+    action = segments[1] if len(segments) > 1 else None
+    parsed_author_id = urlparse(author_serial).path.split("/")[-1]
 
-@api_view(['GET' , 'DELETE' , 'PUT'])
-def post_detail(request , author_serial , post_serial):
-    """
-    Retrieve, update, or delete a specific post.
+    # Get the author and post objects
+    author = get_object_or_404(Author, uuid=parsed_author_id)
+    post = get_object_or_404(Post, author=author, id=post_id)
 
-    When to Use:
-    - Use this endpoint to manage individual posts based on their unique identifiers.
-
-    How to Use:
-    - Send a GET request to retrieve the post.
-    - Send a PUT request with updated data to modify the post.
-    - Send a DELETE request to remove the post.
-
-    Why to Use:
-    - To manage posts effectively.
-
-    Why Not to Use:
-    - If the post or author does not exist.
-
-    Response:
-    - 200 OK for GET and PUT:
-    {
-      "id": "string",
-      "author_id": "string",
-      "title": "string",
-      "content": "string",
-      "published": "datetime"
-    }
-    - 204 No Content for DELETE
-    """
-    print("GET POST DETAILS>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" , author_serial , post_serial)
-
-    # Get the author object or return 404 if not found
-    author = get_object_or_404(Author, uuid=author_serial)
-    
-    # Get the post object or return 404 if not found
-    post = get_object_or_404(Post, author=author, id=post_serial)
-
-    print("FOUND AURTHOR AND POSTTTT")
-
-    print(" --------- " , request.method)
-    # Handle GET request
-    if request.method == 'GET':
-        # Directly allow access to public and friends-only posts
+   
+    if request.method == "GET" and not action:
         serializer = PostSerializer(post)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+    if action == "like":
+        if request.method == "POST":
+            # Handle like creation directly here
+            data = request.data.copy()
+            data["author_id"] = str(author.id)
+            data["post_id"] = str(post.id)
+            data["post"] = post.id
+
+            serializer = LikeSerializer(data=data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            else:
+                print("Serializer errors:", serializer.errors)
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    if action == "likes":
+        if request.method == "GET":
+            likes = Like.objects.filter(post=post).order_by("-published")
+            serializer = LikeSerializer(likes, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+    # Handle comments if specified in the URL
+    elif action == "comments":
+        print("Handling comments")
+        if request.method == "GET":
+            comments = Comment.objects.filter(post=post).order_by("-published")
+            serializer = CommentSerializer(
+                comments, many=True, context={"request": request}
+            )
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        elif request.method == "POST":
+            # Handle comment creation directly here
+            data = request.data.copy()
+            data["author_id"] = str(author.id)
+            data["post_id"] = str(post.id)
+
+            serializer = CommentSerializer(data=data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            else:
+                print("Serializer errors:", serializer.errors)
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
     # Handle DELETE request
-    elif request.method == 'DELETE':
-        # Directly delete the post without requiring authentication
+    elif request.method == "DELETE" and not action:
         post.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
-    # Handle PUT request
-    elif request.method == 'PUT':
-        # Directly update the post without requiring authentication
+
+    # Handle PUT request for updating the post
+    elif request.method == "PUT" and not action:
         serializer = PostSerializer(post, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-@api_view(['GET'])
+    # If the action doesn't match any known value
+    return Response({"detail": "Invalid request"}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
 def get_all_posts(request, author_serial):
-    """
-    Retrieve all posts for a specific author.
-
-    When to Use:
-    - Use this endpoint to list all posts made by a specific author.
-
-    How to Use:
-    - Send a GET request.
-
-    Why to Use:
-    - To fetch all posts related to an author.
-
-    Why Not to Use:
-    - If the author does not exist.
-
-    Response:
-    {
-      "type": "posts",
-      "items": [
-        {
-          "id": "string",
-          "author_id": "string",
-          "title": "string",
-          "content": "string",
-          "published": "datetime"
-        }
-      ]
-    }
-    """
-    print(" ----------- >>>>" , author_serial)
+    print(" ----------- >>>>", author_serial)
     author_serial = unquote(author_serial)
     author = get_object_or_404(Author, uuid=author_serial)
-    posts = Post.objects.filter(author=author).order_by('-published')
+    posts = Post.objects.filter(author=author).order_by("-edited_at")
 
     # Pagination
     paginator = PageNumberPagination()
@@ -192,7 +186,11 @@ def get_all_posts(request, author_serial):
     result_page = paginator.paginate_queryset(posts, request)
 
     serializer = PostSerializer(result_page, many=True)
-    return paginator.get_paginated_response({'type': 'posts', 'items': serializer.data})
+    return paginator.get_paginated_response({"type": "posts", "items": serializer.data})
+
+
+
+
 class SignupView(APIView):
     """
     Create a new author account.
@@ -240,12 +238,16 @@ class SignupView(APIView):
         if serializer.is_valid():
             user = serializer.save()
             refresh = RefreshToken.for_user(user)
-            return Response({
-                'refresh': str(refresh),
-                'access': str(refresh.access_token),
-                'user': AuthorSerializer(user).data
-            }, status=status.HTTP_201_CREATED)
+            return Response(
+                {
+                    "refresh": str(refresh),
+                    "access": str(refresh.access_token),
+                    "user": AuthorSerializer(user).data,
+                },
+                status=status.HTTP_201_CREATED,
+            )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 class LoginView(APIView):
     """
@@ -286,14 +288,27 @@ class LoginView(APIView):
     }
     """
     def post(self, request):
-        username = request.data.get('username')
-        password = request.data.get('password')
+        username = request.data.get("username")
+        password = request.data.get("password")
         user = authenticate(username=username, password=password)
         if user:
             refresh = RefreshToken.for_user(user)
+<<<<<<< HEAD
+            return Response(
+                {
+                    "refresh": str(refresh),
+                    "access": str(refresh.access_token),
+                    "user": AuthorSerializer(user).data,
+                }
+            )
+        return Response(
+            {"error": "Invalid Credentials"}, status=status.HTTP_401_UNAUTHORIZED
+        )
+=======
             return Response({
                 'refresh': str(refresh),
                 'access': str(refresh.access_token),
                 'user': AuthorSerializer(user).data
             })
         return Response({'error': 'Invalid Credentials'}, status=status.HTTP_401_UNAUTHORIZED)
+>>>>>>> f1743f68a5f55f9c0841e89f391d58a45bacf267

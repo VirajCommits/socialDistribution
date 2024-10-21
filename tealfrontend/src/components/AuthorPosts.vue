@@ -1,4 +1,3 @@
-<!-- src/components/AuthorPosts.vue -->
 <template>
   <div class="author-posts-container">
     <h2>Your Public Posts</h2>
@@ -10,16 +9,15 @@
     <div v-else-if="filteredPosts.length === 0" class="no-posts">
       <p>
         No public posts found.
-        <router-link to="/posts/create" class="create-link"
-          >Create your first post!</router-link
-        >
+        <router-link to="/posts/create" class="create-link">
+          Create your first post!
+        </router-link>
       </p>
     </div>
 
     <div v-else class="posts-grid">
       <div class="post-card" v-for="post in filteredPosts" :key="post.id">
         <div class="post-content">
-          {{ console.log(post) }}
           <h3>{{ post.title }}</h3>
           <p>{{ post.description }}</p>
           <div v-if="post.content && post.content.includes('data:image')">
@@ -32,6 +30,12 @@
               post.visibility
             }}</span>
           </p>
+
+          <!-- Add LikeButton Component -->
+          <LikeButton :postId="post.id" :authorId="authID" />
+
+          <!-- Add CommentSection Component -->
+          <CommentSection :postId="post.id" :authorId="authID" />
         </div>
         <div class="post-actions">
           <router-link
@@ -47,17 +51,7 @@
       </div>
     </div>
 
-    <!-- Selected post details (if any) -->
-    <div v-if="selectedPost" class="selected-post-details">
-      <h3>Selected Post Details</h3>
-      <p><strong>Title:</strong> {{ selectedPost.title }}</p>
-      <p><strong>Description:</strong> {{ selectedPost.description }}</p>
-      <p><strong>Content:</strong> {{ selectedPost.content }}</p>
-      <p><strong>Content Type:</strong> {{ selectedPost.contentType }}</p>
-      <p><strong>Visibility:</strong> {{ selectedPost.visibility }}</p>
-    </div>
-
-    <!-- Display error messages -->
+    <!-- Error messages -->
     <div v-if="errorMessage" class="error-message">
       <i class="fas fa-exclamation-triangle"></i> {{ errorMessage }}
     </div>
@@ -66,6 +60,8 @@
 
 <script>
 import axios from "axios";
+import CommentSection from "./CommentSection.vue";
+import LikeButton from "./LikeButton.vue";
 
 export default {
   name: "AuthorPosts",
@@ -75,12 +71,20 @@ export default {
       required: true,
     },
   },
+  components: {
+    CommentSection,
+    LikeButton,
+  },
   data() {
     return {
       posts: [],
+      comments: [], // Initialize as an empty array
+      likes: [],    // Initialize as an empty array
       selectedPost: null,
       loading: true,
       errorMessage: "",
+      user: null,
+      authID: "", // Ensure this is properly initialized
     };
   },
   computed: {
@@ -91,23 +95,30 @@ export default {
     },
   },
   mounted() {
+    this.initializeUser();
     this.fetchPosts();
-    this.user = JSON.parse(localStorage.getItem("user"));
-    this.authID = this.user.id.split("/").pop();
   },
   methods: {
-    async fetchPosts() {
-      this.user = JSON.parse(localStorage.getItem("user"));
-      this.authID = this.user.id.split("/").pop();
-      console.log("))))))))", this.user, this.authID);
+    initializeUser() {
       try {
-        const apiUrl = `${
-          process.env.VUE_APP_API_BASE_URL
-        }/authors/${encodeURIComponent(this.authID)}/posts/all/`;
+        this.user = JSON.parse(localStorage.getItem("user"));
+        if (this.user && this.user.id) {
+          this.authID = this.user.id.split("/").pop();
+        } else {
+          throw new Error("User information not found");
+        }
+      } catch (error) {
+        console.error("Error initializing user:", error);
+        this.errorMessage = "Failed to retrieve user information.";
+      }
+    },
+    async fetchPosts() {
+      try {
+        const apiUrl = `${process.env.VUE_APP_API_BASE_URL}/authors/${encodeURIComponent(this.authID)}/posts/all/`;
 
         const response = await axios.get(apiUrl);
-        // Adjust based on your actual API response structure
-        this.posts = response.data.results.items || [];
+        // Safely access the API response structure
+        this.posts = response.data?.results?.items || response.data?.items || [];
         this.loading = false;
       } catch (error) {
         console.error("Error fetching posts:", error.response || error);
@@ -115,20 +126,13 @@ export default {
         this.loading = false;
       }
     },
-
     async setPostInvisible(post) {
-      const authorId = this.authID; // Ensure correct author ID path
+      const authorId = this.authID;
       const postId = post.id;
-
-      console.log(" ------------- ", authorId);
 
       const updateUrl = `${process.env.VUE_APP_API_BASE_URL}/authors/${authorId}/posts/${postId}`;
 
-      if (
-        confirm(
-          `Are you sure you want to make the post titled "${post.title}" invisible?`
-        )
-      ) {
+      if (confirm(`Are you sure you want to make the post titled "${post.title}" invisible?`)) {
         try {
           const updatedPost = { visibility: "INVISIBLE" };
 
@@ -138,28 +142,22 @@ export default {
             },
           });
 
-          // Update the post visibility in the list
           this.posts = this.posts.map((p) =>
             p.id === post.id ? { ...p, visibility: "INVISIBLE" } : p
           );
           alert("Post visibility updated successfully.");
         } catch (error) {
-          console.error(
-            "Error updating post visibility:",
-            error.response || error
-          );
-          this.errorMessage =
-            "An error occurred while updating post visibility.";
+          console.error("Error updating post visibility:", error.response || error);
+          this.errorMessage = "An error occurred while updating post visibility.";
         }
       }
-    },
-
-    selectPost(post) {
-      this.selectedPost = post;
     },
   },
 };
 </script>
+
+
+
 
 <style scoped>
 .author-posts-container {
