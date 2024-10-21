@@ -55,8 +55,6 @@ export default {
     async fetchComments() {
       try {
         const apiUrl = `${process.env.VUE_APP_API_BASE_URL}/authors/${this.authorId}/posts/${this.postId}/comments/list/`;
-        console.log("Post ID:", this.postId);
-
         const response = await axios.get(apiUrl);
         this.comments = response.data || [];
         this.loading = false;
@@ -73,7 +71,7 @@ export default {
         const apiUrl = `${process.env.VUE_APP_API_BASE_URL}/authors/${this.authorId}/posts/${this.postId}/comments/`;
         const payload = {
           content: this.newComment,
-          contentType: "text/plain", // Setting the content type to match the backend expectation
+          contentType: "text/plain",
         };
 
         await axios.post(apiUrl, payload, {
@@ -92,7 +90,6 @@ export default {
   },
 };
 </script>
-
 
 <style scoped>
 .comment-section {

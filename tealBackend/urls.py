@@ -25,26 +25,26 @@ urlpatterns = [
     # path("", views.index, name="index"),
     path("admin/", admin.site.urls),
     path("project/", include("backendApp.urls")),
-    path(
-        "service/api/authors/<slug:author_id>/posts/<slug:post_id>/comments/",
-        views.create_comment,
-        name="create_comment",
-    ),
-    path(
-        "service/api/authors/<slug:author_id>/posts/<slug:post_id>/comments/list/",
-        views.get_comments,
-        name="get_comments",
-    ),
-    path(
-        "service/api/authors/<slug:author_id>/posts/<slug:post_id>/like/",
-        views.like_post,
-        name="like_post",
-    ),
-    path(
-        "service/api/authors/<slug:author_id>/posts/<slug:post_id>/likes/",
-        views.get_likes,
-        name="get_likes",
-    ),
+    # path(
+    #     "service/api/authors/<path:author_id>/posts/<slug:post_id>/comments/",
+    #     views.create_comment,
+    #     name="create_comment",
+    # ),
+    # path(
+    #     "service/api/authors/<path:author_id>/posts/<slug:post_id>/comments/list/",
+    #     views.get_comments,
+    #     name="get_comments",
+    # ),
+    # path(
+    #     "service/api/authors/<path:author_id>/posts/<slug:post_id>/like/",
+    #     views.like_post,
+    #     name="like_post",
+    # ),
+    # path(
+    #     "service/api/authors/<path:author_id>/posts/<slug:post_id>/likes/",
+    #     views.get_likes,
+    #     name="get_likes",
+    # ),
 ]
 
 if settings.DEBUG:
