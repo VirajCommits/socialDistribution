@@ -7,7 +7,10 @@
     <div v-else>
       <ul>
         <li v-for="comment in comments" :key="comment.id">
-          <p><strong>{{ comment.author.displayName }}:</strong> {{ comment.content }}</p>
+          <p>
+            <strong>{{ comment.author.displayName }}:</strong>
+            {{ comment.content }}
+          </p>
         </li>
       </ul>
     </div>
@@ -54,7 +57,7 @@ export default {
   methods: {
     async fetchComments() {
       try {
-        const apiUrl = `${process.env.VUE_APP_API_BASE_URL}/authors/${this.authorId}/posts/${this.postId}/comments/list/`;
+        const apiUrl = `http://localhost:8000/project/service/authors/${this.authorId}/posts/${this.postId}/comments/list/`;
         const response = await axios.get(apiUrl);
         this.comments = response.data || [];
         this.loading = false;
@@ -68,7 +71,7 @@ export default {
       if (!this.newComment.trim()) return;
 
       try {
-        const apiUrl = `${process.env.VUE_APP_API_BASE_URL}/authors/${this.authorId}/posts/${this.postId}/comments/`;
+        const apiUrl = `http://localhost:8000/project/service/authors/${this.authorId}/posts/${this.postId}/comments/`;
         const payload = {
           content: this.newComment,
           contentType: "text/plain",
