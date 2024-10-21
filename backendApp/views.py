@@ -21,6 +21,44 @@ def defaultPath(request):
     return render(request, "index.html")
 @api_view(['POST'])
 def create_post(request, author_serial):
+    """
+    Create a new post for a specific author.
+
+    When to Use:
+    - Use this endpoint to create a new post for the author specified by author_serial.
+
+    How to Use:
+    - Send a POST request with the post data in the request body.
+
+    Why to Use:
+    - To add new content created by an author to the database.
+
+    Why Not to Use:
+    - If the author does not exist or if required fields are missing from the request.
+    
+    Request Body:
+    {
+      "title": "string",         # Title of the post (Required)
+      "content": "string",       # Content of the post (Required)
+      "published": "datetime"    # Date and time when the post was published (Optional)
+    }
+
+    Response:
+    - 201 Created:
+    {
+      "id": "string",
+      "author_id": "string",
+      "title": "string",
+      "content": "string",
+      "published": "datetime"
+    }
+    - 400 Bad Request:
+    {
+      "errors": {
+        "field": ["error message"]
+      }
+    }
+    """
     author_serial = unquote(author_serial)
     print("This is serial author --------------------  " , author_serial)
     
@@ -54,6 +92,34 @@ def vueTest(request):
 
 @api_view(['GET' , 'DELETE' , 'PUT'])
 def post_detail(request , author_serial , post_serial):
+    """
+    Retrieve, update, or delete a specific post.
+
+    When to Use:
+    - Use this endpoint to manage individual posts based on their unique identifiers.
+
+    How to Use:
+    - Send a GET request to retrieve the post.
+    - Send a PUT request with updated data to modify the post.
+    - Send a DELETE request to remove the post.
+
+    Why to Use:
+    - To manage posts effectively.
+
+    Why Not to Use:
+    - If the post or author does not exist.
+
+    Response:
+    - 200 OK for GET and PUT:
+    {
+      "id": "string",
+      "author_id": "string",
+      "title": "string",
+      "content": "string",
+      "published": "datetime"
+    }
+    - 204 No Content for DELETE
+    """
     print("GET POST DETAILS>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" , author_serial , post_serial)
 
     # Get the author object or return 404 if not found
@@ -86,6 +152,35 @@ def post_detail(request , author_serial , post_serial):
 
 @api_view(['GET'])
 def get_all_posts(request, author_serial):
+    """
+    Retrieve all posts for a specific author.
+
+    When to Use:
+    - Use this endpoint to list all posts made by a specific author.
+
+    How to Use:
+    - Send a GET request.
+
+    Why to Use:
+    - To fetch all posts related to an author.
+
+    Why Not to Use:
+    - If the author does not exist.
+
+    Response:
+    {
+      "type": "posts",
+      "items": [
+        {
+          "id": "string",
+          "author_id": "string",
+          "title": "string",
+          "content": "string",
+          "published": "datetime"
+        }
+      ]
+    }
+    """
     print(" ----------- >>>>" , author_serial)
     author_serial = unquote(author_serial)
     author = get_object_or_404(Author, uuid=author_serial)
@@ -99,6 +194,46 @@ def get_all_posts(request, author_serial):
     serializer = PostSerializer(result_page, many=True)
     return paginator.get_paginated_response({'type': 'posts', 'items': serializer.data})
 class SignupView(APIView):
+    """
+    Create a new author account.
+
+    When to Use:
+    - Use this endpoint to register a new author.
+
+    How to Use:
+    - Send a POST request with user data.
+
+    Why to Use:
+    - To allow new authors to register.
+
+    Why Not to Use:
+    - If required fields are missing or if the user already exists.
+
+    Request Body:
+    {
+      "username": "string",  # Unique username (Required)
+      "password": "string",  # User's password (Required)
+      "email": "string"      # User's email address (Required)
+    }
+
+    Response:
+    - 201 Created:
+    {
+      "refresh": "string",   # Refresh token for authentication
+      "access": "string",     # Access token for authentication
+      "user": {
+        "id": "string",
+        "username": "string",
+        "email": "string"
+      }
+    }
+    - 400 Bad Request:
+    {
+      "errors": {
+        "field": ["error message"]
+      }
+    }
+    """
     def post(self, request):
         serializer = AuthorSerializer(data=request.data)
         print(serializer)
@@ -113,6 +248,43 @@ class SignupView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class LoginView(APIView):
+    """
+    Authenticate an existing author.
+
+    When to Use:
+    - Use this endpoint for user login.
+
+    How to Use:
+    - Send a POST request with credentials.
+
+    Why to Use:
+    - To log in and receive authentication tokens.
+
+    Why Not to Use:
+    - If credentials are invalid.
+
+    Request Body:
+    {
+      "username": "string",  # User's username (Required)
+      "password": "string"   # User's password (Required)
+    }
+
+    Response:
+    - 200 OK:
+    {
+      "refresh": "string",   # Refresh token for authentication
+      "access": "string",     # Access token for authentication
+      "user": {
+        "id": "string",
+        "username": "string",
+        "email": "string"
+      }
+    }
+    - 401 Unauthorized:
+    {
+      "error": "Invalid Credentials"
+    }
+    """
     def post(self, request):
         username = request.data.get('username')
         password = request.data.get('password')
