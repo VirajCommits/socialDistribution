@@ -1,4 +1,3 @@
-<!-- src/components/CreatePost.vue -->
 <template>
   <div class="create-post-container">
     <h2>Create a New Post</h2>
@@ -27,7 +26,11 @@
 
       <div class="form-group">
         <label for="contentType">Content Type:</label>
-        <select v-model="form.contentType" id="contentType">
+        <select
+          v-model="form.contentType"
+          id="contentType"
+          @change="handleContentTypeChange"
+        >
           <option value="text/plain">Plain Text</option>
           <option value="text/markdown">Markdown</option>
           <option value="image/png;base64">PNG Image (Base64)</option>
@@ -35,7 +38,12 @@
         </select>
       </div>
 
-      <div class="form-group">
+      <div class="form-group" v-if="isImageType">
+        <label for="image">Image:</label>
+        <input type="file" id="image" @change="handleImageUpload" />
+      </div>
+
+      <div class="form-group" v-if="!isImageType">
         <label for="content">Content:</label>
         <textarea
           v-model="form.content"
@@ -56,6 +64,11 @@
 
       <button type="submit" class="submit-button">Create Post</button>
     </form>
+
+    <div v-if="form.contentType.includes('image') && form.content">
+      <h3>Image Preview</h3>
+      <img :src="form.content" alt="Image Preview" width="300" />
+    </div>
 
     <!-- Success Message -->
     <div v-if="successMessage" class="success-message">
@@ -81,27 +94,56 @@ export default {
         description: "",
         contentType: "text/plain",
         content: "",
+        image: null, // Add image field to hold the uploaded file
         visibility: "PUBLIC",
       },
+      isImageType: false, // Track if the selected content type is an image
       response: null,
       successMessage: "",
       errorMessage: "",
     };
   },
   methods: {
+    handleContentTypeChange() {
+      this.isImageType = this.form.contentType.includes("image");
+    },
+    handleImageUpload(event) {
+      const file = event.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          // Convert image to base64 and store it in form.content
+          this.form.content = e.target.result;
+        };
+        reader.readAsDataURL(file); // Convert to base64 string
+      }
+    },
     async createPost() {
       // Clear previous messages
       this.successMessage = "";
       this.errorMessage = "";
 
       try {
-        // TODO - replace authorId with actual authorID
-        const authorId = encodeURIComponent("http://www.github.com"); // Replace with the actual author ID
+        // Replace with the actual author ID
+        const authorId = encodeURIComponent("http://www.github.com");
         const apiUrl = `http://localhost:8000/project/service/api/authors/${authorId}/posts/`;
 
-        const response = await axios.post(apiUrl, this.form, {
+        // Create form data to handle both text and image uploads
+        const formData = new FormData();
+        formData.append("title", this.form.title);
+        formData.append("description", this.form.description);
+        formData.append("contentType", this.form.contentType);
+        formData.append("visibility", this.form.visibility);
+
+        if (this.isImageType && this.form.image) {
+          formData.append("image", this.form.image); // Attach the image if selected
+        } else {
+          formData.append("content", this.form.content); // Attach text content if not an image
+        }
+
+        const response = await axios.post(apiUrl, formData, {
           headers: {
-            "Content-Type": "application/json",
+            "Content-Type": "multipart/form-data", // Ensure proper handling of the file
           },
         });
 
@@ -110,6 +152,7 @@ export default {
         // Display success message
         this.successMessage = "Post created successfully!";
         alert("Post created successfully.");
+        console.log("response we got:", this.response);
 
         // Reset form
         this.form = {
@@ -117,8 +160,10 @@ export default {
           description: "",
           contentType: "text/plain",
           content: "",
+          image: null,
           visibility: "PUBLIC",
         };
+        this.isImageType = false; // Reset image type flag
 
         // Optionally, redirect to another page
         this.$router.push("/posts/all");

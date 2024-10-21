@@ -19,8 +19,13 @@
     <div v-else class="posts-grid">
       <div class="post-card" v-for="post in filteredPosts" :key="post.id">
         <div class="post-content">
+          {{ console.log(post) }}
           <h3>{{ post.title }}</h3>
           <p>{{ post.description }}</p>
+          <div v-if="post.content && post.content.includes('data:image')">
+            <img :src="post.content" alt="Post Image" width="300" />
+          </div>
+
           <p>
             <strong>Visibility:</strong>
             <span :class="`visibility-${post.visibility.toLowerCase()}`">{{
