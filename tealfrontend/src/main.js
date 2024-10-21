@@ -16,6 +16,7 @@ axios.interceptors.request.use(
     }
   );
 
-const app = createApp(App);
-app.use(router); 
+  const app = createApp(App)
+
+app.use(router); // Register the router
 app.mount('#app');
