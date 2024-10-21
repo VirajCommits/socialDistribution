@@ -19,6 +19,7 @@
     <div v-else class="posts-grid">
       <div class="post-card" v-for="post in filteredPosts" :key="post.id">
         <div class="post-content">
+          {{ console.log(post) }}
           <h3>{{ post.title }}</h3>
           <p>{{ post.description }}</p>
           <div v-if="post.content && post.content.includes('data:image')">
@@ -91,9 +92,12 @@ export default {
   },
   mounted() {
     this.fetchPosts();
+    this.user = JSON.parse(localStorage.getItem("user"));
+    this.authID = this.user.id.split("/").pop();
   },
   methods: {
     async fetchPosts() {
+      console.log(this.authorId);
       try {
         const apiUrl = `${
           process.env.VUE_APP_API_BASE_URL
@@ -111,8 +115,10 @@ export default {
     },
 
     async setPostInvisible(post) {
-      const authorId = post.author.id; // Ensure correct author ID path
+      const authorId = this.authID; // Ensure correct author ID path
       const postId = post.id;
+
+      console.log(" ------------- ", authorId);
 
       const updateUrl = `${process.env.VUE_APP_API_BASE_URL}/authors/${authorId}/posts/${postId}`;
 

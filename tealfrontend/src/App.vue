@@ -1,18 +1,5 @@
 <template>
-  <div id="app">
-    <nav>
-      <ul>
-        <li>
-          <RouterLink to="/posts/all">All Posts</RouterLink>
-        </li>
-        <li>
-          <RouterLink to="/posts/create">Create Post</RouterLink>
-        </li>
-      </ul>
-    </nav>
-
-    <router-view />
-  </div>
+  <router-view />
 </template>
 
 <script>

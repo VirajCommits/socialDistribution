@@ -1,37 +1,25 @@
-// src/router/index.js
 import { createRouter, createWebHistory } from 'vue-router';
-import AuthorPosts from '../components/AuthorPosts.vue';
+import UserLogin from '../components/UserLogin.vue';
+import UserSignup from '../components/UserSignup.vue';
+import StreamPage from '../components/StreamPage.vue';
+import ProfilePage from '../components/ProfilePage.vue';
 import CreatePost from '../components/CreatePost.vue';
-import EditPost from '../components/EditPost.vue';
+import AuthorPosts from '../components/AuthorPosts.vue';
 
 const routes = [
-  {
-    path: '/posts/all',
-    name: 'AuthorPosts',
-    component: AuthorPosts,
-    props: () => {
-      return { authorId: 
-      '45c7cdd3-02be-4f93-9078-5ef5df3e5dbb' };
-    }, // Removed 'route'
-  },
-  
-  {
-    path: '/posts/create',
-    name: 'CreatePost',
-    component: CreatePost,
-  },
-  {
-    path: '/posts/edit/:id',
-    name: 'EditPost',
-    component: EditPost,
-    props: true, // Allows route params to be passed as props to the component
-  },
+  { path: '/login', component: UserLogin },
+  { path: '/signup', component: UserSignup },
+  { path: '/', redirect: '/login' }, 
+  { path: '/stream', component: StreamPage }, 
+  {path: '/profile', component: ProfilePage},
+  {path: '/addPost', component: CreatePost},
+  {path: '/posts/all', component: AuthorPosts},
+
 ];
 
 const router = createRouter({
-  history: createWebHistory(process.env.BASE_URL),
+  history: createWebHistory('/project'),
   routes,
 });
-
 
 export default router;
