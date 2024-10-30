@@ -5,8 +5,8 @@ from django.conf.urls.static import static
 
 urlpatterns = [
     path("", views.defaultPath, name="defaultPath"),
-    path("api/signup/", views.SignupView.as_view(), name="signup"),
-    path("api/login/", views.LoginView.as_view(), name="login"),
+    path("api/signup/", views.signup, name="signup"),
+    path("api/login/", views.login, name="login"),
 
 
     # Post-related paths

@@ -2,18 +2,16 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
+from django.utils.decorators import method_decorator
 
-from .serializers import PostSerializer, FollowRequestSerializer
-from .models import Author, Post, FollowRequest
-
-from .serializers import PostSerializer,CommentSerializer,LikeSerializer
-from .models import Author, Post,Comment,Like
+from .serializers import PostSerializer, CommentSerializer, LikeSerializer
+from .models import Author, Post, Comment, Like, FollowRequest
 
 from django.shortcuts import get_object_or_404
 from urllib.parse import urlparse
 from django.shortcuts import render
 from urllib.parse import unquote
-import re
+from django.views.decorators.csrf import csrf_exempt
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -22,6 +20,7 @@ from .serializers import AuthorSerializer
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 import markdown2
+from .serializers import FollowRequestSerializer
 
 def defaultPath(request):
     return render(request, "index.html")
@@ -206,26 +205,61 @@ def get_all_posts(request, author_serial):
     return paginator.get_paginated_response({'type': 'posts', 'items': serializer.data})
 
 
-# Follow Request Actions
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def send_follow_request(request, author_uuid):
-    current_author = request.user
-    target_author = get_object_or_404(Author, uuid=author_uuid)
+    try:
+        current_author = request.user
+        target_author = get_object_or_404(Author, uuid=author_uuid)
 
-    if current_author == target_author:
-        return Response({'detail': 'You cannot follow yourself.'}, status=status.HTTP_400_BAD_REQUEST)
+        # Debug logging
+        print(f"Current author: {current_author.uuid}")
+        print(f"Target author: {author_uuid}")
 
-    if FollowRequest.objects.filter(actor=current_author, object=target_author).exists():
-        return Response({'detail': 'Follow request already sent.'}, status=status.HTTP_400_BAD_REQUEST)
+        if current_author == target_author:
+            return Response(
+                {'detail': 'You cannot follow yourself.'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-    follow_request = FollowRequest.objects.create(
-        actor=current_author,
-        object=target_author,
-        summary=f"{current_author.displayName} wants to follow {target_author.displayName}"
-    )
-    return Response(FollowRequestSerializer(follow_request).data, status=status.HTTP_201_CREATED)
+        # Check if already following
+        existing_request = FollowRequest.objects.filter(
+            actor=current_author, 
+            object=target_author
+        ).first()
 
+        if existing_request:
+            if existing_request.accepted:
+                return Response(
+                    {'detail': 'You are already following this author.'}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            return Response(
+                {'detail': 'Follow request already sent.'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Create the follow request
+        follow_request = FollowRequest.objects.create(
+            actor=current_author,
+            object=target_author,
+            summary=f"{current_author.displayName} wants to follow {target_author.displayName}"
+        )
+
+        return Response(
+            FollowRequestSerializer(follow_request).data, 
+            status=status.HTTP_201_CREATED
+        )
+
+    except Exception as e:
+        import traceback
+        print(f"Error in send_follow_request: {str(e)}")
+        print(f"Traceback: {traceback.format_exc()}")
+        return Response(
+            {"detail": str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -234,9 +268,15 @@ def accept_follow_request(request, author_uuid):
     requesting_author = get_object_or_404(Author, uuid=author_uuid)
 
     follow_request = get_object_or_404(FollowRequest, actor=requesting_author, object=current_author)
+    
+    # Set the follow request as accepted
+    follow_request.accepted = True  
+    follow_request.save()
+    
     current_author.followers.add(requesting_author)  # Add to followers
-    follow_request.delete()  # Remove the follow request
+    
     return Response({'detail': 'Follow request accepted.'}, status=status.HTTP_200_OK)
+
 
 
 @api_view(['POST'])
@@ -255,129 +295,81 @@ def decline_follow_request(request, author_uuid):
 @permission_classes([IsAuthenticated])
 def get_follow_requests(request):
     current_author = request.user
-    requests = FollowRequest.objects.filter(object=current_author)
-    serializer = FollowRequestSerializer(requests, many=True)
+    # Filter to only show pending follow requests
+    pending_requests = FollowRequest.objects.filter(object=current_author, accepted=False)
+    serializer = FollowRequestSerializer(pending_requests, many=True)
     return Response(serializer.data)
+
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_all_authors(request):
-    current_author = request.user
-    authors = Author.objects.exclude(id=current_author.id)
-    serializer = AuthorSerializer(authors, many=True)
-    return Response(serializer.data)
+    try:
+        current_author = request.user
+        # Exclude the current user and get all other authors
+        authors = Author.objects.exclude(id=current_author.id)
+        
+        author_data = []
+        for author in authors:
+            # Check if the current user is following this author
+            is_following = FollowRequest.objects.filter(
+                actor=current_author, 
+                object=author, 
+                accepted=True
+            ).exists()
+            
+            # Serialize the author data
+            serialized_author = AuthorSerializer(author).data
+            serialized_author['is_following'] = is_following
+            author_data.append(serialized_author)
 
-
-class SignupView(APIView):
-    """
-    Create a new author account.
-
-    When to Use:
-    - Use this endpoint to register a new author.
-
-    How to Use:
-    - Send a POST request with user data.
-
-    Why to Use:
-    - To allow new authors to register.
-
-    Why Not to Use:
-    - If required fields are missing or if the user already exists.
-
-    Request Body:
-    {
-      "username": "string",  # Unique username (Required)
-      "password": "string",  # User's password (Required)
-      "email": "string"      # User's email address (Required)
-    }
-
-    Response:
-    - 201 Created:
-    {
-      "refresh": "string",   # Refresh token for authentication
-      "access": "string",     # Access token for authentication
-      "user": {
-        "id": "string",
-        "username": "string",
-        "email": "string"
-      }
-    }
-    - 400 Bad Request:
-    {
-      "errors": {
-        "field": ["error message"]
-      }
-    }
-    """
-    def post(self, request):
-        serializer = AuthorSerializer(data=request.data)
-        if serializer.is_valid():
-            user = serializer.save()
-            refresh = RefreshToken.for_user(user)
-            return Response(
-                {
-                    "refresh": str(refresh),
-                    "access": str(refresh.access_token),
-                    "user": AuthorSerializer(user).data,
-                },
-                status=status.HTTP_201_CREATED,
-            )
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-class LoginView(APIView):
-    """
-    Authenticate an existing author.
-
-    When to Use:
-    - Use this endpoint for user login.
-
-    How to Use:
-    - Send a POST request with credentials.
-
-    Why to Use:
-    - To log in and receive authentication tokens.
-
-    Why Not to Use:
-    - If credentials are invalid.
-
-    Request Body:
-    {
-      "username": "string",  # User's username (Required)
-      "password": "string"   # User's password (Required)
-    }
-
-    Response:
-    - 200 OK:
-    {
-      "refresh": "string",   # Refresh token for authentication
-      "access": "string",     # Access token for authentication
-      "user": {
-        "id": "string",
-        "username": "string",
-        "email": "string"
-      }
-    }
-    - 401 Unauthorized:
-    {
-      "error": "Invalid Credentials"
-    }
-    """
-    def post(self, request):
-        username = request.data.get("username")
-        password = request.data.get("password")
-        user = authenticate(username=username, password=password)
-        if user:
-            refresh = RefreshToken.for_user(user)
-
-            return Response(
-                {
-                    "refresh": str(refresh),
-                    "access": str(refresh.access_token),
-                    "user": AuthorSerializer(user).data,
-                }
-            )
+        return Response(author_data)
+    except Exception as e:
+        # Add detailed logging for debugging
+        import traceback
+        print(f"Error in get_all_authors: {str(e)}")
+        print(f"Traceback: {traceback.format_exc()}")
         return Response(
-            {"error": "Invalid Credentials"}, status=status.HTTP_401_UNAUTHORIZED
+            {"detail": "An error occurred while fetching authors."},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+
+@csrf_exempt
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def signup(request):
+    serializer = AuthorSerializer(data=request.data)
+    if serializer.is_valid():
+        user = serializer.save()
+        refresh = RefreshToken.for_user(user)
+        return Response(
+            {
+                "refresh": str(refresh),
+                "access": str(refresh.access_token),
+                "user": AuthorSerializer(user).data,
+            },
+            status=status.HTTP_201_CREATED,
+        )
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+@csrf_exempt
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def login(request):
+    username = request.data.get("username")
+    password = request.data.get("password")
+    user = authenticate(username=username, password=password)
+    if user:
+        refresh = RefreshToken.for_user(user)
+
+        return Response(
+            {
+                "refresh": str(refresh),
+                "access": str(refresh.access_token),
+                "user": AuthorSerializer(user).data,
+            }
+        )
+    return Response(
+        {"error": "Invalid Credentials"}, status=status.HTTP_401_UNAUTHORIZED
+    )
 

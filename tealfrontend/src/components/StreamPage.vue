@@ -6,11 +6,14 @@
     <div class="buttons-container">
       <button class="logout-button" @click="logoutNode">Logout</button>
       <button class="profile-button" @click="goToProfile">Profile</button>
-      <button class="follow-requests-button" @click="toggleFollowRequests">Follow Requests</button>
+      <button class="follow-requests-button" @click="toggleFollowRequests">
+        Follow Requests
+        <span v-if="followRequestCount > 0" class="badge">{{ followRequestCount }}</span>
+      </button>
       <button class="explore-authors-button" @click="goToExploreAuthors">Explore Authors</button>
     </div>
 
-    <!-- Follow Requests Section (Shown when followRequestsVisible is true) -->
+    <!-- Follow Requests Section -->
     <div v-if="followRequestsVisible" class="follow-requests-section">
       <h2>Follow Requests</h2>
       <div v-if="followRequests.length">
@@ -28,40 +31,37 @@
 </template>
 
 <script>
-import axios from 'axios'; 
+import axios from 'axios';
 
 export default {
   name: 'StreamPage',
   data() {
     return {
-      followRequestsVisible: false, // Toggle follow requests section
-      followRequests: [], // List of follow requests
+      followRequestsVisible: false,
+      followRequests: [],
+      followRequestCount: 0,
     };
   },
   methods: {
-    // Navigate to Profile
     goToProfile() {
       this.$router.push('/profile');
     },
-    // Navigate to Explore Authors
     goToExploreAuthors() {
       this.$router.push('/explore');
     },
-    // Logout function
     logoutNode() {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       localStorage.removeItem('uuid');
       this.$router.push('/login');
     },
-    // Toggle follow requests section
     toggleFollowRequests() {
       this.followRequestsVisible = !this.followRequestsVisible;
       if (this.followRequestsVisible) {
-        this.fetchFollowRequests(); // Only fetch requests when the section is opened
+        this.fetchFollowRequests();
+        this.followRequestCount = 0;
       }
     },
-    // Fetch follow requests
     fetchFollowRequests() {
       axios
         .get(`http://localhost:8000/project/service/api/authors/follow_requests/`, {
@@ -74,7 +74,6 @@ export default {
           console.error('Error fetching follow requests:', error);
         });
     },
-    // Accept a follow request
     acceptFollowRequest(uuid) {
       axios
         .post(`http://localhost:8000/project/service/api/authors/${uuid}/accept_follow_request/`, null, {
@@ -82,13 +81,12 @@ export default {
         })
         .then(() => {
           console.log("Follow request accepted");
-          this.fetchFollowRequests(); // Refresh follow requests after accepting
+          this.fetchFollowRequests();
         })
         .catch((error) => {
           console.error('Error accepting follow request:', error);
         });
     },
-    // Decline a follow request
     declineFollowRequest(uuid) {
       axios
         .post(`http://localhost:8000/project/service/api/authors/${uuid}/decline_follow_request/`, null, {
@@ -96,7 +94,7 @@ export default {
         })
         .then(() => {
           console.log("Follow request declined");
-          this.fetchFollowRequests(); // Refresh follow requests after declining
+          this.fetchFollowRequests();
         })
         .catch((error) => {
           console.error('Error declining follow request:', error);
@@ -128,6 +126,7 @@ h1 {
   cursor: pointer;
   transition: background-color 0.3s ease;
   margin: 0 10px; /* Add space between buttons */
+  position: relative; /* Position relative for badge */
 }
 
 .profile-button:hover, .logout-button:hover, .follow-requests-button:hover, .explore-authors-button:hover {
@@ -157,5 +156,17 @@ h1 {
 
 .follow-request-item button:hover {
   background-color: #2c8a6a;
+}
+
+.badge {
+  background-color: red;
+  color: white;
+  border-radius: 50%;
+  padding: 5px 10px;
+  font-size: 12px;
+  margin-left: 5px;
+  position: absolute;
+  top: -10px;
+  right: -10px;
 }
 </style>
