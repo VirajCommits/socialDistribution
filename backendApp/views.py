@@ -21,6 +21,7 @@ from django.contrib.auth import authenticate
 from .serializers import AuthorSerializer
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
+import markdown2
 
 def defaultPath(request):
     return render(request, "index.html")
@@ -67,7 +68,6 @@ def create_post(request, author_serial):
     }
     """
     author_serial = unquote(author_serial)
-    print("This is serial author --------------------  ", author_serial)
 
     data = request.data.copy()
 
@@ -77,6 +77,15 @@ def create_post(request, author_serial):
     # Set the 'author_id' field to the author's ID (URL)
     data["author_id"] = author.uuid  # This will be accepted by the serializer
 
+    if 'content' in data:
+        print("This is the data: ----------------- " , data)
+        data['content'] = markdown2.markdown(data['content'], extras=["fenced-code-blocks", "tables"])
+
+    if 'title' in data:
+        data['title'] = markdown2.markdown(data['title'], extras=["fenced-code-blocks", "tables"])
+    
+    if 'description' in data:
+        data['description'] = markdown2.markdown(data['description'], extras=["fenced-code-blocks", "tables"])
     # Remove fields that are generated automatically and 'author' if present
     data.pop("id", None)
     data.pop("page", None)
@@ -91,7 +100,6 @@ def create_post(request, author_serial):
         response_serializer = PostSerializer(post)
         return Response(response_serializer.data, status=status.HTTP_201_CREATED)
     else:
-        print(serializer.errors)  # For debugging purposes
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -100,8 +108,6 @@ def vueTest(request):
 
 @api_view(["GET", "DELETE", "PUT", "POST"])
 def post_detail(request, author_serial, post_serial):
-    # print("Request received")
-    # Strip the trailing slash and check for any segments like "like" or "comments"
     segments = post_serial.split("/")
     post_id = segments[0]  # This should be the UUID part
     action = segments[1] if len(segments) > 1 else None
@@ -139,7 +145,6 @@ def post_detail(request, author_serial, post_serial):
 
     # Handle comments if specified in the URL
     elif action == "comments":
-        print("Handling comments")
         if request.method == "GET":
             comments = Comment.objects.filter(post=post).order_by("-published")
             serializer = CommentSerializer(
@@ -167,7 +172,14 @@ def post_detail(request, author_serial, post_serial):
 
     # Handle PUT request for updating the post
     elif request.method == "PUT" and not action:
-        serializer = PostSerializer(post, data=request.data, partial=True)
+        
+        data = request.data
+        if "content" in data:
+            markdown_content = data["content"]
+            html_content = markdown2.markdown(markdown_content, extras=["fenced-code-blocks", "tables"])
+            data["content"] = html_content  # Replace Markdown with HTML for saving
+    
+        serializer = PostSerializer(post, data=data, partial=True)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
@@ -180,7 +192,6 @@ def post_detail(request, author_serial, post_serial):
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def get_all_posts(request, author_serial):
-    print(" ----------- >>>>", author_serial)
     author_serial = unquote(author_serial)
     author = get_object_or_404(Author, uuid=author_serial)
     posts = Post.objects.filter(author=author).order_by("-edited_at")
@@ -220,7 +231,6 @@ def send_follow_request(request, author_uuid):
 @permission_classes([IsAuthenticated])
 def accept_follow_request(request, author_uuid):
     current_author = request.user
-    print("This is the current author:", current_author)
     requesting_author = get_object_or_404(Author, uuid=author_uuid)
 
     follow_request = get_object_or_404(FollowRequest, actor=requesting_author, object=current_author)
@@ -301,7 +311,6 @@ class SignupView(APIView):
     """
     def post(self, request):
         serializer = AuthorSerializer(data=request.data)
-        print(serializer)
         if serializer.is_valid():
             user = serializer.save()
             refresh = RefreshToken.for_user(user)

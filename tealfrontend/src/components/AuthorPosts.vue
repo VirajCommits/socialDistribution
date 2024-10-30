@@ -16,11 +16,16 @@
     </div>
 
     <div v-else class="posts-grid">
+      <button class="create-post" @click="makePost">Create another Post</button>
+
       <div class="post-card" v-for="post in filteredPosts" :key="post.id">
         {{ console.log(post) }}
         <div class="post-content">
-          <h3>{{ post.title }}</h3>
-          <p>{{ post.description }}</p>
+          <h3 v-html="post.title"></h3>
+          <p v-html="post.description"></p>
+
+          <p v-html="post.content"></p>
+
           <div v-if="post.content && post.content.includes('data:image')">
             <img :src="post.content" alt="Post Image" width="300" />
           </div>
@@ -32,10 +37,8 @@
             }}</span>
           </p>
 
-          <!-- Add LikeButton Component -->
           <LikeButton :postId="post.id" :authorId="authID" />
 
-          <!-- Add CommentSection Component -->
           <CommentSection :postId="post.id" :authorId="authID" />
         </div>
         <div class="post-actions">
@@ -80,7 +83,7 @@ export default {
     return {
       posts: [],
       comments: [], // Initialize as an empty array
-      likes: [],    // Initialize as an empty array
+      likes: [], // Initialize as an empty array
       selectedPost: null,
       loading: true,
       errorMessage: "",
@@ -100,6 +103,9 @@ export default {
     this.fetchPosts();
   },
   methods: {
+    makePost() {
+      this.$router.push("/addPost");
+    },
     initializeUser() {
       try {
         this.user = JSON.parse(localStorage.getItem("user"));
@@ -117,14 +123,17 @@ export default {
       this.user = JSON.parse(localStorage.getItem("user"));
       this.authID = this.user.id.split("/").pop();
       try {
-        const apiUrl = `http://localhost:8000/project/service/api/authors/${encodeURIComponent(this.authID)}/posts/all/`;
+        const apiUrl = `http://localhost:8000/project/service/api/authors/${encodeURIComponent(
+          this.authID
+        )}/posts/all/`;
 
-      // try {
-      //  const apiUrl = `${process.env.VUE_APP_API_BASE_URL}/authors/${encodeURIComponent(this.authID)}/posts/all/`;
+        // try {
+        //  const apiUrl = `${process.env.VUE_APP_API_BASE_URL}/authors/${encodeURIComponent(this.authID)}/posts/all/`;
 
         const response = await axios.get(apiUrl);
         // Safely access the API response structure
-        this.posts = response.data?.results?.items || response.data?.items || [];
+        this.posts =
+          response.data?.results?.items || response.data?.items || [];
         this.loading = false;
       } catch (error) {
         console.error("Error fetching posts:", error.response || error);
@@ -136,12 +145,14 @@ export default {
       const authorId = this.authID;
       const postId = post.id;
 
-
       const updateUrl = `http://localhost:8000/project/service/api/authors/${authorId}/posts/${postId}`;
       // const updateUrl = `${process.env.VUE_APP_API_BASE_URL}/authors/${authorId}/posts/${postId}`;
 
-
-      if (confirm(`Are you sure you want to make the post titled "${post.title}" invisible?`)) {
+      if (
+        confirm(
+          `Are you sure you want to make the post titled "${post.title}" invisible?`
+        )
+      ) {
         try {
           const updatedPost = { visibility: "INVISIBLE" };
 
@@ -156,8 +167,12 @@ export default {
           );
           alert("Post visibility updated successfully.");
         } catch (error) {
-          console.error("Error updating post visibility:", error.response || error);
-          this.errorMessage = "An error occurred while updating post visibility.";
+          console.error(
+            "Error updating post visibility:",
+            error.response || error
+          );
+          this.errorMessage =
+            "An error occurred while updating post visibility.";
         }
       }
     },
@@ -165,14 +180,37 @@ export default {
 };
 </script>
 
-
-
-
 <style scoped>
 .author-posts-container {
   padding: 20px;
   max-width: 800px; /* Adjusted for better vertical layout */
   margin: 0 auto;
+}
+
+.create-post {
+  background-color: #4caf50; /* Green background */
+  color: white; /* White text */
+  padding: 12px 24px; /* Padding for a balanced button size */
+  font-size: 16px; /* Larger font for readability */
+  font-weight: bold; /* Bold text */
+  border: none; /* Remove default border */
+  border-radius: 5px; /* Rounded corners */
+  cursor: pointer; /* Pointer cursor on hover */
+  transition: background-color 0.3s ease; /* Smooth transition */
+}
+
+.create-post:hover {
+  background-color: #45a049; /* Darker green on hover */
+}
+
+.create-post:active {
+  background-color: #388e3c; /* Even darker green when clicked */
+  transform: scale(0.98); /* Slightly scale down when clicked */
+}
+
+.create-post:focus {
+  outline: none; /* Remove outline on focus */
+  box-shadow: 0 0 5px rgba(72, 207, 71, 0.6); /* Subtle green glow on focus */
 }
 
 h2 {

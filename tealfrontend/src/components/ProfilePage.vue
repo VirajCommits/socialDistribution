@@ -3,7 +3,7 @@
     <button class="back-button" @click="backToStream">Back to Stream</button>
     <h1>Profile Page</h1>
     <h2>User Details</h2>
-    <button @click="makePost">Make Post</button>
+    <button @click="makePost">Create Post</button>
     <button @click="showPost">See your posts!</button>
     <div v-if="user">
       <p><strong>ID:</strong> {{ user.id }}</p>
