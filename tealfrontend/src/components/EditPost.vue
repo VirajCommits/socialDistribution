@@ -18,6 +18,11 @@
           <input v-model="post.description" type="text" id="description" />
         </div>
         <div>
+          <label for="content">Content:</label>
+          <!-- Use a textarea for Markdown editing -->
+          <textarea v-model="post.content" id="content" rows="5"></textarea>
+        </div>
+        <div>
           <label for="visibility">Visibility:</label>
           <select v-model="post.visibility" id="visibility">
             <option value="PUBLIC">Public</option>
@@ -40,6 +45,8 @@
 
 <script>
 import axios from "axios";
+import TurndownService from "turndown";
+import { marked } from "marked";
 
 export default {
   name: "EditPost",
@@ -60,15 +67,49 @@ export default {
     this.fetchPost();
   },
   methods: {
+    convertHtmlToMarkdown() {
+      if (this.post) {
+        const turndownService = new TurndownService();
+
+        // Convert title
+        if (this.post.title && /<\/?[a-z][\s\S]*>/i.test(this.post.title)) {
+          console.log("Converting title from HTML to Markdown");
+          this.post.title = turndownService.turndown(this.post.title);
+        }
+
+        // Convert description
+        if (
+          this.post.description &&
+          /<\/?[a-z][\s\S]*>/i.test(this.post.description)
+        ) {
+          console.log("Converting description from HTML to Markdown");
+          this.post.description = turndownService.turndown(
+            this.post.description
+          );
+        }
+
+        // Convert content
+        if (this.post.content && /<\/?[a-z][\s\S]*>/i.test(this.post.content)) {
+          console.log("Converting content from HTML to Markdown");
+          this.post.content = turndownService.turndown(this.post.content);
+        }
+      }
+    },
     async fetchPost() {
       try {
         this.user = JSON.parse(localStorage.getItem("user"));
         this.authID = this.user.id.split("/").pop();
         const authorId = this.authID;
-        const apiUrl = `http://localhost:8000/project/service/api/authors/${authorId}/posts/${encodeURIComponent(this.id)}`;
+        const apiUrl = `http://localhost:8000/project/service/api/authors/${authorId}/posts/${encodeURIComponent(
+          this.id
+        )}`;
 
         const response = await axios.get(apiUrl);
         this.post = response.data;
+
+        // Convert HTML fields to Markdown
+        this.convertHtmlToMarkdown();
+
         this.loading = false;
       } catch (error) {
         console.error("Error fetching post:", error.response || error);
@@ -76,14 +117,24 @@ export default {
         this.loading = false;
       }
     },
-
     async savePost() {
       try {
         console.log("Inside save post");
         this.user = JSON.parse(localStorage.getItem("user"));
         this.authID = this.user.id.split("/").pop();
         const authorId = this.authID;
-        const apiUrl = `http://localhost:8000/project/service/api/authors/${authorId}/posts/${encodeURIComponent(this.id)}`;
+        const apiUrl = `http://localhost:8000/project/service/api/authors/${authorId}/posts/${encodeURIComponent(
+          this.id
+        )}`;
+
+        // Convert Markdown fields back to HTML before saving
+        const markdownToHtml = (markdownText) => {
+          return marked(markdownText || "");
+        };
+
+        this.post.title = markdownToHtml(this.post.title);
+        this.post.description = markdownToHtml(this.post.description);
+        this.post.content = markdownToHtml(this.post.content);
 
         await axios.put(apiUrl, this.post, {
           headers: {
@@ -118,7 +169,8 @@ label {
 }
 
 input,
-select {
+select,
+textarea {
   width: calc(100% - 110px);
   padding: 5px;
 }
