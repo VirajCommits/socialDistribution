@@ -57,7 +57,7 @@ export default {
   methods: {
     async fetchComments() {
       try {
-        const apiUrl = `http://localhost:8000/project/service/authors/${this.authorId}/posts/${this.postId}/comments/list/`;
+        const apiUrl = `http://localhost:8000/project/service/api/authors/${this.authorId}/posts/${this.postId}/comments/list/`;
         const response = await axios.get(apiUrl);
         this.comments = response.data || [];
         this.loading = false;
@@ -71,7 +71,7 @@ export default {
       if (!this.newComment.trim()) return;
 
       try {
-        const apiUrl = `http://localhost:8000/project/service/authors/${this.authorId}/posts/${this.postId}/comments/`;
+        const apiUrl = `http://localhost:8000/project/service/api/authors/${this.authorId}/posts/${this.postId}/comments/`;
         const payload = {
           content: this.newComment,
           contentType: "text/plain",
