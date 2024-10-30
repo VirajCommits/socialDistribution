@@ -72,14 +72,13 @@ class PostSerializer(serializers.ModelSerializer):
     
 
 class FollowRequestSerializer(serializers.ModelSerializer):
-    actor = AuthorSerializer(read_only=True)  # Serialize the actor sending the follow request
-    object = AuthorSerializer(read_only=True)  # Serialize the author receiving the request
+    actor = AuthorSerializer(read_only=True)
+    object = AuthorSerializer(read_only=True)
 
     class Meta:
         model = FollowRequest
-        fields = ['type', 'summary', 'actor', 'object', 'uuid', 'created_at'] 
+        fields = ['type', 'summary', 'actor', 'object', 'uuid', 'created_at', 'accepted']
         read_only_fields = ['uuid', 'created_at']
-
 
 
 class CommentSerializer(serializers.ModelSerializer):
