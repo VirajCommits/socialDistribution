@@ -21,6 +21,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 import markdown2
 from .serializers import FollowRequestSerializer
+import markdown2
 
 def defaultPath(request):
     return render(request, "index.html")
