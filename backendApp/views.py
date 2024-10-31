@@ -1,26 +1,22 @@
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated,AllowAny
 from rest_framework.response import Response
 from rest_framework import status
-
-from .serializers import PostSerializer, FollowRequestSerializer
-from .models import Author, Post, FollowRequest
-
-from .serializers import PostSerializer,CommentSerializer,LikeSerializer
-from .models import Author, Post,Comment,Like
-
-from django.shortcuts import get_object_or_404
-from urllib.parse import urlparse
-from django.shortcuts import render
-from urllib.parse import unquote
-import re
+from .models import Author, Post, FollowRequest, Comment, Like
+from .serializers import (
+    PostSerializer,
+    CommentSerializer,
+    LikeSerializer,
+    AuthorSerializer,
+    FollowRequestSerializer,
+)
+from django.shortcuts import get_object_or_404,render
+from urllib.parse import urlparse,unquote
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
-from .serializers import AuthorSerializer
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import AllowAny
+
 
 def defaultPath(request):
     return render(request, "index.html")
@@ -195,25 +191,83 @@ def get_all_posts(request, author_serial):
     return paginator.get_paginated_response({'type': 'posts', 'items': serializer.data})
 
 
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def stream_page(request, author_id):
+    # Get the current user
+    author = get_object_or_404(Author, uuid=author_id)
+
+    # Get user's followers and friends
+    following = author.following.all()
+    friends = author.followers.all()  # assuming mutual followers are friends
+
+    # Public posts visible to everyone
+    public_posts = Post.objects.filter(visibility="PUBLIC")
+
+    # Unlisted posts only for followers
+    unlisted_posts = Post.objects.filter(author__in=following, visibility="UNLISTED")
+
+    # Friends-only posts only for friends
+    friends_posts = Post.objects.filter(author__in=friends, visibility="FRIENDS")
+
+    # Author’s own posts (including private, only visible to the author)
+    personal_posts = Post.objects.filter(author=author)
+
+    # Combine all posts
+    all_posts = (
+        (public_posts | unlisted_posts | friends_posts | personal_posts)
+        .distinct()
+        .order_by("-published")
+    )
+
+    # Paginate and return response
+    paginator = PageNumberPagination()
+    paginator.page_size = 10
+    result_page = paginator.paginate_queryset(all_posts, request)
+    serializer = PostSerializer(result_page, many=True)
+    return paginator.get_paginated_response(serializer.data)
+
+
 # Follow Request Actions
-@api_view(['POST'])
+@api_view(["POST"])
+# @permission_classes([AllowAuthenticatedOrAllowAny])  # Use the custom permission
 @permission_classes([IsAuthenticated])
 def send_follow_request(request, author_uuid):
     current_author = request.user
+
     target_author = get_object_or_404(Author, uuid=author_uuid)
 
-    if current_author == target_author:
-        return Response({'detail': 'You cannot follow yourself.'}, status=status.HTTP_400_BAD_REQUEST)
+    # Check if the user is authenticated
+    if current_author.is_authenticated:
+        # Logic for authenticated users
+        if current_author == target_author:
+            return Response(
+                {"detail": "You cannot follow yourself."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
-    if FollowRequest.objects.filter(actor=current_author, object=target_author).exists():
-        return Response({'detail': 'Follow request already sent.'}, status=status.HTTP_400_BAD_REQUEST)
+        if FollowRequest.objects.filter(
+            actor=current_author, object=target_author
+        ).exists():
+            return Response(
+                {"detail": "Follow request already sent."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
-    follow_request = FollowRequest.objects.create(
-        actor=current_author,
-        object=target_author,
-        summary=f"{current_author.displayName} wants to follow {target_author.displayName}"
+        follow_request = FollowRequest.objects.create(
+            actor=current_author,
+            object=target_author,
+            summary=f"{current_author.displayName} wants to follow {target_author.displayName}",
+        )
+        return Response(
+            FollowRequestSerializer(follow_request).data, status=status.HTTP_201_CREATED
+        )
+
+    # Logic for unauthenticated users (if any)
+    return Response(
+        {"detail": "Follow request cannot be sent because you are not authenticated."},
+        status=status.HTTP_403_FORBIDDEN,
     )
-    return Response(FollowRequestSerializer(follow_request).data, status=status.HTTP_201_CREATED)
 
 
 @api_view(['POST'])
@@ -238,7 +292,6 @@ def decline_follow_request(request, author_uuid):
     follow_request = get_object_or_404(FollowRequest, actor=requesting_author, object=current_author)
     follow_request.delete()  # Remove the follow request
     return Response({'detail': 'Follow request declined.'}, status=status.HTTP_200_OK)
-
 
 
 @api_view(['GET'])
@@ -371,4 +424,3 @@ class LoginView(APIView):
         return Response(
             {"error": "Invalid Credentials"}, status=status.HTTP_401_UNAUTHORIZED
         )
-
