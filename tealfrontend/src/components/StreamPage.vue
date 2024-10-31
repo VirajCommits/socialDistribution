@@ -76,7 +76,7 @@
           </p>
 
           <!-- Include LikeButton and CommentSection if applicable -->
-          <!-- <LikeButton :postId="post.id" :authorId="authID" />
+          <LikeButton :postId="post.id" :authorId="authID" />
           <CommentSection :postId="post.id" :authorId="authID" /> -->
         </div>
       </div>
@@ -92,8 +92,8 @@
 <script>
 import axios from "axios";
 // Import LikeButton and CommentSection if you have them
-// import LikeButton from "./LikeButton.vue";
-// import CommentSection from "./CommentSection.vue";
+import LikeButton from "./LikeButton.vue";
+import CommentSection from "./CommentSection.vue";
 
 export default {
   name: "StreamPage",
@@ -110,10 +110,10 @@ export default {
     };
   },
   // Uncomment components if you use them
-  // components: {
-  //   LikeButton,
-  //   CommentSection,
-  // },
+  components: {
+    LikeButton,
+    CommentSection,
+  },
   computed: {
     visiblePosts() {
       return this.posts.filter((post) => post.visibility !== "INVISIBLE");
@@ -204,7 +204,6 @@ export default {
           }
         )
         .then(() => {
-          console.log("Follow request accepted");
           this.fetchFollowRequests();
         })
         .catch((error) => {
@@ -223,7 +222,6 @@ export default {
           }
         )
         .then(() => {
-          console.log("Follow request declined");
           this.fetchFollowRequests();
         })
         .catch((error) => {

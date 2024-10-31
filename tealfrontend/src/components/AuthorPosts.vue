@@ -19,7 +19,6 @@
       <button class="create-post" @click="makePost">Create another Post</button>
 
       <div class="post-card" v-for="post in filteredPosts" :key="post.id">
-        {{ console.log(post) }}
         <div class="post-content">
           <h3 v-html="post.title"></h3>
           <p v-html="post.description"></p>
@@ -117,13 +116,6 @@ export default {
       const match = content.match(regex);
       const isImage = match !== null;
 
-      console.log(
-        "isImageContent:",
-        isImage,
-        "Match:",
-        match ? match[0] : "None"
-      );
-
       return isImage;
     },
 
@@ -134,8 +126,6 @@ export default {
       const regex = /data:image\/[a-zA-Z]+;base64,[^\s<]+/;
       const match = content.match(regex);
       const src = match ? match[0] : "";
-
-      console.log("extractImageSrc:", src);
 
       return src;
     },

@@ -32,10 +32,18 @@
         <div class="form-group">
           <label for="content">Content:</label>
 
-          <!-- If content is an image, display it with an option to replace -->
-          <div v-if="isImageContent(editablePost.content)">
-            <img :src="editablePost.content" alt="Post Image" width="300" />
-            <div>
+          <!-- If content is an image, display it with an option to replace and a text field -->
+          <div
+            v-if="isImageContent(editablePost.content)"
+            class="image-content"
+          >
+            <img
+              :src="extractImageSrc(editablePost.content)"
+              alt="Post Image"
+              width="300"
+              loading="lazy"
+            />
+            <div class="replace-image">
               <label for="imageUpload">Replace Image:</label>
               <input
                 type="file"
@@ -44,16 +52,36 @@
                 accept="image/*"
               />
             </div>
+            <div class="replace-text">
+              <label for="textContent">Add Text Content:</label>
+              <textarea
+                v-model="newTextContent"
+                id="textContent"
+                rows="5"
+                placeholder="Enter Markdown content to replace the image"
+              ></textarea>
+            </div>
           </div>
 
-          <!-- If content is text, display a textarea for Markdown editing -->
-          <div v-else>
+          <!-- If content is text, display a textarea for Markdown editing and an option to replace with an image -->
+          <div v-else class="text-content">
             <textarea
               v-model="editablePost.content"
               id="content"
               rows="5"
               placeholder="Enter Markdown content"
             ></textarea>
+            <div class="replace-image">
+              <label for="imageUploadText"
+                >Replace Content with an Image:</label
+              >
+              <input
+                type="file"
+                id="imageUploadText"
+                @change="handleImageUpload"
+                accept="image/*"
+              />
+            </div>
           </div>
         </div>
 
@@ -102,8 +130,10 @@ export default {
     return {
       post: null, // Original post data from the backend
       editablePost: {}, // Editable copy of the post
+      newTextContent: "", // New text content to replace image
       loading: true,
       errorMessage: "",
+      user: null,
       authID: "",
     };
   },
@@ -111,13 +141,20 @@ export default {
     this.initializeUser();
     this.fetchPost();
   },
+  watch: {
+    newTextContent(newVal) {
+      if (newVal.trim() !== "") {
+        this.editablePost.content = newVal.trim();
+      }
+    },
+  },
   methods: {
     // Initialize user information from localStorage
     initializeUser() {
       try {
-        const user = JSON.parse(localStorage.getItem("user"));
-        if (user && user.id) {
-          this.authID = user.id.split("/").pop();
+        this.user = JSON.parse(localStorage.getItem("user"));
+        if (this.user && this.user.id) {
+          this.authID = this.user.id.split("/").pop();
         } else {
           throw new Error("User information not found");
         }
@@ -207,9 +244,7 @@ export default {
       // Extract the data URI using regex
       const regex = /data:image\/[a-zA-Z]+;base64,[^\s<]+/;
       const match = content.match(regex);
-      const src = match ? match[0] : "";
-
-      return src;
+      return match ? match[0] : "";
     },
 
     // Strip HTML tags from content
@@ -226,6 +261,7 @@ export default {
 
         reader.onload = (e) => {
           this.editablePost.content = e.target.result;
+          this.newTextContent = ""; // Clear the text field if image is uploaded
         };
 
         reader.readAsDataURL(file);
@@ -245,11 +281,11 @@ export default {
         }
 
         // Similarly, convert title and description back to HTML if needed
-        if (this.isHtml(this.editablePost.title) === false) {
+        if (!this.isHtml(this.editablePost.title)) {
           this.editablePost.title = marked(this.editablePost.title || "");
         }
 
-        if (this.isHtml(this.editablePost.description) === false) {
+        if (!this.isHtml(this.editablePost.description)) {
           this.editablePost.description = marked(
             this.editablePost.description || ""
           );
@@ -273,73 +309,181 @@ export default {
 </script>
 
 <style scoped>
+/* Import Google Fonts */
+@import url("https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap");
+
+/* General Styles */
 .edit-post-container {
   padding: 20px;
   max-width: 800px;
   margin: 0 auto;
+  font-family: "Roboto", sans-serif;
 }
 
+.edit-post-container h2 {
+  text-align: center;
+  color: #2c3e50;
+  margin-bottom: 30px;
+}
+
+/* Edit Form */
 .edit-form {
   max-width: 600px;
   margin: 0 auto;
+  background-color: rgba(255, 255, 255, 0.95);
+  padding: 30px 40px;
+  border-radius: 16px;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
 }
 
 .form-group {
-  margin-bottom: 15px;
+  margin-bottom: 20px;
 }
 
-label {
+.form-group label {
   display: block;
-  font-weight: bold;
-  margin-bottom: 5px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: #34495e;
 }
 
-input[type="text"],
-textarea,
-select {
+.form-group input[type="text"],
+.form-group input[type="email"],
+.form-group input[type="password"],
+.form-group input[type="url"],
+.form-group textarea,
+.form-group select {
   width: 100%;
-  padding: 8px;
+  padding: 12px 20px;
+  border: 1px solid #cccccc;
+  border-radius: 30px;
   box-sizing: border-box;
+  font-size: 16px;
+  background-color: #f7f7f7;
+  transition: border-color 0.3s ease, background-color 0.3s ease;
 }
 
-button[type="submit"] {
-  padding: 10px 20px;
+.form-group input[type="text"]:focus,
+.form-group input[type="email"]:focus,
+.form-group input[type="password"]:focus,
+.form-group input[type="url"]:focus,
+.form-group textarea:focus,
+.form-group select:focus {
+  border-color: #66afe9;
+  background-color: #ffffff;
+  outline: none;
+}
+
+.replace-image,
+.replace-text {
+  margin-top: 15px;
+}
+
+.replace-image label,
+.replace-text label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 5px;
+  color: #34495e;
+}
+
+.replace-image input,
+.replace-text textarea {
+  width: 100%;
+}
+
+.replace-text textarea {
+  resize: vertical;
+  height: 100px;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.form-actions button[type="submit"] {
+  padding: 12px 25px;
   background-color: #4caf50;
-  color: white;
   border: none;
+  border-radius: 30px;
+  color: white;
+  font-size: 18px;
   cursor: pointer;
-  margin-right: 10px;
+  transition: background-color 0.3s ease;
+  font-weight: 700;
 }
 
-button[type="submit"]:hover {
+.form-actions button[type="submit"]:hover {
   background-color: #45a049;
 }
 
-.cancel-button {
-  padding: 10px 20px;
+.form-actions .cancel-button {
+  padding: 12px 25px;
   background-color: #e74c3c;
+  border: none;
+  border-radius: 30px;
   color: white;
+  font-size: 18px;
   text-decoration: none;
-  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  font-weight: 700;
 }
 
-.cancel-button:hover {
+.form-actions .cancel-button:hover {
   background-color: #c0392b;
 }
 
-.loading,
-.no-post {
-  text-align: center;
-  font-size: 1.2em;
-  color: #7f8c8d;
-}
-
+/* Error Message */
 .error-message {
   margin-top: 20px;
   padding: 15px;
   border: 1px solid #e74c3c;
-  border-radius: 4px;
+  border-radius: 8px;
   background-color: #f2dede;
   color: #a94442;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Loading */
+.loading {
+  text-align: center;
+  font-size: 1.2em;
+  color: #3498db;
+}
+
+/* No Post */
+.no-post {
+  text-align: center;
+  font-size: 1.1em;
+  color: #7f8c8d;
+}
+
+/* Image Content Styling */
+.image-content img {
+  border-radius: 8px;
+  margin-bottom: 15px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .edit-form {
+    padding: 20px 30px;
+  }
+
+  .form-actions {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .form-actions button[type="submit"],
+  .form-actions .cancel-button {
+    width: 100%;
+  }
 }
 </style>
