@@ -21,7 +21,8 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 import markdown2
 from .serializers import FollowRequestSerializer
-import markdown2
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
 
 def defaultPath(request):
     return render(request, "index.html")
@@ -210,57 +211,34 @@ def get_all_posts(request, author_serial):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def send_follow_request(request, author_uuid):
-    try:
-        current_author = request.user
-        target_author = get_object_or_404(Author, uuid=author_uuid)
+    current_author = request.user
+    target_author = get_object_or_404(Author, uuid=author_uuid)
+    
+    # Create follow request as before
+    follow_request = FollowRequest.objects.create(
+        actor=current_author,
+        object=target_author,
+        summary=f"{current_author.displayName} wants to follow {target_author.displayName}"
+    )
 
-        # Debug logging
-        print(f"Current author: {current_author.uuid}")
-        print(f"Target author: {author_uuid}")
+    # Get pending request count
+    pending_count = FollowRequest.objects.filter(
+        object=target_author, 
+        accepted=False
+    ).count()
 
-        if current_author == target_author:
-            return Response(
-                {'detail': 'You cannot follow yourself.'}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
+    # Send notification through WebSocket
+    channel_layer = get_channel_layer()
+    async_to_sync(channel_layer.group_send)(
+        f"notifications_{target_author.uuid}",
+        {
+            'type': 'follow_request_notification',
+            'count': pending_count,
+            'message': f"New follow request from {current_author.displayName}"
+        }
+    )
 
-        # Check if already following
-        existing_request = FollowRequest.objects.filter(
-            actor=current_author, 
-            object=target_author
-        ).first()
-
-        if existing_request:
-            if existing_request.accepted:
-                return Response(
-                    {'detail': 'You are already following this author.'}, 
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            return Response(
-                {'detail': 'Follow request already sent.'}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        # Create the follow request
-        follow_request = FollowRequest.objects.create(
-            actor=current_author,
-            object=target_author,
-            summary=f"{current_author.displayName} wants to follow {target_author.displayName}"
-        )
-
-        return Response(
-            FollowRequestSerializer(follow_request).data, 
-            status=status.HTTP_201_CREATED
-        )
-
-    except Exception as e:
-        import traceback
-        print(f"Error in send_follow_request: {str(e)}")
-        print(f"Traceback: {traceback.format_exc()}")
-        return Response(
-            {"detail": str(e)},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
+    return Response({'detail': 'Follow request sent.'}, status=status.HTTP_201_CREATED)
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])

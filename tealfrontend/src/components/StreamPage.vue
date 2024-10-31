@@ -8,7 +8,7 @@
       <button class="profile-button" @click="goToProfile">Profile</button>
       <button class="follow-requests-button" @click="toggleFollowRequests">
         Follow Requests
-        <span v-if="followRequestCount > 0" class="badge">{{ followRequestCount }}</span>
+        <span v-if="followRequestCount > 0" class="notification-badge">{{ followRequestCount }}</span>
       </button>
       <button class="explore-authors-button" @click="goToExploreAuthors">Explore Authors</button>
     </div>
@@ -40,9 +40,85 @@ export default {
       followRequestsVisible: false,
       followRequests: [],
       followRequestCount: 0,
+      socket: null,
     };
   },
+  mounted() {
+    if (localStorage.getItem('token')) {
+      this.initializeWebSocket();
+      this.fetchInitialCount();
+    } else {
+      console.error('No authentication token found');
+      this.$router.push('/login');
+    }
+  },
+  beforeUnmount() {
+    if (this.socket) {
+      this.socket.close();
+    }
+  },
   methods: {
+    initializeWebSocket() {
+      const uuid = localStorage.getItem('uuid');
+      const token = localStorage.getItem('token');
+      
+      if (!uuid || !token) {
+        console.error('Missing authentication information');
+        return;
+      }
+
+      try {
+        this.socket = new WebSocket(`ws://localhost:8000/ws/notifications/${uuid}/`);
+        
+        this.socket.onopen = () => {
+          console.log('WebSocket connected successfully');
+          // Send authentication message
+          this.socket.send(JSON.stringify({
+            type: 'authenticate',
+            token: token
+          }));
+        };
+
+        this.socket.onmessage = (event) => {
+          const data = JSON.parse(event.data);
+          if (data.type === 'follow_request') {
+            this.followRequestCount = data.count;
+            if (this.followRequestsVisible) {
+              this.fetchFollowRequests();
+            }
+          }
+        };
+
+        this.socket.onclose = (event) => {
+          console.log('WebSocket connection closed:', event.code, event.reason);
+          // Only attempt to reconnect if the component is still mounted
+          setTimeout(() => {
+            if (this.$el && document.body.contains(this.$el)) {
+              this.initializeWebSocket();
+            }
+          }, 5000);
+        };
+
+        this.socket.onerror = (error) => {
+          console.error('WebSocket error:', error);
+        };
+      } catch (error) {
+        console.error('Error initializing WebSocket:', error);
+      }
+    },
+    async fetchInitialCount() {
+      try {
+        const response = await axios.get(
+          'http://localhost:8000/project/service/api/authors/follow_requests/',
+          {
+            headers: { Authorization: `Token ${localStorage.getItem('token')}` },
+          }
+        );
+        this.followRequestCount = response.data.length;
+      } catch (error) {
+        console.error('Error fetching initial count:', error);
+      }
+    },
     goToProfile() {
       this.$router.push('/profile');
     },
@@ -50,6 +126,9 @@ export default {
       this.$router.push('/explore');
     },
     logoutNode() {
+      if (this.socket) {
+        this.socket.close();
+      }
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       localStorage.removeItem('uuid');
@@ -80,8 +159,8 @@ export default {
           headers: { Authorization: `Token ${localStorage.getItem('token')}` },
         })
         .then(() => {
-          console.log("Follow request accepted");
           this.fetchFollowRequests();
+          this.followRequestCount = Math.max(0, this.followRequestCount - 1);
         })
         .catch((error) => {
           console.error('Error accepting follow request:', error);
@@ -93,8 +172,8 @@ export default {
           headers: { Authorization: `Token ${localStorage.getItem('token')}` },
         })
         .then(() => {
-          console.log("Follow request declined");
           this.fetchFollowRequests();
+          this.followRequestCount = Math.max(0, this.followRequestCount - 1);
         })
         .catch((error) => {
           console.error('Error declining follow request:', error);
@@ -158,15 +237,16 @@ h1 {
   background-color: #2c8a6a;
 }
 
-.badge {
-  background-color: red;
+.notification-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background-color: #ff4444;
   color: white;
   border-radius: 50%;
-  padding: 5px 10px;
+  padding: 2px 6px;
   font-size: 12px;
-  margin-left: 5px;
-  position: absolute;
-  top: -10px;
-  right: -10px;
+  min-width: 18px;
+  text-align: center;
 }
 </style>
