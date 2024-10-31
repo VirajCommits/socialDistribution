@@ -33,6 +33,6 @@ class NotificationConsumer(AsyncWebsocketConsumer):
         # Send message to WebSocket
         await self.send(text_data=json.dumps({
             'type': 'follow_request',
-            'count': event['count'],
-            'message': event['message']
+            'count': event.get('count', 0),
+            'message': event.get('message', '')
         }))

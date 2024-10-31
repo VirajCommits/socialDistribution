@@ -19,9 +19,11 @@ urlpatterns = [
     path('service/api/authors/<uuid:author_uuid>/accept_follow_request/', views.accept_follow_request, name='accept_follow_request'),
     path('service/api/authors/<uuid:author_uuid>/decline_follow_request/', views.decline_follow_request, name='decline_follow_request'),
     path('service/api/authors/follow_requests/', views.get_follow_requests, name='get_follow_requests'),
+    path('service/api/authors/pending_requests/', views.get_pending_requests, name='get-pending-requests'),
+    path('service/api/authors/<uuid:author_uuid>/remove_follow_request/', views.remove_follow_request, name='remove-follow-request'),
 
     # Fetch all authors path
     path('service/api/authors/', views.get_all_authors, name='get_all_authors'),
     
-
+    path('service/api/authors/<str:author_id>/unfollow/', views.unfollow_author, name='unfollow_author'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

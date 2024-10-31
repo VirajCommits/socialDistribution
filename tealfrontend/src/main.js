@@ -3,6 +3,9 @@ import App from './App.vue';
 import router from './router/index.js'; 
 import axios from 'axios'
 
+axios.defaults.headers.common['Content-Type'] = 'application/json';
+axios.defaults.withCredentials = true;
+
 axios.interceptors.request.use(
     config => {
       const token = localStorage.getItem('token');
