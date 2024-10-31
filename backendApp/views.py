@@ -77,9 +77,8 @@ def create_post(request, author_serial):
     # Set the 'author_id' field to the author's ID (URL)
     data["author_id"] = author.uuid  # This will be accepted by the serializer
 
-    if 'content' in data:
-        print("This is the data: ----------------- " , data)
-        data['content'] = markdown2.markdown(data['content'], extras=["fenced-code-blocks", "tables"])
+    # if 'content' in data:
+    #     data['content'] = markdown2.markdown(data['content'], extras=["fenced-code-blocks", "tables"])
 
     if 'title' in data:
         data['title'] = markdown2.markdown(data['title'], extras=["fenced-code-blocks", "tables"])
@@ -334,7 +333,41 @@ def get_all_authors(request):
             {"detail": "An error occurred while fetching authors."},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def stream_page(request, author_id):
+    # Get the current user
+    author = get_object_or_404(Author, uuid=author_id)
 
+    # Get user's followers and friends
+    following = author.following.all()
+    friends = author.followers.all()  # assuming mutual followers are friends
+
+    # Public posts visible to everyone
+    public_posts = Post.objects.filter(visibility="PUBLIC")
+
+    # Unlisted posts only for followers
+    unlisted_posts = Post.objects.filter(author__in=following, visibility="UNLISTED")
+
+    # Friends-only posts only for friends
+    friends_posts = Post.objects.filter(author__in=friends, visibility="FRIENDS")
+
+    # Author’s own posts (including private, only visible to the author)
+    personal_posts = Post.objects.filter(author=author)
+
+    # Combine all posts
+    all_posts = (
+        (public_posts | unlisted_posts | friends_posts | personal_posts)
+        .distinct()
+        .order_by("-published")
+    )
+
+    # Paginate and return response
+    paginator = PageNumberPagination()
+    paginator.page_size = 10
+    result_page = paginator.paginate_queryset(all_posts, request)
+    serializer = PostSerializer(result_page, many=True)
+    return paginator.get_paginated_response(serializer.data)
 @csrf_exempt
 @api_view(['POST'])
 @permission_classes([AllowAny])

@@ -24,10 +24,16 @@
           <h3 v-html="post.title"></h3>
           <p v-html="post.description"></p>
 
-          <p v-html="post.content"></p>
+          <div v-if="isImageContent(post.content)">
+            <img
+              :src="extractImageSrc(post.content)"
+              alt="Post Image"
+              width="300"
+            />
+          </div>
 
-          <div v-if="post.content && post.content.includes('data:image')">
-            <img :src="post.content" alt="Post Image" width="300" />
+          <div v-else>
+            <p v-html="post.content"></p>
           </div>
 
           <p>
@@ -103,6 +109,37 @@ export default {
     this.fetchPosts();
   },
   methods: {
+    isImageContent(content) {
+      if (!content) return false;
+
+      // Use regex to extract the data URI
+      const regex = /data:image\/[a-zA-Z]+;base64,[^\s<]+/;
+      const match = content.match(regex);
+      const isImage = match !== null;
+
+      console.log(
+        "isImageContent:",
+        isImage,
+        "Match:",
+        match ? match[0] : "None"
+      );
+
+      return isImage;
+    },
+
+    extractImageSrc(content) {
+      if (!content) return "";
+
+      // Extract the data URI using regex
+      const regex = /data:image\/[a-zA-Z]+;base64,[^\s<]+/;
+      const match = content.match(regex);
+      const src = match ? match[0] : "";
+
+      console.log("extractImageSrc:", src);
+
+      return src;
+    },
+
     makePost() {
       this.$router.push("/addPost");
     },
