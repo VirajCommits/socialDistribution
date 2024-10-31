@@ -413,7 +413,6 @@ class LoginView(APIView):
         user = authenticate(username=username, password=password)
         if user:
             refresh = RefreshToken.for_user(user)
-
             return Response(
                 {
                     "refresh": str(refresh),
