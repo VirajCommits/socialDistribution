@@ -39,4 +39,10 @@ router-link {
 router-link:hover {
   text-decoration: underline;
 }
+
+body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
 </style>

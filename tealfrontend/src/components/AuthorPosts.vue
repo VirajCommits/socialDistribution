@@ -1,5 +1,10 @@
 <template>
   <div class="author-posts-container">
+    <!--  Stream Button -->
+    <button class="go-back-button" @click="goBackToStream">
+      Back to Stream
+    </button>
+
     <h2>Your Public Posts</h2>
 
     <div v-if="loading" class="loading">
@@ -19,15 +24,20 @@
       <button class="create-post" @click="makePost">Create another Post</button>
 
       <div class="post-card" v-for="post in filteredPosts" :key="post.id">
-        {{ console.log(post) }}
         <div class="post-content">
           <h3 v-html="post.title"></h3>
           <p v-html="post.description"></p>
 
-          <p v-html="post.content"></p>
+          <div v-if="isImageContent(post.content)">
+            <img
+              :src="extractImageSrc(post.content)"
+              alt="Post Image"
+              width="300"
+            />
+          </div>
 
-          <div v-if="post.content && post.content.includes('data:image')">
-            <img :src="post.content" alt="Post Image" width="300" />
+          <div v-else>
+            <p v-html="post.content"></p>
           </div>
 
           <p>
@@ -103,9 +113,32 @@ export default {
     this.fetchPosts();
   },
   methods: {
+    isImageContent(content) {
+      if (!content) return false;
+
+      // Use regex to extract the data URI
+      const regex = /data:image\/[a-zA-Z]+;base64,[^\s<]+/;
+      const match = content.match(regex);
+      const isImage = match !== null;
+
+      return isImage;
+    },
+
+    extractImageSrc(content) {
+      if (!content) return "";
+
+      // Extract the data URI using regex
+      const regex = /data:image\/[a-zA-Z]+;base64,[^\s<]+/;
+      const match = content.match(regex);
+      const src = match ? match[0] : "";
+
+      return src;
+    },
+
     makePost() {
       this.$router.push("/addPost");
     },
+
     initializeUser() {
       try {
         this.user = JSON.parse(localStorage.getItem("user"));
@@ -176,6 +209,12 @@ export default {
         }
       }
     },
+
+    // New Method to Redirect to Stream
+    goBackToStream() {
+      // Alternatively, if you want to use Vue Router for navigation within the app:
+      this.$router.push("/stream");
+    },
   },
 };
 </script>
@@ -185,8 +224,53 @@ export default {
   padding: 20px;
   max-width: 800px; /* Adjusted for better vertical layout */
   margin: 0 auto;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #f5f6fa;
+  border-radius: 15px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  position: relative; /* To position the go-back-button if needed */
+
+  /* Added Properties for Scrollability */
+  max-height: 90vh; /* Sets the maximum height to 90% of the viewport height */
+  overflow-y: auto; /* Enables vertical scrolling when content exceeds max-height */
+  padding-right: 10px; /* Adds some space for scrollbar to prevent content overlap */
 }
 
+/* Go Back to Stream Button */
+.go-back-button {
+  background-color: #3498db; /* Blue background */
+  color: white; /* White text */
+  border: none; /* Remove default border */
+  border-radius: 25px; /* Rounded corners */
+  padding: 10px 20px; /* Padding for size */
+  font-size: 16px; /* Font size */
+  cursor: pointer; /* Pointer cursor on hover */
+  transition: background-color 0.3s ease, transform 0.2s ease; /* Smooth transition */
+  display: flex; /* Align icon and text */
+  align-items: center; /* Center vertically */
+  margin-bottom: 20px; /* Space below the button */
+}
+
+.go-back-button i {
+  margin-right: 8px; /* Space between icon and text */
+}
+
+.go-back-button:hover {
+  background-color: #2980b9; /* Darker blue on hover */
+  transform: translateY(-2px); /* Slight lift on hover */
+}
+
+.go-back-button:active {
+  background-color: #1c5980; /* Even darker blue on click */
+  transform: translateY(0); /* Reset position */
+}
+
+.go-back-button:focus {
+  outline: none; /* Remove default outline */
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.5); /* Custom focus outline */
+}
+
+/* Create Post Button */
 .create-post {
   background-color: #4caf50; /* Green background */
   color: white; /* White text */
@@ -196,30 +280,35 @@ export default {
   border: none; /* Remove default border */
   border-radius: 5px; /* Rounded corners */
   cursor: pointer; /* Pointer cursor on hover */
-  transition: background-color 0.3s ease; /* Smooth transition */
+  transition: background-color 0.3s ease, transform 0.2s ease; /* Smooth transition */
+  align-self: flex-start; /* Align button to the start */
 }
 
 .create-post:hover {
-  background-color: #45a049; /* Darker green on hover */
+  background-color: #4f46e5; /* Darker green on hover */
+  transform: translateY(-2px); /* Slight lift on hover */
 }
 
 .create-post:active {
-  background-color: #388e3c; /* Even darker green when clicked */
-  transform: scale(0.98); /* Slightly scale down when clicked */
+  background-color: #4f46e5; /* Even darker green when clicked */
+  transform: translateY(0px); /* Reset position */
 }
 
 .create-post:focus {
   outline: none; /* Remove outline on focus */
-  box-shadow: 0 0 5px rgba(72, 207, 71, 0.6); /* Subtle green glow on focus */
+  box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.5); /* Subtle green glow on focus */
 }
 
+/* Headings */
 h2 {
   text-align: center;
   color: #2c3e50;
   margin-bottom: 30px;
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  font-size: 2em;
 }
 
+/* Loading and No Posts */
 .loading {
   text-align: center;
   font-size: 1.2em;
@@ -241,12 +330,14 @@ h2 {
   text-decoration: underline;
 }
 
+/* Posts Grid */
 .posts-grid {
   display: flex;
   flex-direction: column;
   gap: 20px;
 }
 
+/* Post Card */
 .post-card {
   background-color: #ffffff;
   border: 1px solid #ecf0f1;
@@ -261,6 +352,7 @@ h2 {
   box-shadow: 0 8px 12px rgba(0, 0, 0, 0.15);
 }
 
+/* Post Content */
 .post-content {
   padding: 20px;
 }
@@ -292,6 +384,7 @@ h2 {
   font-weight: bold;
 }
 
+/* Post Actions */
 .post-actions {
   display: flex;
   justify-content: flex-start;
@@ -301,6 +394,7 @@ h2 {
   gap: 10px;
 }
 
+/* Edit and Delete Buttons */
 .edit-button,
 .delete-button {
   display: flex;
@@ -333,19 +427,7 @@ h2 {
   background-color: #c0392b;
 }
 
-.selected-post-details {
-  margin-top: 40px;
-  padding: 20px;
-  border: 1px solid #bdc3c7;
-  border-radius: 8px;
-  background-color: #fdfefe;
-}
-
-.selected-post-details h3 {
-  margin-top: 0;
-  color: #8e44ad;
-}
-
+/* Error Message */
 .error-message {
   margin-top: 20px;
   padding: 15px;
@@ -374,9 +456,15 @@ h2 {
   }
 
   .edit-button,
-  .delete-button {
+  .delete-button,
+  .go-back-button {
     width: 100%;
     justify-content: center;
+  }
+
+  /* Adjusting padding-right to account for scrollbar on smaller screens */
+  .author-posts-container {
+    padding-right: 10px;
   }
 }
 </style>

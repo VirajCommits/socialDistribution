@@ -21,7 +21,8 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 import markdown2
 from .serializers import FollowRequestSerializer
-import markdown2
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
 
 def defaultPath(request):
     return render(request, "index.html")
@@ -77,9 +78,8 @@ def create_post(request, author_serial):
     # Set the 'author_id' field to the author's ID (URL)
     data["author_id"] = author.uuid  # This will be accepted by the serializer
 
-    if 'content' in data:
-        print("This is the data: ----------------- " , data)
-        data['content'] = markdown2.markdown(data['content'], extras=["fenced-code-blocks", "tables"])
+    # if 'content' in data:
+    #     data['content'] = markdown2.markdown(data['content'], extras=["fenced-code-blocks", "tables"])
 
     if 'title' in data:
         data['title'] = markdown2.markdown(data['title'], extras=["fenced-code-blocks", "tables"])
@@ -210,84 +210,132 @@ def get_all_posts(request, author_serial):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def send_follow_request(request, author_uuid):
-    try:
-        current_author = request.user
-        target_author = get_object_or_404(Author, uuid=author_uuid)
-
-        # Debug logging
-        print(f"Current author: {current_author.uuid}")
-        print(f"Target author: {author_uuid}")
-
-        if current_author == target_author:
-            return Response(
-                {'detail': 'You cannot follow yourself.'}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        # Check if already following
-        existing_request = FollowRequest.objects.filter(
-            actor=current_author, 
-            object=target_author
-        ).first()
-
-        if existing_request:
-            if existing_request.accepted:
-                return Response(
-                    {'detail': 'You are already following this author.'}, 
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            return Response(
-                {'detail': 'Follow request already sent.'}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        # Create the follow request
-        follow_request = FollowRequest.objects.create(
-            actor=current_author,
-            object=target_author,
-            summary=f"{current_author.displayName} wants to follow {target_author.displayName}"
-        )
-
+    current_author = request.user  # The one sending the request
+    target_author = get_object_or_404(Author, uuid=author_uuid)  # The one receiving the request
+    
+    # Check if already following
+    if current_author in target_author.followers.all():
         return Response(
-            FollowRequestSerializer(follow_request).data, 
-            status=status.HTTP_201_CREATED
+            {'detail': 'You are already following this author.'}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Check if a pending request already exists
+    existing_request = FollowRequest.objects.filter(
+        actor=current_author,
+        object=target_author,
+        accepted=False
+    ).exists()
+    
+    if existing_request:
+        return Response(
+            {'detail': 'A follow request is already pending.'}, 
+            status=status.HTTP_400_BAD_REQUEST
         )
 
-    except Exception as e:
-        import traceback
-        print(f"Error in send_follow_request: {str(e)}")
-        print(f"Traceback: {traceback.format_exc()}")
-        return Response(
-            {"detail": str(e)},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
+    # Create new follow request
+    follow_request = FollowRequest.objects.create(
+        actor=current_author,
+        object=target_author
+    )
+
+    # Notify through WebSocket
+    channel_layer = get_channel_layer()
+    async_to_sync(channel_layer.group_send)(
+        f"notifications_{target_author.uuid}",
+        {
+            'type': 'follow_request_notification',
+            'count': FollowRequest.objects.filter(
+                object=target_author, 
+                accepted=False
+            ).count(),
+            'message': f'{current_author.displayName} sent you a follow request'
+        }
+    )
+
+    return Response({'detail': 'Follow request sent.'}, status=status.HTTP_201_CREATED)
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def accept_follow_request(request, author_uuid):
-    current_author = request.user
-    requesting_author = get_object_or_404(Author, uuid=author_uuid)
-
-    follow_request = get_object_or_404(FollowRequest, actor=requesting_author, object=current_author)
+    current_author = request.user  # The one accepting
+    requesting_author = get_object_or_404(Author, uuid=author_uuid)  # The one who sent request
     
-    # Set the follow request as accepted
-    follow_request.accepted = True  
+    # Check if request still exists and hasn't been resolved
+    follow_request = FollowRequest.objects.filter(
+        actor=requesting_author,
+        object=current_author,
+        accepted=False
+    ).first()
+    
+    if not follow_request:
+        return Response(
+            {'detail': 'Follow request no longer exists or has already been resolved.'}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    # Check if already following
+    if requesting_author in current_author.followers.all():
+        follow_request.delete()
+        return Response(
+            {'detail': 'This author is already following you.'}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Accept the request
+    follow_request.accepted = True
     follow_request.save()
     
-    current_author.followers.add(requesting_author)  # Add to followers
+    # Add to followers
+    current_author.followers.add(requesting_author)
+    current_author.save()
+    
+    # Notify the requesting author through WebSocket
+    channel_layer = get_channel_layer()
+    async_to_sync(channel_layer.group_send)(
+        f"notifications_{requesting_author.uuid}",
+        {
+            'type': 'follow_request_notification',
+            'message': f'{current_author.displayName} accepted your follow request',
+            'status': 'accepted'
+        }
+    )
     
     return Response({'detail': 'Follow request accepted.'}, status=status.HTTP_200_OK)
-
-
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def decline_follow_request(request, author_uuid):
     current_author = request.user
     requesting_author = get_object_or_404(Author, uuid=author_uuid)
-
-    follow_request = get_object_or_404(FollowRequest, actor=requesting_author, object=current_author)
-    follow_request.delete()  # Remove the follow request
+    
+    # Check if request still exists and hasn't been resolved
+    follow_requests = FollowRequest.objects.filter(
+        actor=requesting_author,
+        object=current_author,
+        accepted=False
+    )
+    
+    if not follow_requests.exists():
+        return Response(
+            {'detail': 'Follow request no longer exists or has already been resolved.'}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    # Delete all pending requests from this user
+    follow_requests.delete()
+    
+    # Notify the requesting author through WebSocket
+    channel_layer = get_channel_layer()
+    async_to_sync(channel_layer.group_send)(
+        f"notifications_{requesting_author.uuid}",
+        {
+            'type': 'follow_request_notification',
+            'count': FollowRequest.objects.filter(object=requesting_author, accepted=False).count(),
+            'message': 'Follow request declined'
+        }
+    )
+    
     return Response({'detail': 'Follow request declined.'}, status=status.HTTP_200_OK)
 
 
@@ -312,21 +360,19 @@ def get_all_authors(request):
         
         author_data = []
         for author in authors:
-            # Check if the current user is following this author
-            is_following = FollowRequest.objects.filter(
-                actor=current_author, 
-                object=author, 
-                accepted=True
-            ).exists()
-            
             # Serialize the author data
             serialized_author = AuthorSerializer(author).data
-            serialized_author['is_following'] = is_following
+            
+            # Add followers data
+            followers = author.followers.all()
+            serialized_author['followers'] = [
+                str(follower.uuid) for follower in followers
+            ]
+            
             author_data.append(serialized_author)
 
         return Response(author_data)
     except Exception as e:
-        # Add detailed logging for debugging
         import traceback
         print(f"Error in get_all_authors: {str(e)}")
         print(f"Traceback: {traceback.format_exc()}")
@@ -334,7 +380,41 @@ def get_all_authors(request):
             {"detail": "An error occurred while fetching authors."},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def stream_page(request, author_id):
+    # Get the current user
+    author = get_object_or_404(Author, uuid=author_id)
 
+    # Get user's followers and friends
+    following = author.following.all()
+    friends = author.followers.all()  # assuming mutual followers are friends
+
+    # Public posts visible to everyone
+    public_posts = Post.objects.filter(visibility="PUBLIC")
+
+    # Unlisted posts only for followers
+    unlisted_posts = Post.objects.filter(author__in=following, visibility="UNLISTED")
+
+    # Friends-only posts only for friends
+    friends_posts = Post.objects.filter(author__in=friends, visibility="FRIENDS")
+
+    # Author’s own posts (including private, only visible to the author)
+    personal_posts = Post.objects.filter(author=author)
+
+    # Combine all posts
+    all_posts = (
+        (public_posts | unlisted_posts | friends_posts | personal_posts)
+        .distinct()
+        .order_by("-published")
+    )
+
+    # Paginate and return response
+    paginator = PageNumberPagination()
+    paginator.page_size = 10
+    result_page = paginator.paginate_queryset(all_posts, request)
+    serializer = PostSerializer(result_page, many=True)
+    return paginator.get_paginated_response(serializer.data)
 @csrf_exempt
 @api_view(['POST'])
 @permission_classes([AllowAny])
@@ -373,4 +453,97 @@ def login(request):
     return Response(
         {"error": "Invalid Credentials"}, status=status.HTTP_401_UNAUTHORIZED
     )
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_pending_requests(request):
+    """Get all pending follow requests sent by the current user"""
+    current_author = request.user
+    pending_requests = FollowRequest.objects.filter(
+        actor=current_author,
+        accepted=False
+    )
+    serializer = FollowRequestSerializer(pending_requests, many=True)
+    return Response(serializer.data)
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def remove_follow_request(request, author_uuid):
+    """Remove a pending follow request"""
+    current_author = request.user
+    target_author = get_object_or_404(Author, uuid=author_uuid)
+    
+    follow_requests = FollowRequest.objects.filter(
+        actor=current_author,
+        object=target_author,
+        accepted=False
+    )
+    
+    if not follow_requests.exists():
+        return Response(
+            {'detail': 'No follow request found.'}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    # Delete all pending requests from this user
+    follow_requests.delete()
+    
+    # Notify the target author through WebSocket
+    channel_layer = get_channel_layer()
+    async_to_sync(channel_layer.group_send)(
+        f"notifications_{target_author.uuid}",
+        {
+            'type': 'follow_request_notification',
+            'count': FollowRequest.objects.filter(
+                object=target_author, 
+                accepted=False
+            ).count(),
+            'message': f'{current_author.displayName} removed their follow request'
+        }
+    )
+    
+    return Response({'detail': 'Follow request removed.'}, status=status.HTTP_200_OK)
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def unfollow_author(request, author_id):
+    try:
+        target_author = get_object_or_404(Author, uuid=author_id)
+        current_author = request.user  # Since your user model is Author
+        
+        # Remove from followers
+        if current_author in target_author.followers.all():
+            target_author.followers.remove(current_author)
+            target_author.save()
+            
+            # Notify through WebSocket
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                f"notifications_{target_author.uuid}",
+                {
+                    'type': 'follow_request_notification',
+                    'count': FollowRequest.objects.filter(
+                        object=target_author, 
+                        accepted=False
+                    ).count(),
+                    'message': f'{current_author.displayName} unfollowed you'
+                }
+            )
+            
+            return Response({
+                "detail": f"Successfully unfollowed {target_author.displayName}"
+            }, status=status.HTTP_200_OK)
+        else:
+            return Response({
+                "detail": "You are not following this author"
+            }, status=status.HTTP_400_BAD_REQUEST)
+            
+    except Author.DoesNotExist:
+        return Response({
+            "detail": "Author not found"
+        }, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({
+            "detail": str(e)
+        }, status=status.HTTP_400_BAD_REQUEST)
 
