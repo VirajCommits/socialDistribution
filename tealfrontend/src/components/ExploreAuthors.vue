@@ -1,40 +1,84 @@
 <template>
-  <div class="explore-authors-page">
-    <h1>Explore Authors</h1>
-    <button class="back-button" @click="goBack">Back</button>
-
-    <!-- List of Authors -->
-    <div v-if="authors.length" class="authors-list">
-      <div v-for="author in authors" :key="author.id" class="author-item">
-        <span>{{ author.displayName }}</span>
-        <button 
-          v-if="isFollowing(author)"
-          @click="handleUnfollow(author)"
-          class="following-button"
-        >
-          Following
+  <div class="explore-container">
+    <div class="explore-header">
+      <div class="header-content">
+        <button class="back-button" @click="goBack">
+          <i class="fas fa-arrow-left"></i>
         </button>
-        <button 
-          v-else-if="hasPendingRequest(author)"
-          @click="handlePendingRequest(author)"
-          class="pending-button"
-        >
-          Request Pending
-        </button>
-        <button 
-          v-else
-          @click="sendFollowRequest(author.id)"
-          class="follow-button"
-        >
-          Send Follow Request
-        </button>
+        <h1>Explore Authors</h1>
+        <div class="spacer"></div>
       </div>
     </div>
-    <div v-else class="no-authors">
-      <p>Nobody Else here yet.</p>
+
+    <div class="explore-content">
+      <p class="explore-description">Discover and connect with other authors in the community</p>
+      
+      <div v-if="authors.length" class="authors-grid">
+        <div v-for="author in authors" :key="author.id" class="author-card">
+          <div class="author-content">
+            <div class="author-avatar">
+              <img 
+                v-if="author.profileImage" 
+                :src="author.profileImage" 
+                :alt="`${author.displayName}'s profile`"
+                class="profile-image"
+                @error="$event.target.style.display='none'"
+              />
+              <i v-else class="fas fa-user-circle default-avatar"></i>
+            </div>
+            
+            <div class="author-info">
+              <h2 class="author-name">{{ author.displayName }}</h2>
+              <div class="author-stats">
+                <span class="stat">
+                  <i class="fab fa-github"></i> 
+                  <a 
+                    v-if="author.github" 
+                    :href="author.github" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    class="github-link"
+                  >
+                    {{ author.github.split('/').pop() }}
+                  </a>
+                  <span v-else class="no-github">Not connected</span>
+                </span>
+                <span class="stat">
+                  <i class="fas fa-users"></i> {{ author.followers?.length || 0 }} Followers
+                </span>
+              </div>
+            </div>
+
+            <button 
+              v-if="isFollowing(author)"
+              @click="handleUnfollow(author)"
+              class="following-button"
+            >
+              <i class="fas fa-user-check"></i> Following
+            </button>
+            <button 
+              v-else-if="hasPendingRequest(author)"
+              @click="handlePendingRequest(author)"
+              class="pending-button"
+            >
+              <i class="fas fa-clock"></i> Request Pending
+            </button>
+            <button 
+              v-else
+              @click="sendFollowRequest(author.id)"
+              class="follow-button"
+            >
+              <i class="fas fa-user-plus"></i> Follow
+            </button>
+          </div>
+        </div>
+      </div>
+      <div v-else class="no-authors">
+        <p>Nobody else here yet.</p>
+      </div>
     </div>
 
-    <!-- Add this modal at the bottom of the template, before closing div -->
+    <!-- Unfollow Modal -->
     <div v-if="showUnfollowModal" class="modal">
       <div class="modal-content">
         <h3>Confirm Unfollow</h3>
@@ -44,6 +88,11 @@
           <button @click="showUnfollowModal = false" class="cancel-button">No</button>
         </div>
       </div>
+    </div>
+
+    <div v-if="notification.show" class="notification-toast" :class="notification.type">
+      <i :class="notification.icon"></i>
+      <span>{{ notification.message }}</span>
     </div>
   </div>
 </template>
@@ -61,6 +110,12 @@ export default {
       token: localStorage.getItem('token'),
       showUnfollowModal: false,
       selectedAuthor: null,
+      notification: {
+        show: false,
+        message: '',
+        type: 'success',
+        icon: 'fas fa-check-circle'
+      }
     };
   },
   created() {
@@ -78,28 +133,31 @@ export default {
     }
   },
   methods: {
-    fetchAuthors() {
-      if (!this.token) return;
+    async fetchAuthors() {
+      if (!this.token) {
+        this.showNotification('Authentication required', 'error', 'fas fa-lock');
+        this.$router.push('/login');
+        return;
+      }
       
-      axios
-        .get('http://localhost:8000/project/service/api/authors/', {
+      try {
+        const response = await axios.get('http://localhost:8000/project/service/api/authors/', {
           headers: { 
             'Authorization': `Token ${this.token}`,
             'Content-Type': 'application/json'
           },
-        })
-        .then((response) => {
-          this.authors = response.data;
-          this.fetchPendingRequests();
-        })
-        .catch((error) => {
-          console.error('Error fetching authors:', error);
-          if (error.response?.status === 401) {
-            // Token expired or invalid
-            localStorage.removeItem('token');
-            this.$router.push('/login');
-          }
         });
+        this.authors = response.data;
+        await this.fetchPendingRequests();
+      } catch (error) {
+        console.error('Error fetching authors:', error);
+        if (error.response?.status === 401) {
+          this.showNotification('Session expired. Please login again', 'error', 'fas fa-lock');
+          this.$router.push('/login');
+        } else {
+          this.showNotification('Failed to load authors', 'error', 'fas fa-exclamation-circle');
+        }
+      }
     },
     goBack() {
       this.$router.push('/stream');
@@ -127,40 +185,40 @@ export default {
       }
     },
     async sendFollowRequest(authorId) {
-      const authorUUID = authorId.split('/').pop();
       try {
+        const targetUuid = authorId.split('/').pop();
         await axios.post(
-          `http://localhost:8000/project/service/api/authors/${authorUUID}/send_follow_request/`,
-          {},
+          `http://localhost:8000/project/service/api/authors/${targetUuid}/send_follow_request/`,
+          null,
           {
-            headers: { Authorization: `Token ${localStorage.getItem('token')}` }
+            headers: { Authorization: `Token ${this.token}` }
           }
         );
+        
+        this.showNotification('Follow request sent successfully!', 'success', 'fas fa-user-plus');
         this.pendingRequests.push(authorId);
-        alert('Follow request sent successfully.');
+        this.fetchAuthors();
       } catch (error) {
+        this.showNotification('Failed to send follow request', 'error', 'fas fa-exclamation-circle');
         console.error('Error sending follow request:', error);
-        alert(error.response?.data?.detail || 'Error sending follow request');
       }
     },
     async handlePendingRequest(author) {
-      const confirmed = confirm('Do you want to remove your follow request?');
-      if (confirmed) {
+      try {
         const authorUUID = author.id.split('/').pop();
-        try {
-          await axios.delete(
-            `http://localhost:8000/project/service/api/authors/${authorUUID}/remove_follow_request/`,
-            {
-              headers: { Authorization: `Token ${localStorage.getItem('token')}` }
-            }
-          );
-          this.pendingRequests = this.pendingRequests.filter(id => id !== author.id);
-          alert('Follow request removed successfully.');
-          this.fetchAuthors();
-        } catch (error) {
-          console.error('Error removing follow request:', error);
-          alert(error.response?.data?.detail || 'Error removing follow request');
-        }
+        await axios.delete(
+          `http://localhost:8000/project/service/api/authors/${authorUUID}/remove_follow_request/`,
+          {
+            headers: { Authorization: `Token ${this.token}` }
+          }
+        );
+        
+        this.showNotification('Follow request removed', 'success', 'fas fa-user-clock');
+        this.pendingRequests = this.pendingRequests.filter(id => id !== author.id);
+        this.fetchAuthors();
+      } catch (error) {
+        this.showNotification('Failed to remove follow request', 'error', 'fas fa-exclamation-circle');
+        console.error('Error removing follow request:', error);
       }
     },
     isFollowing(author) {
@@ -217,32 +275,43 @@ export default {
       }
       this.stopPolling();
     },
-    handleUnfollow(author) {
+    async handleUnfollow(author) {
       this.selectedAuthor = author;
       this.showUnfollowModal = true;
     },
     async confirmUnfollow() {
-      if (!this.selectedAuthor) return;
-      
-      const authorUUID = this.selectedAuthor.id.split('/').pop();
       try {
+        const authorUUID = this.selectedAuthor.id.split('/').pop();
         await axios.delete(
           `http://localhost:8000/project/service/api/authors/${authorUUID}/unfollow/`,
+          null,
           {
             headers: { Authorization: `Token ${this.token}` }
           }
         );
         
-        // Close modal and refresh authors list
+        this.showNotification('Successfully unfollowed author', 'success', 'fas fa-user-minus');
+        this.following = this.following.filter(id => id !== this.selectedAuthor.id);
         this.showUnfollowModal = false;
         this.selectedAuthor = null;
         this.fetchAuthors();
-        alert('Successfully unfollowed author.');
       } catch (error) {
+        this.showNotification('Failed to unfollow author', 'error', 'fas fa-exclamation-circle');
         console.error('Error unfollowing author:', error);
-        alert(error.response?.data?.detail || 'Error unfollowing author');
       }
     },
+    showNotification(message, type = 'success', icon = 'fas fa-check-circle') {
+      this.notification = {
+        show: true,
+        message,
+        type,
+        icon
+      };
+      
+      setTimeout(() => {
+        this.notification.show = false;
+      }, 3000);
+    }
   },
   beforeUnmount() {
     this.stopPolling(); // Clean up when component unmounts
@@ -252,99 +321,193 @@ export default {
 
 
 <style scoped>
-.explore-authors-page {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  padding: 20px;
+.explore-container {
+  height: 100vh;
+  overflow-y: auto;
+  background: #f8fafc;
 }
 
-h1 {
-  color: #42b983;
-  margin-bottom: 20px;
+.explore-header {
+  position: sticky;
+  top: 0;
+  background: white;
+  padding: 1rem 2rem;
+  border-bottom: 1px solid #e5e7eb;
+  z-index: 10;
+  text-align: center;
+}
+
+.header-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
 }
 
 .back-button {
-  background-color: #42b983;
-  color: white;
-  border: none;
+  position: absolute;
+  left: 0;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
-  padding: 10px 15px;
-  font-size: 16px;
+  border: none;
+  background: #42b983;
+  color: white;
   cursor: pointer;
-  transition: background-color 0.3s ease;
-  margin-bottom: 20px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .back-button:hover {
-  background-color: #2c8a6a;
+  background: #3aa876;
 }
 
-.authors-list {
-  width: 60%;
-  margin-top: 20px;
-  border: 2px solid #42b983;
-  border-radius: 10px;
-  padding: 10px;
-  background-color: #f9f9f9;
+h1 {
+  margin: 0;
+  color: #42b983;
+  font-size: 1.5rem;
+  font-weight: 600;
 }
 
-.author-item {
+.explore-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.explore-description {
+  text-align: center;
+  color: #6b7280;
+  margin-bottom: 2rem;
+}
+
+.authors-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+.author-card {
+  background: white;
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  text-align: center;
+}
+
+.author-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.author-avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #f3f4f6;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 10px;
-  border-bottom: 1px solid #ccc;
+  justify-content: center;
+  margin: 0 auto;
 }
 
-.author-item:last-child {
-  border-bottom: none;
+.profile-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.default-avatar {
+  font-size: 2.5rem;
+  color: #9ca3af;
+}
+
+.author-info {
+  text-align: center;
+  width: 100%;
+}
+
+.author-name {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0.5rem 0;
+}
+
+.author-stats {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.stat {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #4b5563;
+  font-size: 0.875rem;
+}
+
+.github-link {
+  color: #42b983;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.github-link:hover {
+  text-decoration: underline;
+}
+
+.no-github {
+  color: #9ca3af;
+  font-style: italic;
+}
+
+/* Button styles */
+.follow-button, .following-button, .pending-button {
+  width: 100%;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  border: none;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: 1rem;
 }
 
 .follow-button {
-  background-color: #42b983;
+  background: #42b983;
   color: white;
-  border: none;
-  padding: 5px 15px;
-  border-radius: 15px;
-  cursor: pointer;
-  font-weight: bold;
-  transition: background-color 0.3s ease;
 }
 
 .follow-button:hover {
-  background-color: #2c8a6a;
+  background: #3aa876;
 }
 
 .following-button {
-  background-color: #42b983;
+  background: #42b983;
   color: white;
-  border: none;
-  padding: 5px 15px;
-  border-radius: 15px;
-  cursor: pointer;
-  font-weight: bold;
 }
 
 .following-button:hover {
-  background-color: #ff4444;
+  background: #ff4444;
 }
 
 .pending-button {
-  background-color: #ffa500;
+  background: #ffa500;
   color: white;
-  border: none;
-  padding: 5px 15px;
-  border-radius: 15px;
-  cursor: pointer;
-  font-weight: bold;
-}
-
-.no-authors {
-  margin-top: 20px;
-  font-size: 18px;
-  color: #666;
 }
 
 .modal {
@@ -401,5 +564,75 @@ h1 {
 
 .cancel-button:hover {
   background-color: #444;
+}
+
+@media (max-width: 768px) {
+  .explore-header {
+    padding: 1rem;
+  }
+  
+  .explore-content {
+    padding: 1rem;
+  }
+  
+  .authors-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.notification-toast {
+  position: fixed;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 1rem 2rem;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  animation: slideUp 0.3s ease-out forwards;
+  z-index: 1000;
+  min-width: 300px;
+  justify-content: center;
+}
+
+.notification-toast.success {
+  background: #4f46e5;
+  color: white;
+}
+
+.notification-toast.error {
+  background: #ef4444;
+  color: white;
+}
+
+.notification-toast.warning {
+  background: #f59e0b;
+  color: white;
+}
+
+.notification-toast i {
+  font-size: 1.25rem;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translate(-50%, 100%);
+    opacity: 0;
+  }
+  to {
+    transform: translate(-50%, 0);
+    opacity: 1;
+  }
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
 }
 </style>

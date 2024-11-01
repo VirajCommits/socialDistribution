@@ -38,7 +38,7 @@ export default {
   },
   mounted() {
     this.user = JSON.parse(localStorage.getItem("user"));
-    console.log(this.user);
+    this.user;
   },
   methods: {
     backToStream() {
