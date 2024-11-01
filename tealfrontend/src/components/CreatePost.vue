@@ -186,8 +186,13 @@ export default {
   background-color: #ffffff;
   border-radius: 10px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+
+  /* Enable scrolling */
+  max-height: 80vh;
+  overflow-y: auto;
 }
 
+/* Rest of your styles remain unchanged */
 /* Heading Styling */
 .create-post-container h2 {
   text-align: center;

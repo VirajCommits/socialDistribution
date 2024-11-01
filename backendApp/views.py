@@ -78,8 +78,8 @@ def create_post(request, author_serial):
     # Set the 'author_id' field to the author's ID (URL)
     data["author_id"] = author.uuid  # This will be accepted by the serializer
 
-    # if 'content' in data:
-    #     data['content'] = markdown2.markdown(data['content'], extras=["fenced-code-blocks", "tables"])
+    if 'content' in data:
+        data['content'] = markdown2.markdown(data['content'], extras=["fenced-code-blocks", "tables"])
 
     if 'title' in data:
         data['title'] = markdown2.markdown(data['title'], extras=["fenced-code-blocks", "tables"])
