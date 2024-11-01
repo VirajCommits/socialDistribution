@@ -318,15 +318,33 @@ export default {
   max-width: 800px;
   margin: 0 auto;
   font-family: "Roboto", sans-serif;
+
+  /* Added Properties for Scrollability and Hiding Scrollbar */
+  max-height: 90vh; /* Sets the maximum height to 90% of the viewport height */
+  overflow-y: auto; /* Enables vertical scrolling when content exceeds max-height */
+  padding-right: 10px; /* Adds space for scrollbar to prevent content overlap */
 }
 
+/* Hide Scrollbar for Webkit Browsers */
+.edit-post-container::-webkit-scrollbar {
+  width: 0px;
+  background: transparent; /* Optional: just make scrollbar invisible */
+}
+
+/* Hide Scrollbar for IE, Edge and Firefox */
+.edit-post-container {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+/* Heading Styles */
 .edit-post-container h2 {
   text-align: center;
   color: #2c3e50;
   margin-bottom: 30px;
 }
 
-/* Edit Form */
+/* Edit Form Styling */
 .edit-form {
   max-width: 600px;
   margin: 0 auto;
@@ -336,6 +354,7 @@ export default {
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
 }
 
+/* Form Group */
 .form-group {
   margin-bottom: 20px;
 }
@@ -347,6 +366,7 @@ export default {
   color: #34495e;
 }
 
+/* Input, Textarea, Select Styling */
 .form-group input[type="text"],
 .form-group input[type="email"],
 .form-group input[type="password"],
@@ -374,6 +394,7 @@ export default {
   outline: none;
 }
 
+/* Replace Image and Text Sections */
 .replace-image,
 .replace-text {
   margin-top: 15px;
@@ -397,6 +418,7 @@ export default {
   height: 100px;
 }
 
+/* Form Actions */
 .form-actions {
   display: flex;
   justify-content: space-between;
