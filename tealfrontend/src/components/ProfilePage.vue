@@ -74,7 +74,7 @@ div {
 /* Back Button */
 .back-button {
   position: absolute;
-  background-color: #42b983;
+  background-color: #4f46e5;
   color: white;
   border: none;
   border-radius: 50%;
@@ -108,7 +108,7 @@ h2 {
 
 /* Action Buttons */
 button {
-  background-color: #42b983;
+  background-color: #4f46e5;
   color: white;
   border: none;
   border-radius: 25px;

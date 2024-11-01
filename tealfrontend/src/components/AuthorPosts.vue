@@ -1,8 +1,8 @@
 <template>
   <div class="author-posts-container">
-    <!-- Go Back to Stream Button -->
+    <!--  Stream Button -->
     <button class="go-back-button" @click="goBackToStream">
-      <i class="fas fa-arrow-left"></i> Go Back to Stream
+      Back to Stream
     </button>
 
     <h2>Your Public Posts</h2>
@@ -285,12 +285,12 @@ export default {
 }
 
 .create-post:hover {
-  background-color: #45a049; /* Darker green on hover */
+  background-color: #4f46e5; /* Darker green on hover */
   transform: translateY(-2px); /* Slight lift on hover */
 }
 
 .create-post:active {
-  background-color: #388e3c; /* Even darker green when clicked */
+  background-color: #4f46e5; /* Even darker green when clicked */
   transform: translateY(0px); /* Reset position */
 }
 

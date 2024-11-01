@@ -11,59 +11,62 @@
     </div>
 
     <div class="explore-content">
-      <p class="explore-description">Discover and connect with other authors in the community</p>
-      
+      <p class="explore-description">
+        Discover and connect with other authors in the community
+      </p>
+
       <div v-if="authors.length" class="authors-grid">
         <div v-for="author in authors" :key="author.id" class="author-card">
           <div class="author-content">
             <div class="author-avatar">
-              <img 
-                v-if="author.profileImage" 
-                :src="author.profileImage" 
+              <img
+                v-if="author.profileImage"
+                :src="author.profileImage"
                 :alt="`${author.displayName}'s profile`"
                 class="profile-image"
-                @error="$event.target.style.display='none'"
+                @error="$event.target.style.display = 'none'"
               />
               <i v-else class="fas fa-user-circle default-avatar"></i>
             </div>
-            
+
             <div class="author-info">
               <h2 class="author-name">{{ author.displayName }}</h2>
               <div class="author-stats">
                 <span class="stat">
-                  <i class="fab fa-github"></i> 
-                  <a 
-                    v-if="author.github" 
-                    :href="author.github" 
-                    target="_blank" 
+                  <i class="fab fa-github"></i>
+                  <a
+                    v-if="author.github"
+                    :href="author.github"
+                    target="_blank"
                     rel="noopener noreferrer"
                     class="github-link"
                   >
-                    {{ author.github.split('/').pop() }}
+                    {{ author.github.split("/").pop() }}
                   </a>
                   <span v-else class="no-github">Not connected</span>
                 </span>
                 <span class="stat">
-                  <i class="fas fa-users"></i> {{ author.followers?.length || 0 }} Followers
+                  <i class="fas fa-users"></i>
+                  {{ author.followers?.length || 0 }} Followers
                 </span>
               </div>
             </div>
 
-            <button 
+            <button
               v-if="isFollowing(author)"
               @click="handleUnfollow(author)"
               class="following-button"
             >
               <i class="fas fa-user-check"></i> Following
             </button>
-            <button 
+            <button
               v-else-if="hasPendingRequest(author)"
               @click="handlePendingRequest(author)"
               class="pending-button"
             >
               <i class="fas fa-clock"></i> Request Pending
             </button>
-            <button 
+            <button
               v-else
               @click="sendFollowRequest(author.id)"
               class="follow-button"
@@ -82,15 +85,23 @@
     <div v-if="showUnfollowModal" class="modal">
       <div class="modal-content">
         <h3>Confirm Unfollow</h3>
-        <p>Are you sure you want to unfollow {{ selectedAuthor?.displayName }}?</p>
+        <p>
+          Are you sure you want to unfollow {{ selectedAuthor?.displayName }}?
+        </p>
         <div class="modal-buttons">
           <button @click="confirmUnfollow" class="unfollow-button">Yes</button>
-          <button @click="showUnfollowModal = false" class="cancel-button">No</button>
+          <button @click="showUnfollowModal = false" class="cancel-button">
+            No
+          </button>
         </div>
       </div>
     </div>
 
-    <div v-if="notification.show" class="notification-toast" :class="notification.type">
+    <div
+      v-if="notification.show"
+      class="notification-toast"
+      :class="notification.type"
+    >
       <i :class="notification.icon"></i>
       <span>{{ notification.message }}</span>
     </div>
@@ -98,30 +109,30 @@
 </template>
 
 <script>
-import axios from 'axios';
+import axios from "axios";
 
 export default {
-  name: 'ExploreAuthors',
+  name: "ExploreAuthors",
   data() {
     return {
       authors: [],
       pendingRequests: [],
       following: [],
-      token: localStorage.getItem('token'),
+      token: localStorage.getItem("token"),
       showUnfollowModal: false,
       selectedAuthor: null,
       notification: {
         show: false,
-        message: '',
-        type: 'success',
-        icon: 'fas fa-check-circle'
-      }
+        message: "",
+        type: "success",
+        icon: "fas fa-check-circle",
+      },
     };
   },
   created() {
     // Check if user is authenticated
     if (!this.token) {
-      this.$router.push('/login');
+      this.$router.push("/login");
       return;
     }
   },
@@ -135,96 +146,129 @@ export default {
   methods: {
     async fetchAuthors() {
       if (!this.token) {
-        this.showNotification('Authentication required', 'error', 'fas fa-lock');
-        this.$router.push('/login');
+        this.showNotification(
+          "Authentication required",
+          "error",
+          "fas fa-lock"
+        );
+        this.$router.push("/login");
         return;
       }
-      
+
       try {
-        const response = await axios.get('http://localhost:8000/project/service/api/authors/', {
-          headers: { 
-            'Authorization': `Token ${this.token}`,
-            'Content-Type': 'application/json'
-          },
-        });
+        const response = await axios.get(
+          "http://localhost:8000/project/service/api/authors/",
+          {
+            headers: {
+              Authorization: `Token ${this.token}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
         this.authors = response.data;
         await this.fetchPendingRequests();
       } catch (error) {
-        console.error('Error fetching authors:', error);
+        console.error("Error fetching authors:", error);
         if (error.response?.status === 401) {
-          this.showNotification('Session expired. Please login again', 'error', 'fas fa-lock');
-          this.$router.push('/login');
+          this.showNotification(
+            "Session expired. Please login again",
+            "error",
+            "fas fa-lock"
+          );
+          this.$router.push("/login");
         } else {
-          this.showNotification('Failed to load authors', 'error', 'fas fa-exclamation-circle');
+          this.showNotification(
+            "Failed to load authors",
+            "error",
+            "fas fa-exclamation-circle"
+          );
         }
       }
     },
     goBack() {
-      this.$router.push('/stream');
+      this.$router.push("/stream");
     },
     async fetchPendingRequests() {
       if (!this.token) return;
 
       try {
         const response = await axios.get(
-          'http://localhost:8000/project/service/api/authors/pending_requests/',
+          "http://localhost:8000/project/service/api/authors/pending_requests/",
           {
-            headers: { 
-              'Authorization': `Token ${this.token}`,
-              'Content-Type': 'application/json'
-            }
+            headers: {
+              Authorization: `Token ${this.token}`,
+              "Content-Type": "application/json",
+            },
           }
         );
-        this.pendingRequests = response.data.map(req => req.object.id);
+        this.pendingRequests = response.data.map((req) => req.object.id);
       } catch (error) {
-        console.error('Error fetching pending requests:', error);
+        console.error("Error fetching pending requests:", error);
         if (error.response?.status === 401) {
-          localStorage.removeItem('token');
-          this.$router.push('/login');
+          localStorage.removeItem("token");
+          this.$router.push("/login");
         }
       }
     },
     async sendFollowRequest(authorId) {
       try {
-        const targetUuid = authorId.split('/').pop();
+        const targetUuid = authorId.split("/").pop();
         await axios.post(
           `http://localhost:8000/project/service/api/authors/${targetUuid}/send_follow_request/`,
           null,
           {
-            headers: { Authorization: `Token ${this.token}` }
+            headers: { Authorization: `Token ${this.token}` },
           }
         );
-        
-        this.showNotification('Follow request sent successfully!', 'success', 'fas fa-user-plus');
+
+        this.showNotification(
+          "Follow request sent successfully!",
+          "success",
+          "fas fa-user-plus"
+        );
         this.pendingRequests.push(authorId);
         this.fetchAuthors();
       } catch (error) {
-        this.showNotification('Failed to send follow request', 'error', 'fas fa-exclamation-circle');
-        console.error('Error sending follow request:', error);
+        this.showNotification(
+          "Failed to send follow request",
+          "error",
+          "fas fa-exclamation-circle"
+        );
+        console.error("Error sending follow request:", error);
       }
     },
     async handlePendingRequest(author) {
       try {
-        const authorUUID = author.id.split('/').pop();
+        const authorUUID = author.id.split("/").pop();
         await axios.delete(
           `http://localhost:8000/project/service/api/authors/${authorUUID}/remove_follow_request/`,
           {
-            headers: { Authorization: `Token ${this.token}` }
+            headers: { Authorization: `Token ${this.token}` },
           }
         );
-        
-        this.showNotification('Follow request removed', 'success', 'fas fa-user-clock');
-        this.pendingRequests = this.pendingRequests.filter(id => id !== author.id);
+
+        this.showNotification(
+          "Follow request removed",
+          "success",
+          "fas fa-user-clock"
+        );
+        this.pendingRequests = this.pendingRequests.filter(
+          (id) => id !== author.id
+        );
         this.fetchAuthors();
       } catch (error) {
-        this.showNotification('Failed to remove follow request', 'error', 'fas fa-exclamation-circle');
-        console.error('Error removing follow request:', error);
+        this.showNotification(
+          "Failed to remove follow request",
+          "error",
+          "fas fa-exclamation-circle"
+        );
+        console.error("Error removing follow request:", error);
       }
     },
     isFollowing(author) {
-      const currentUserUUID = localStorage.getItem('uuid');
-      return author.followers?.some(follower => 
-        typeof follower === 'string' 
+      const currentUserUUID = localStorage.getItem("uuid");
+      return author.followers?.some((follower) =>
+        typeof follower === "string"
           ? follower.includes(currentUserUUID)
           : follower.uuid === currentUserUUID
       );
@@ -243,18 +287,18 @@ export default {
       }
     },
     setupWebSocket() {
-      const uuid = localStorage.getItem('uuid');
+      const uuid = localStorage.getItem("uuid");
       if (!uuid) return;
 
       const ws = new WebSocket(`ws://localhost:8000/ws/notifications/${uuid}/`);
-      
+
       ws.onmessage = (event) => {
         const data = JSON.parse(event.data);
-        if (data.type === 'follow_request_notification') {
+        if (data.type === "follow_request_notification") {
           // Refresh the data when a follow request is updated
           this.fetchAuthors();
           this.fetchPendingRequests();
-          
+
           // Show notification to user
           if (data.message) {
             alert(data.message);
@@ -281,44 +325,53 @@ export default {
     },
     async confirmUnfollow() {
       try {
-        const authorUUID = this.selectedAuthor.id.split('/').pop();
+        const authorUUID = this.selectedAuthor.id.split("/").pop();
         await axios.delete(
           `http://localhost:8000/project/service/api/authors/${authorUUID}/unfollow/`,
           null,
           {
-            headers: { Authorization: `Token ${this.token}` }
+            headers: { Authorization: `Token ${this.token}` },
           }
         );
-        
-        this.showNotification('Successfully unfollowed author', 'success', 'fas fa-user-minus');
-        this.following = this.following.filter(id => id !== this.selectedAuthor.id);
+
+        this.showNotification(
+          "Successfully unfollowed author",
+          "success",
+          "fas fa-user-minus"
+        );
+        this.following = this.following.filter(
+          (id) => id !== this.selectedAuthor.id
+        );
         this.showUnfollowModal = false;
         this.selectedAuthor = null;
         this.fetchAuthors();
       } catch (error) {
-        this.showNotification('Failed to unfollow author', 'error', 'fas fa-exclamation-circle');
-        console.error('Error unfollowing author:', error);
+        this.showNotification(
+          "Failed to unfollow author",
+          "error",
+          "fas fa-exclamation-circle"
+        );
+        console.error("Error unfollowing author:", error);
       }
     },
-    showNotification(message, type = 'success', icon = 'fas fa-check-circle') {
+    showNotification(message, type = "success", icon = "fas fa-check-circle") {
       this.notification = {
         show: true,
         message,
         type,
-        icon
+        icon,
       };
-      
+
       setTimeout(() => {
         this.notification.show = false;
       }, 3000);
-    }
+    },
   },
   beforeUnmount() {
     this.stopPolling(); // Clean up when component unmounts
-  }
+  },
 };
 </script>
-
 
 <style scoped>
 .explore-container {
@@ -363,12 +416,12 @@ export default {
 }
 
 .back-button:hover {
-  background: #3aa876;
+  background: #4f46e5;
 }
 
 h1 {
   margin: 0;
-  color: #42b983;
+  color: #4f46e5;
   font-size: 1.5rem;
   font-weight: 600;
 }
@@ -472,7 +525,9 @@ h1 {
 }
 
 /* Button styles */
-.follow-button, .following-button, .pending-button {
+.follow-button,
+.following-button,
+.pending-button {
   width: 100%;
   padding: 0.75rem;
   border-radius: 0.5rem;
@@ -488,12 +543,12 @@ h1 {
 }
 
 .follow-button {
-  background: #42b983;
+  background: #4f46e5;
   color: white;
 }
 
 .follow-button:hover {
-  background: #3aa876;
+  background: #4f46e5;
 }
 
 .following-button {
@@ -570,11 +625,11 @@ h1 {
   .explore-header {
     padding: 1rem;
   }
-  
+
   .explore-content {
     padding: 1rem;
   }
-  
+
   .authors-grid {
     grid-template-columns: 1fr;
   }
