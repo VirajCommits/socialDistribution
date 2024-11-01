@@ -1,5 +1,8 @@
 <template>
   <div class="create-post-container">
+    <!-- Back Button -->
+    <button class="back-button" @click="goBack">Back</button>
+
     <h2>Create a New Post</h2>
 
     <form @submit.prevent="createPost" class="post-form">
@@ -94,10 +97,10 @@ export default {
         description: "",
         contentType: "text/plain",
         content: "",
-        image: null, // Add image field to hold the uploaded file
+        image: null, // Holds the uploaded image file
         visibility: "PUBLIC",
       },
-      isImageType: false, // Track if the selected content type is an image
+      isImageType: false, // Tracks if the selected content type is an image
       response: null,
       successMessage: "",
       errorMessage: "",
@@ -110,12 +113,15 @@ export default {
     handleImageUpload(event) {
       const file = event.target.files[0];
       if (file) {
+        // Store the image file in form.image
+        this.form.image = file;
+
         const reader = new FileReader();
         reader.onload = (e) => {
-          // Convert image to base64 and store it in form.content
+          // Convert image to base64 and store it in form.content for preview
           this.form.content = e.target.result;
         };
-        reader.readAsDataURL(file); // Convert to base64 string
+        reader.readAsDataURL(file); // Convert to base64 string for preview
       }
     },
     async createPost() {
@@ -126,7 +132,7 @@ export default {
       try {
         this.user = JSON.parse(localStorage.getItem("user"));
         this.authID = this.user.id.split("/").pop(-1);
-        // Replace with the actual author ID
+        // Use the actual author ID
         const authorId = this.authID;
         const apiUrl = `http://localhost:8000/project/service/api/authors/${authorId}/posts/`;
 
@@ -138,9 +144,10 @@ export default {
         formData.append("visibility", this.form.visibility);
 
         if (this.isImageType && this.form.image) {
-          formData.append("image", this.form.image); // Attach the image if selected
+          formData.append("content", this.form.content);
+          formData.append("image", this.form.image); // Attach the image file
         } else {
-          formData.append("content", this.form.content); // Attach text content if not an image
+          formData.append("content", this.form.content); // Attach text content
         }
 
         const response = await axios.post(apiUrl, formData, {
@@ -166,26 +173,62 @@ export default {
         };
         this.isImageType = false; // Reset image type flag
 
-        // Optionally, redirect to another page
+        // Redirect to posts list
         this.$router.push("/posts/all");
       } catch (error) {
         console.error("Error creating post:", error.response || error);
         this.errorMessage = "An error occurred while creating the post.";
       }
     },
+    goBack() {
+      this.$router.push("/posts/all");
+    },
   },
 };
 </script>
 
 <style scoped>
+/* Back Button Styling */
+.back-button {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  background-color: #4f46e5;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  padding: 12px 18px;
+  font-size: 16px;
+  cursor: pointer;
+  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2);
+  transition: background-color 0.3s ease, transform 0.2s ease,
+    box-shadow 0.3s ease;
+}
+
+.back-button:hover {
+  background-color: #3b30d5;
+  transform: scale(1.05);
+  box-shadow: 0px 6px 12px rgba(0, 0, 0, 0.3);
+}
+
+.back-button:active {
+  transform: scale(1);
+  box-shadow: 0px 2px 6px rgba(0, 0, 0, 0.2);
+}
+
 /* Container Styling */
 .create-post-container {
+  position: relative; /* Ensure positioning context for the back button */
   max-width: 700px;
   margin: 40px auto;
   padding: 30px;
   background-color: #ffffff;
   border-radius: 10px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+
+  /* Enable scrolling */
+  max-height: 80vh;
+  overflow-y: auto;
 }
 
 /* Heading Styling */

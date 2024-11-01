@@ -7,12 +7,12 @@ import uuid
 class Author(AbstractUser):
     type = models.CharField(max_length=6, default="author", editable=False)
     uuid = models.UUIDField(unique=True, editable=False, default=uuid.uuid4)
-    id = models.URLField(primary_key=True, max_length=200)
+    id = models.URLField(primary_key=True, max_length=500)
     host = models.URLField(default="http://localhost:8000/project/")
     displayName = models.CharField(max_length=255)
     github = models.URLField(blank=True)
-    profileImage = models.URLField(blank=True)
-    page = models.URLField(max_length=200)
+    profileImage = models.URLField(blank=True , max_length=500)
+    page = models.URLField(max_length=500)
     followers = models.ManyToManyField('self', symmetrical=False, related_name='following', blank=True)
 
     def __str__(self):
