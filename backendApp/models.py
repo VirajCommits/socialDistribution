@@ -16,13 +16,15 @@ class Author(AbstractUser):
     followers = models.ManyToManyField('self', symmetrical=False, related_name='following', blank=True)
 
     def __str__(self):
-        return self.displayName
+        return self.displayName or self.username
 
     def save(self, *args, **kwargs):
         if not self.id:
             self.id = f"{self.host}authors/{self.uuid}"
         if not self.page:
             self.page = f"{self.host.replace('project/', '')}authors/{self.username}"
+        if not self.displayName:
+            self.displayName = self.username
         super().save(*args, **kwargs)
 
     def accept_follow_request(self, requester):
@@ -86,6 +88,7 @@ class FollowRequest(models.Model):
     actor = models.ForeignKey(Author, related_name='sent_follow_requests', on_delete=models.CASCADE)
     object = models.ForeignKey(Author, related_name='received_follow_requests', on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
+    accepted = models.BooleanField(default=False)
 
     def __str__(self):
         return f"{self.actor.displayName} wants to follow {self.object.displayName}"
