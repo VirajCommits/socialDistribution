@@ -477,23 +477,6 @@ def get_all_authors(request):
         )
 
 
-# @api_view(["GET"])
-# @permission_classes([AllowAny])
-# def author_posts(request, author_id):
-#     # Ensure the logged-in author is requesting their own posts
-#     if str(request.user.uuid) != author_id:
-#         return Response(
-#             {"detail": "Unauthorized access"}, status=status.HTTP_403_FORBIDDEN
-#         )
-
-#     # Get all posts created by the author
-#     author = get_object_or_404(Author, uuid=author_id)
-#     posts = Post.objects.filter(author=author).order_by("-published")
-
-#     serializer = PostSerializer(posts, many=True)
-#     return Response(serializer.data, status=status.HTTP_200_OK)
-
-
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def stream_page(request, author_id):
@@ -509,21 +492,19 @@ def stream_page(request, author_id):
     # Mutual friends: authors with a mutual following relationship
     mutual_friends = following_authors.filter(id__in=followers.values("id"))
 
-    # Posts visible to the current author
-    public_posts = Post.objects.filter(
-        visibility="PUBLIC", author__in=following_authors
-    )
+    # 1. Public posts: visible to everyone
+    public_posts = Post.objects.filter(visibility="PUBLIC")
 
-    unlisted_posts = Post.objects.filter(
-        visibility="UNLISTED", author__in=following_authors
-    )
+    # 2. Unlisted posts: only visible to people who follow the author
+    unlisted_posts = Post.objects.filter(visibility="UNLISTED", author__in=followers)
 
+    # 3. Friends-only posts: only visible to mutual friends
     friends_posts = Post.objects.filter(visibility="FRIENDS", author__in=mutual_friends)
 
-    # Current author's own posts (including private)
-    personal_posts = Post.objects.filter(author=current_author)
+    # 4. Private posts: only visible to the author themselves
+    personal_posts = Post.objects.filter(author=current_author, visibility="PRIVATE")
 
-    # Combine all posts and avoid using `intersection` directly
+    # Combine all posts
     all_posts = (
         (public_posts | unlisted_posts | friends_posts | personal_posts)
         .distinct()
