@@ -60,8 +60,8 @@
         <label for="visibility">Visibility:</label>
         <select v-model="form.visibility" id="visibility">
           <option value="PUBLIC">Public</option>
-          <option value="FRIENDS">Friends</option>
-          <option value="PRIVATE">Private</option>
+          <option value="FRIENDS">Friends Only</option>
+          <option value="UNLISTED">Unlisted</option>
         </select>
       </div>
 
