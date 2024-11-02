@@ -106,6 +106,7 @@ def create_post(request, author_serial):
 def vueTest(request):
     return render(request, "index.html")
 
+
 @api_view(["GET", "DELETE", "PUT", "POST"])
 def post_detail(request, author_serial, post_serial):
     segments = post_serial.split("/")
@@ -117,14 +118,14 @@ def post_detail(request, author_serial, post_serial):
     author = get_object_or_404(Author, uuid=parsed_author_id)
     post = get_object_or_404(Post, author=author, id=post_id)
 
-   
+    # If the request is a GET and no action is specified, return the post details
     if request.method == "GET" and not action:
         serializer = PostSerializer(post)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+    # Handle "like" action for POST request
     if action == "like":
         if request.method == "POST":
-            # Handle like creation directly here
             data = request.data.copy()
             data["author_id"] = str(author.id)
             data["post_id"] = str(post.id)
@@ -137,6 +138,8 @@ def post_detail(request, author_serial, post_serial):
             else:
                 print("Serializer errors:", serializer.errors)
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    # Handle fetching likes
     if action == "likes":
         if request.method == "GET":
             likes = Like.objects.filter(post=post).order_by("-published")
@@ -146,11 +149,28 @@ def post_detail(request, author_serial, post_serial):
     # Handle comments if specified in the URL
     elif action == "comments":
         if request.method == "GET":
+            # Filter comments based on visibility rules
+            current_user = request.user
+            if post.visibility == "FRIENDS":
+                # Check if the current user is a friend or the post's author
+                is_friend = (
+                    current_user in author.followers.all()
+                    and current_user in author.following.all()
+                )
+                if not (is_friend or current_user == author):
+                    # If the current user is not a friend or the post's author, filter out comments
+                    return Response(
+                        {"detail": "You are not authorized to view these comments."},
+                        status=status.HTTP_403_FORBIDDEN,
+                    )
+
+            # Return all comments, as visibility rules are satisfied
             comments = Comment.objects.filter(post=post).order_by("-published")
             serializer = CommentSerializer(
                 comments, many=True, context={"request": request}
             )
             return Response(serializer.data, status=status.HTTP_200_OK)
+
         elif request.method == "POST":
             # Handle comment creation directly here
             data = request.data.copy()
@@ -165,28 +185,105 @@ def post_detail(request, author_serial, post_serial):
                 print("Serializer errors:", serializer.errors)
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    # Handle DELETE request
+    # Handle DELETE request to delete the post
     elif request.method == "DELETE" and not action:
         post.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-    # Handle PUT request for updating the post
+    # Handle PUT request to update the post
     elif request.method == "PUT" and not action:
-        
         data = request.data
         if "content" in data:
             markdown_content = data["content"]
-            html_content = markdown2.markdown(markdown_content, extras=["fenced-code-blocks", "tables"])
+            html_content = markdown2.markdown(
+                markdown_content, extras=["fenced-code-blocks", "tables"]
+            )
             data["content"] = html_content  # Replace Markdown with HTML for saving
-    
+
         serializer = PostSerializer(post, data=data, partial=True)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    # If the action doesn't match any known value
+    # If the action doesn't match any known value, return an error
     return Response({"detail": "Invalid request"}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def post_comment(request, post_id):
+    """
+    API to handle posting a comment for a specific post by post_id.
+    """
+    post = get_object_or_404(Post, id=post_id)
+    author = request.user
+
+    data = request.data.copy()
+    data["author_id"] = str(author.id)
+    data["post_id"] = str(post.id)
+
+    serializer = CommentSerializer(data=data)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    else:
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def like_post(request, post_id):
+    """
+    API to handle liking a specific post by post_id.
+    """
+    post = get_object_or_404(Post, id=post_id)
+    author = request.user
+
+    # Check if the user has already liked the post
+    existing_like = Like.objects.filter(post=post, author=author).first()
+    if existing_like:
+        return Response(
+            {"detail": "You have already liked this post."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    data = {
+        "author_id": str(author.id),
+        "post_id": str(post.id),
+        "post": post.id,
+    }
+
+    serializer = LikeSerializer(data=data)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    else:
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def stream_page_comments(request, post_id):
+    """
+    API to fetch comments for a specific post by post_id.
+    """
+    post = get_object_or_404(Post, id=post_id)
+    comments = Comment.objects.filter(post=post).order_by("-published")
+    serializer = CommentSerializer(comments, many=True)
+    return Response(serializer.data, status=200)
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def stream_page_likes(request, post_id):
+    """
+    API to fetch likes for a specific post by post_id.
+    """
+    post = get_object_or_404(Post, id=post_id)
+    likes = Like.objects.filter(post=post).order_by("-published")
+    serializer = LikeSerializer(likes, many=True)
+    return Response(serializer.data, status=200)
 
 
 @api_view(["GET"])
@@ -204,7 +301,6 @@ def get_all_posts(request, author_serial):
     serializer = PostSerializer(result_page, many=True)
 
     return paginator.get_paginated_response({'type': 'posts', 'items': serializer.data})
-
 
 
 @api_view(['POST'])
@@ -356,18 +452,18 @@ def get_all_authors(request):
         current_author = request.user
         # Exclude the current user and get all other authors
         authors = Author.objects.exclude(id=current_author.id)
-        
+
         author_data = []
         for author in authors:
             # Serialize the author data
             serialized_author = AuthorSerializer(author).data
-            
+
             # Add followers data
             followers = author.followers.all()
             serialized_author['followers'] = [
                 str(follower.uuid) for follower in followers
             ]
-            
+
             author_data.append(serialized_author)
 
         return Response(author_data)
@@ -379,29 +475,55 @@ def get_all_authors(request):
             {"detail": "An error occurred while fetching authors."},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+
+
+# @api_view(["GET"])
+# @permission_classes([AllowAny])
+# def author_posts(request, author_id):
+#     # Ensure the logged-in author is requesting their own posts
+#     if str(request.user.uuid) != author_id:
+#         return Response(
+#             {"detail": "Unauthorized access"}, status=status.HTTP_403_FORBIDDEN
+#         )
+
+#     # Get all posts created by the author
+#     author = get_object_or_404(Author, uuid=author_id)
+#     posts = Post.objects.filter(author=author).order_by("-published")
+
+#     serializer = PostSerializer(posts, many=True)
+#     return Response(serializer.data, status=status.HTTP_200_OK)
+
+
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def stream_page(request, author_id):
-    # Get the current user
-    author = get_object_or_404(Author, uuid=author_id)
+    # Get the current author
+    current_author = get_object_or_404(Author, uuid=author_id)
 
-    # Get user's followers and friends
-    following = author.following.all()
-    friends = author.followers.all()  # assuming mutual followers are friends
+    # Authors that the current author is following
+    following_authors = current_author.following.all()
 
-    # Public posts visible to everyone
-    public_posts = Post.objects.filter(visibility="PUBLIC")
+    # Authors who are following the current author
+    followers = current_author.followers.all()
 
-    # Unlisted posts only for followers
-    unlisted_posts = Post.objects.filter(author__in=following, visibility="UNLISTED")
+    # Mutual friends: authors with a mutual following relationship
+    mutual_friends = following_authors.filter(id__in=followers.values("id"))
 
-    # Friends-only posts only for friends
-    friends_posts = Post.objects.filter(author__in=friends, visibility="FRIENDS")
+    # Posts visible to the current author
+    public_posts = Post.objects.filter(
+        visibility="PUBLIC", author__in=following_authors
+    )
 
-    # Author’s own posts (including private, only visible to the author)
-    personal_posts = Post.objects.filter(author=author)
+    unlisted_posts = Post.objects.filter(
+        visibility="UNLISTED", author__in=following_authors
+    )
 
-    # Combine all posts
+    friends_posts = Post.objects.filter(visibility="FRIENDS", author__in=mutual_friends)
+
+    # Current author's own posts (including private)
+    personal_posts = Post.objects.filter(author=current_author)
+
+    # Combine all posts and avoid using `intersection` directly
     all_posts = (
         (public_posts | unlisted_posts | friends_posts | personal_posts)
         .distinct()
@@ -414,6 +536,8 @@ def stream_page(request, author_id):
     result_page = paginator.paginate_queryset(all_posts, request)
     serializer = PostSerializer(result_page, many=True)
     return paginator.get_paginated_response(serializer.data)
+
+
 @csrf_exempt
 @api_view(['POST'])
 @permission_classes([AllowAny])
@@ -431,7 +555,7 @@ def signup(request):
             status=status.HTTP_201_CREATED,
         )
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
+
 @csrf_exempt
 @api_view(['POST'])
 @permission_classes([AllowAny])
@@ -545,4 +669,3 @@ def unfollow_author(request, author_id):
         return Response({
             "detail": str(e)
         }, status=status.HTTP_400_BAD_REQUEST)
-
