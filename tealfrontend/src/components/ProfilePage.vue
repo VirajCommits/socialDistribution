@@ -18,18 +18,21 @@
     <!-- Main Content -->
     <div class="main-content">
       <div class="profile-banner"></div>
-      
+
       <div class="profile-header">
         <div class="profile-image-wrapper">
-          <img 
-            :src="user?.profileImage || 'https://i.pinimg.com/originals/f1/0f/f7/f10ff70a7155e5ab666bcdd1b45b726d.jpg'" 
-            :alt="user?.displayName || 'Profile'" 
+          <img
+            :src="
+              user?.profileImage ||
+              'https://i.pinimg.com/originals/f1/0f/f7/f10ff70a7155e5ab666bcdd1b45b726d.jpg'
+            "
+            :alt="user?.displayName || 'Profile'"
             class="profile-image"
             @error="handleImageError"
           />
         </div>
-        <h1 class="display-name">{{ user?.displayName || 'Loading...' }}</h1>
-        
+        <h1 class="display-name">{{ user?.displayName || "Loading..." }}</h1>
+
         <!-- New Stats Section -->
         <div class="stats-container">
           <div class="stat-card">
@@ -73,7 +76,7 @@
               <span>{{ user.username }}</span>
             </div>
           </div>
-          
+
           <div class="info-card">
             <i class="fas fa-envelope"></i>
             <div class="info-content">
@@ -107,7 +110,7 @@
 </template>
 
 <script>
-import axios from 'axios';
+import axios from "axios";
 
 export default {
   name: "ProfilePage",
@@ -117,8 +120,8 @@ export default {
       stats: {
         following: 0,
         followers: 0,
-        friends: 0
-      }
+        friends: 0,
+      },
     };
   },
   async mounted() {
@@ -141,35 +144,38 @@ export default {
     async fetchStats() {
       try {
         // Debug logs
-        console.log('User data:', this.user);
-        console.log('User UUID:', this.user.uuid);
-        const url = `http://localhost:8000/project/service/api/authors/${this.user.uuid}/stats/`;
-        console.log('Requesting URL:', url);
-        
+        console.log("User data:", this.user);
+        console.log("User UUID:", this.user.uuid);
+        const url = `http://localhost:8000/service/api/authors/${this.user.uuid}/stats/`;
+        console.log("Requesting URL:", url);
+
         const response = await axios.get(url, {
           headers: {
             Authorization: `Token ${localStorage.getItem("token")}`,
           },
         });
-        console.log('Response:', response.data);
+        console.log("Response:", response.data);
         this.stats = response.data;
       } catch (error) {
         console.error("Error fetching stats:", error);
         // More detailed error logging
         if (error.response) {
-          console.log('Error status:', error.response.status);
+          console.log("Error status:", error.response.status);
         }
       }
     },
     handleImageError(e) {
       // Fallback if even the default image fails to load
-      e.target.src = 'https://i.pinimg.com/originals/f1/0f/f7/f10ff70a7155e5ab666bcdd1b45b726d.jpg';
-    }
+      e.target.src =
+        "https://i.pinimg.com/originals/f1/0f/f7/f10ff70a7155e5ab666bcdd1b45b726d.jpg";
+    },
   },
 };
 </script>
 
 <style scoped>
+/* General Container Styling */
+
 .profile-container {
   height: 100vh;
   overflow-y: auto;
@@ -182,7 +188,7 @@ export default {
   align-items: center;
   padding: 1rem 2rem;
   background-color: white;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   position: fixed;
   top: 0;
   left: 0;
@@ -221,9 +227,10 @@ export default {
   gap: 0.5rem;
 }
 
-.action-button:hover, .back-button:hover {
+.action-button:hover,
+.back-button:hover {
   transform: translateY(-2px);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .profile-banner {
@@ -249,7 +256,7 @@ export default {
   height: 100%;
   border-radius: 50%;
   border: 8px solid white;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
   object-fit: cover;
 }
 
@@ -283,7 +290,7 @@ export default {
   background: white;
   padding: 2rem 1.5rem;
   border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -310,7 +317,8 @@ export default {
   font-weight: 600;
 }
 
-.info-content span, .info-content a {
+.info-content span,
+.info-content a {
   color: #1a1a1a;
   text-decoration: none;
   word-break: break-all;
@@ -336,14 +344,14 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
   transition: all 0.3s ease;
   position: relative;
   overflow: hidden;
 }
 
 .stat-card::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 0;
@@ -354,7 +362,7 @@ export default {
 
 .stat-card:hover {
   transform: translateY(-5px);
-  box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
 }
 
 .stat-value {

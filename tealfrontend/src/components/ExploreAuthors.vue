@@ -165,7 +165,7 @@ export default {
 
       try {
         const response = await axios.get(
-          "http://localhost:8000/project/service/api/authors/",
+          "http://localhost:8000/service/api/authors/",
           {
             headers: {
               Authorization: `Token ${this.token}`,
@@ -201,7 +201,7 @@ export default {
 
       try {
         const response = await axios.get(
-          "http://localhost:8000/project/service/api/authors/pending_requests/",
+          "http://localhost:8000/service/api/authors/pending_requests/",
           {
             headers: {
               Authorization: `Token ${this.token}`,
@@ -222,7 +222,7 @@ export default {
       try {
         const targetUuid = authorId.split("/").pop();
         await axios.post(
-          `http://localhost:8000/project/service/api/authors/${targetUuid}/send_follow_request/`,
+          `http://localhost:8000/service/api/authors/${targetUuid}/send_follow_request/`,
           null,
           {
             headers: { Authorization: `Token ${this.token}` },
@@ -249,7 +249,7 @@ export default {
       try {
         const authorUUID = author.id.split("/").pop();
         await axios.delete(
-          `http://localhost:8000/project/service/api/authors/${authorUUID}/remove_follow_request/`,
+          `http://localhost:8000/service/api/authors/${authorUUID}/remove_follow_request/`,
           {
             headers: { Authorization: `Token ${this.token}` },
           }
@@ -356,7 +356,7 @@ export default {
       try {
         const authorUUID = this.selectedAuthor.id.split("/").pop();
         await axios.delete(
-          `http://localhost:8000/project/service/api/authors/${authorUUID}/unfollow/`,
+          `http://localhost:8000/service/api/authors/${authorUUID}/unfollow/`,
           null,
           {
             headers: { Authorization: `Token ${this.token}` },
