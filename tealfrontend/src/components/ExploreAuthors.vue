@@ -31,7 +31,7 @@
 
             <div class="author-info">
               <h2 class="author-name">{{ author.displayName }}</h2>
-              <div class="author-stats">
+              <div class="get-author-stats">
                 <span class="stat">
                   <i class="fab fa-github"></i>
                   <a
@@ -523,7 +523,7 @@ h1 {
   margin: 0.5rem 0;
 }
 
-.author-stats {
+.get-author-stats {
   display: flex;
   flex-direction: column;
   align-items: center;

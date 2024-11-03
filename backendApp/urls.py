@@ -94,4 +94,9 @@ urlpatterns = [
         views.check_relationship_status,
         name="check-relationship-status",
     ),
+    path(
+        "service/api/authors/<uuid:author_uuid>/stats/",
+        views.get_author_stats,
+        name="get-author-stats",
+    ),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

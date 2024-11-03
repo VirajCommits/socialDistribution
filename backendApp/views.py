@@ -717,3 +717,19 @@ def check_relationship_status(request, author_uuid):
     except Author.DoesNotExist:
         return Response({'error': 'Author not found'}, status=404)
 
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_author_stats(request, author_uuid):
+    try:
+        author = get_object_or_404(Author, uuid=author_uuid)
+        followers_count = author.followers.count()
+        following_count = author.following.count()
+        friends_count = author.followers.filter(id__in=author.following.values('id')).count()
+        
+        return Response({
+            'followers': followers_count,
+            'following': following_count,
+            'friends': friends_count
+        })
+    except Author.DoesNotExist:
+        return Response({'error': 'Author not found'}, status=404)
