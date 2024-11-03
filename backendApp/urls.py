@@ -94,26 +94,10 @@ urlpatterns = [
         name="remove-follow-request",
     ),
     # Fetch all authors path
-    path("service/api/authors/", views.get_all_authors, name="get_all_authors"),
-    # To get the posts for displaying on the stream
-    path(
-        "service/api/authors/<path:author_id>/stream/",
-        views.stream_page,
-        name="stream_page",
-    ),
-    path(
-        "service/api/authors/<str:author_id>/unfollow/",
-        views.unfollow_author,
-        name="unfollow_author",
-    ),
-    path(
-        "service/api/authors/<uuid:author_uuid>/relationship/",
-        views.check_relationship_status,
-        name="check-relationship-status",
-    ),
-    path(
-        "service/api/authors/<uuid:author_uuid>/stats/",
-        views.get_author_stats,
-        name="get-author-stats",
-    ),
+    path('service/api/authors/', views.get_all_authors, name='get_all_authors'),
+
+    # To get the posts for displaying on the stream 
+    path("service/api/authors/<path:author_id>/stream/", views.stream_page, name="stream_page"),
+    
+    path('service/api/authors/<str:author_id>/unfollow/', views.unfollow_author, name='unfollow_author'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

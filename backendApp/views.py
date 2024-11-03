@@ -32,6 +32,7 @@ from asgiref.sync import async_to_sync
 def defaultPath(request):
     return render(request, "index.html")
 
+
 @swagger_auto_schema(
     method='post',
     operation_summary="Create a new post for a specific author",
@@ -70,7 +71,8 @@ def defaultPath(request):
                 properties={
                     'errors': openapi.Schema(
                         type=openapi.TYPE_OBJECT,
-                        additional_properties=openapi.Schema(type=openapi.TYPE_ARRAY, items=openapi.Schema(type=openapi.TYPE_STRING)),
+                        additional_properties=openapi.Schema(
+                            type=openapi.TYPE_ARRAY, items=openapi.Schema(type=openapi.TYPE_STRING)),
                     )
                 }
             )
@@ -163,6 +165,7 @@ def create_post(request, author_serial):
 
 def vueTest(request):
     return render(request, "index.html")
+
 
 @swagger_auto_schema(
     method='GET',
@@ -333,7 +336,7 @@ def post_detail(request, author_serial, post_serial):
     # If the action doesn't match any known value, return an error
     return Response({"detail": "Invalid request"}, status=status.HTTP_400_BAD_REQUEST)
 
-  
+
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def post_comment(request, post_id):
@@ -549,6 +552,7 @@ def send_follow_request(request, author_uuid):
 
     return Response({'detail': 'Follow request sent.'}, status=status.HTTP_201_CREATED)
 
+
 @swagger_auto_schema(
     method='POST',
     operation_summary="Accept a follow request from an author",
@@ -642,6 +646,7 @@ def accept_follow_request(request, author_uuid):
 
     return Response({'detail': 'Follow request accepted.'}, status=status.HTTP_200_OK)
 
+
 @swagger_auto_schema(
     method='POST',
     operation_summary="Decline a follow request from an author",
@@ -712,6 +717,7 @@ def decline_follow_request(request, author_uuid):
 
     return Response({'detail': 'Follow request declined.'}, status=status.HTTP_200_OK)
 
+
 @swagger_auto_schema(
     method='GET',
     operation_summary="Retrieve pending follow requests",
@@ -761,6 +767,7 @@ def get_follow_requests(request):
     serializer = FollowRequestSerializer(pending_requests, many=True)
     return Response(serializer.data)
 
+
 @swagger_auto_schema(
     method='GET',
     operation_summary="Retrieve all authors excluding the current user",
@@ -777,7 +784,8 @@ def get_follow_requests(request):
                         'displayName': openapi.Schema(type=openapi.TYPE_STRING, example='Author Name'),
                         'followers': openapi.Schema(
                             type=openapi.TYPE_ARRAY,
-                            items=openapi.Schema(type=openapi.TYPE_STRING, example='follower-uuid')
+                            items=openapi.Schema(
+                                type=openapi.TYPE_STRING, example='follower-uuid')
                         )
                     }
                 )
@@ -976,7 +984,8 @@ def stream_page(request, author_id):
             schema=openapi.Schema(
                 type=openapi.TYPE_OBJECT,
                 properties={
-                    'errors': openapi.Schema(type=openapi.TYPE_OBJECT)  # Detailed error messages
+                    # Detailed error messages
+                    'errors': openapi.Schema(type=openapi.TYPE_OBJECT)
                 }
             )
         )
@@ -1067,6 +1076,7 @@ def login(request):
         {"error": "Invalid Credentials"}, status=status.HTTP_401_UNAUTHORIZED
     )
 
+
 @swagger_auto_schema(
     method='get',
     operation_summary="Get all pending outgoing follow requests",
@@ -1108,6 +1118,7 @@ def get_pending_requests(request):
     )
     serializer = FollowRequestSerializer(pending_requests, many=True)
     return Response(serializer.data)
+
 
 @swagger_auto_schema(
     method='delete',
@@ -1182,6 +1193,7 @@ def remove_follow_request(request, author_uuid):
     )
 
     return Response({'detail': 'Follow request removed.'}, status=status.HTTP_200_OK)
+
 
 @swagger_auto_schema(
     method='delete',
@@ -1271,6 +1283,7 @@ def unfollow_author(request, author_id):
             "detail": str(e)
         }, status=status.HTTP_400_BAD_REQUEST)
 
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def check_relationship_status(request, author_uuid):
@@ -1278,11 +1291,13 @@ def check_relationship_status(request, author_uuid):
     try:
         current_author = request.user
         target_author = get_object_or_404(Author, uuid=author_uuid)
-        
-        is_following = target_author.followers.filter(id=current_author.id).exists()
-        is_followed_by = current_author.followers.filter(id=target_author.id).exists()
+
+        is_following = target_author.followers.filter(
+            id=current_author.id).exists()
+        is_followed_by = current_author.followers.filter(
+            id=target_author.id).exists()
         is_friend = is_following and is_followed_by
-        
+
         return Response({
             'is_following': is_following,
             'is_followed_by': is_followed_by,
@@ -1291,6 +1306,7 @@ def check_relationship_status(request, author_uuid):
     except Author.DoesNotExist:
         return Response({'error': 'Author not found'}, status=404)
 
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_author_stats(request, author_uuid):
@@ -1298,8 +1314,9 @@ def get_author_stats(request, author_uuid):
         author = get_object_or_404(Author, uuid=author_uuid)
         followers_count = author.followers.count()
         following_count = author.following.count()
-        friends_count = author.followers.filter(id__in=author.following.values('id')).count()
-        
+        friends_count = author.followers.filter(
+            id__in=author.following.values('id')).count()
+
         return Response({
             'followers': followers_count,
             'following': following_count,
