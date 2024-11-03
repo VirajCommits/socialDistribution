@@ -6,25 +6,27 @@ from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 
 schema_view = get_schema_view(
-   openapi.Info(
-      title="Your API Title",
-      default_version='v1',
-      description="API documentation for your project",
-      terms_of_service="https://www.google.com/policies/terms/",
-      contact=openapi.Contact(email="contact@yourapi.local"),
-      license=openapi.License(name="BSD License"),
-   ),
-   public=True,
+    openapi.Info(
+        title="Your API Title",
+        default_version='v1',
+        description="API documentation for your project",
+        terms_of_service="https://www.google.com/policies/terms/",
+        contact=openapi.Contact(email="contact@yourapi.local"),
+        license=openapi.License(name="BSD License"),
+    ),
+    public=True,
 )
 
 urlpatterns = [
     path("", views.defaultPath, name="defaultPath"),
     path("api/signup/", views.signup, name="signup"),
     path("api/login/", views.login, name="login"),
-    
+
     # Swagger paths
-    path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
-    path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
+    path('swagger/', schema_view.with_ui('swagger',
+         cache_timeout=0), name='schema-swagger-ui'),
+    path('redoc/', schema_view.with_ui('redoc',
+         cache_timeout=0), name='schema-redoc'),
 
     # Post-related paths
     path(
@@ -104,4 +106,6 @@ urlpatterns = [
         views.unfollow_author,
         name="unfollow_author",
     ),
+    path('service/api/authors/<uuid:author_uuid>/relationship/',
+         views.check_relationship_status, name='check-relationship-status'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
