@@ -1,13 +1,15 @@
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework import status
 from django.utils import timezone
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 
+
 from .serializers import PostSerializer, CommentSerializer, LikeSerializer
 from .models import Author, Post, Comment, Like, FollowRequest
+
 
 from django.shortcuts import get_object_or_404
 from urllib.parse import urlparse
@@ -25,6 +27,7 @@ import markdown2
 from .serializers import FollowRequestSerializer
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
+
 
 def defaultPath(request):
     return render(request, "index.html")
@@ -80,24 +83,29 @@ def create_post(request, author_serial):
     """
     Create a new post for a specific author.
 
+
     When to Use:
     - Use this endpoint to create a new post for the author specified by author_serial.
+
 
     How to Use:
     - Send a POST request with the post data in the request body.
 
+
     Why to Use:
     - To add new content created by an author to the database.
 
+
     Why Not to Use:
     - If the author does not exist or if required fields are missing from the request.
-    
+
     Request Body:
     {
       "title": "string",         # Title of the post (Required)
       "content": "string",       # Content of the post (Required)
       "published": "datetime"    # Date and time when the post was published (Optional)
     }
+
 
     Response:
     - 201 Created:
@@ -126,13 +134,16 @@ def create_post(request, author_serial):
     data["author_id"] = author.uuid  # This will be accepted by the serializer
 
     if 'content' in data:
-        data['content'] = markdown2.markdown(data['content'], extras=["fenced-code-blocks", "tables"])
+        data['content'] = markdown2.markdown(
+            data['content'], extras=["fenced-code-blocks", "tables"])
 
     if 'title' in data:
-        data['title'] = markdown2.markdown(data['title'], extras=["fenced-code-blocks", "tables"])
-    
+        data['title'] = markdown2.markdown(
+            data['title'], extras=["fenced-code-blocks", "tables"])
+
     if 'description' in data:
-        data['description'] = markdown2.markdown(data['description'], extras=["fenced-code-blocks", "tables"])
+        data['description'] = markdown2.markdown(data['description'], extras=[
+                                                 "fenced-code-blocks", "tables"])
     # Remove fields that are generated automatically and 'author' if present
     data.pop("id", None)
     data.pop("page", None)
@@ -230,14 +241,14 @@ def post_detail(request, author_serial, post_serial):
     author = get_object_or_404(Author, uuid=parsed_author_id)
     post = get_object_or_404(Post, author=author, id=post_id)
 
-   
+    # If the request is a GET and no action is specified, return the post details
     if request.method == "GET" and not action:
         serializer = PostSerializer(post)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+    # Handle "like" action for POST request
     if action == "like":
         if request.method == "POST":
-            # Handle like creation directly here
             data = request.data.copy()
             data["author_id"] = str(author.id)
             data["post_id"] = str(post.id)
@@ -250,6 +261,8 @@ def post_detail(request, author_serial, post_serial):
             else:
                 print("Serializer errors:", serializer.errors)
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    # Handle fetching likes
     if action == "likes":
         if request.method == "GET":
             likes = Like.objects.filter(post=post).order_by("-published")
@@ -259,11 +272,28 @@ def post_detail(request, author_serial, post_serial):
     # Handle comments if specified in the URL
     elif action == "comments":
         if request.method == "GET":
+            # Filter comments based on visibility rules
+            current_user = request.user
+            if post.visibility == "FRIENDS":
+                # Check if the current user is a friend or the post's author
+                is_friend = (
+                    current_user in author.followers.all()
+                    and current_user in author.following.all()
+                )
+                if not (is_friend or current_user == author):
+                    # If the current user is not a friend or the post's author, filter out comments
+                    return Response(
+                        {"detail": "You are not authorized to view these comments."},
+                        status=status.HTTP_403_FORBIDDEN,
+                    )
+
+            # Return all comments, as visibility rules are satisfied
             comments = Comment.objects.filter(post=post).order_by("-published")
             serializer = CommentSerializer(
                 comments, many=True, context={"request": request}
             )
             return Response(serializer.data, status=status.HTTP_200_OK)
+
         elif request.method == "POST":
             # Handle comment creation directly here
             data = request.data.copy()
@@ -278,28 +308,107 @@ def post_detail(request, author_serial, post_serial):
                 print("Serializer errors:", serializer.errors)
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    # Handle DELETE request
+    # Handle DELETE request to delete the post
     elif request.method == "DELETE" and not action:
         post.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-    # Handle PUT request for updating the post
+    # Handle PUT request to update the post
     elif request.method == "PUT" and not action:
-        
         data = request.data
         if "content" in data:
             markdown_content = data["content"]
-            html_content = markdown2.markdown(markdown_content, extras=["fenced-code-blocks", "tables"])
-            data["content"] = html_content  # Replace Markdown with HTML for saving
-    
+            html_content = markdown2.markdown(
+                markdown_content, extras=["fenced-code-blocks", "tables"]
+            )
+            # Replace Markdown with HTML for saving
+            data["content"] = html_content
+
         serializer = PostSerializer(post, data=data, partial=True)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    # If the action doesn't match any known value
+    # If the action doesn't match any known value, return an error
     return Response({"detail": "Invalid request"}, status=status.HTTP_400_BAD_REQUEST)
+
+  
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def post_comment(request, post_id):
+    """
+    API to handle posting a comment for a specific post by post_id.
+    """
+    post = get_object_or_404(Post, id=post_id)
+    author = request.user
+
+    data = request.data.copy()
+    data["author_id"] = str(author.id)
+    data["post_id"] = str(post.id)
+
+    serializer = CommentSerializer(data=data)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    else:
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def like_post(request, post_id):
+    """
+    API to handle liking a specific post by post_id.
+    """
+    post = get_object_or_404(Post, id=post_id)
+    author = request.user
+
+    # Check if the user has already liked the post
+    existing_like = Like.objects.filter(post=post, author=author).first()
+    if existing_like:
+        return Response(
+            {"detail": "You have already liked this post."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    data = {
+        "author_id": str(author.id),
+        "post_id": str(post.id),
+        "post": post.id,
+    }
+
+    serializer = LikeSerializer(data=data)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    else:
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def stream_page_comments(request, post_id):
+    """
+    API to fetch comments for a specific post by post_id.
+    """
+    post = get_object_or_404(Post, id=post_id)
+    comments = Comment.objects.filter(post=post).order_by("-published")
+    serializer = CommentSerializer(comments, many=True)
+    return Response(serializer.data, status=200)
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def stream_page_likes(request, post_id):
+    """
+    API to fetch likes for a specific post by post_id.
+    """
+    post = get_object_or_404(Post, id=post_id)
+    likes = Like.objects.filter(post=post).order_by("-published")
+    serializer = LikeSerializer(likes, many=True)
+    return Response(serializer.data, status=200)
+
 
 @swagger_auto_schema(
     method='GET',
@@ -395,25 +504,26 @@ def get_all_posts(request, author_serial):
 @permission_classes([IsAuthenticated])
 def send_follow_request(request, author_uuid):
     current_author = request.user  # The one sending the request
-    target_author = get_object_or_404(Author, uuid=author_uuid)  # The one receiving the request
-    
+    # The one receiving the request
+    target_author = get_object_or_404(Author, uuid=author_uuid)
+
     # Check if already following
     if current_author in target_author.followers.all():
         return Response(
-            {'detail': 'You are already following this author.'}, 
+            {'detail': 'You are already following this author.'},
             status=status.HTTP_400_BAD_REQUEST
         )
-    
+
     # Check if a pending request already exists
     existing_request = FollowRequest.objects.filter(
         actor=current_author,
         object=target_author,
         accepted=False
     ).exists()
-    
+
     if existing_request:
         return Response(
-            {'detail': 'A follow request is already pending.'}, 
+            {'detail': 'A follow request is already pending.'},
             status=status.HTTP_400_BAD_REQUEST
         )
 
@@ -430,7 +540,7 @@ def send_follow_request(request, author_uuid):
         {
             'type': 'follow_request_notification',
             'count': FollowRequest.objects.filter(
-                object=target_author, 
+                object=target_author,
                 accepted=False
             ).count(),
             'message': f'{current_author.displayName} sent you a follow request'
@@ -487,37 +597,38 @@ def send_follow_request(request, author_uuid):
 @permission_classes([IsAuthenticated])
 def accept_follow_request(request, author_uuid):
     current_author = request.user  # The one accepting
-    requesting_author = get_object_or_404(Author, uuid=author_uuid)  # The one who sent request
-    
+    requesting_author = get_object_or_404(
+        Author, uuid=author_uuid)  # The one who sent request
+
     # Check if request still exists and hasn't been resolved
     follow_request = FollowRequest.objects.filter(
         actor=requesting_author,
         object=current_author,
         accepted=False
     ).first()
-    
+
     if not follow_request:
         return Response(
-            {'detail': 'Follow request no longer exists or has already been resolved.'}, 
+            {'detail': 'Follow request no longer exists or has already been resolved.'},
             status=status.HTTP_404_NOT_FOUND
         )
-    
+
     # Check if already following
     if requesting_author in current_author.followers.all():
         follow_request.delete()
         return Response(
-            {'detail': 'This author is already following you.'}, 
+            {'detail': 'This author is already following you.'},
             status=status.HTTP_400_BAD_REQUEST
         )
-    
+
     # Accept the request
     follow_request.accepted = True
     follow_request.save()
-    
+
     # Add to followers
     current_author.followers.add(requesting_author)
     current_author.save()
-    
+
     # Notify the requesting author through WebSocket
     channel_layer = get_channel_layer()
     async_to_sync(channel_layer.group_send)(
@@ -528,7 +639,7 @@ def accept_follow_request(request, author_uuid):
             'status': 'accepted'
         }
     )
-    
+
     return Response({'detail': 'Follow request accepted.'}, status=status.HTTP_200_OK)
 
 @swagger_auto_schema(
@@ -571,23 +682,23 @@ def accept_follow_request(request, author_uuid):
 def decline_follow_request(request, author_uuid):
     current_author = request.user
     requesting_author = get_object_or_404(Author, uuid=author_uuid)
-    
+
     # Check if request still exists and hasn't been resolved
     follow_requests = FollowRequest.objects.filter(
         actor=requesting_author,
         object=current_author,
         accepted=False
     )
-    
+
     if not follow_requests.exists():
         return Response(
-            {'detail': 'Follow request no longer exists or has already been resolved.'}, 
+            {'detail': 'Follow request no longer exists or has already been resolved.'},
             status=status.HTTP_404_NOT_FOUND
         )
-    
+
     # Delete all pending requests from this user
     follow_requests.delete()
-    
+
     # Notify the requesting author through WebSocket
     channel_layer = get_channel_layer()
     async_to_sync(channel_layer.group_send)(
@@ -598,9 +709,8 @@ def decline_follow_request(request, author_uuid):
             'message': 'Follow request declined'
         }
     )
-    
-    return Response({'detail': 'Follow request declined.'}, status=status.HTTP_200_OK)
 
+    return Response({'detail': 'Follow request declined.'}, status=status.HTTP_200_OK)
 
 @swagger_auto_schema(
     method='GET',
@@ -646,7 +756,8 @@ def decline_follow_request(request, author_uuid):
 def get_follow_requests(request):
     current_author = request.user
     # Filter to only show pending follow requests
-    pending_requests = FollowRequest.objects.filter(object=current_author, accepted=False)
+    pending_requests = FollowRequest.objects.filter(
+        object=current_author, accepted=False)
     serializer = FollowRequestSerializer(pending_requests, many=True)
     return Response(serializer.data)
 
@@ -700,18 +811,18 @@ def get_all_authors(request):
         current_author = request.user
         # Exclude the current user and get all other authors
         authors = Author.objects.exclude(id=current_author.id)
-        
+
         author_data = []
         for author in authors:
             # Serialize the author data
             serialized_author = AuthorSerializer(author).data
-            
+
             # Add followers data
             followers = author.followers.all()
             serialized_author['followers'] = [
                 str(follower.uuid) for follower in followers
             ]
-            
+
             author_data.append(serialized_author)
 
         return Response(author_data)
@@ -724,79 +835,108 @@ def get_all_authors(request):
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
-@swagger_auto_schema(
-    method='GET',
-    operation_summary="Retrieve posts for a specific author",
-    operation_description="Fetches a list of posts for the author identified by `author_id`. This includes public posts, unlisted posts visible to followers, friends-only posts, and the author's own posts.",
-    manual_parameters=[
-        openapi.Parameter('author_id', openapi.IN_PATH, description="The UUID of the author whose posts are being fetched", type=openapi.TYPE_STRING)
-    ],
-    responses={
-        200: openapi.Response(
-            description="A paginated list of posts for the author",
-            schema=openapi.Schema(
-                type=openapi.TYPE_OBJECT,
-                properties={
-                    'count': openapi.Schema(type=openapi.TYPE_INTEGER, example=10),
-                    'next': openapi.Schema(type=openapi.TYPE_STRING, example='http://localhost/api/stream/?page=2'),
-                    'previous': openapi.Schema(type=openapi.TYPE_STRING, example='http://localhost/api/stream/?page=1'),
-                    'results': openapi.Schema(
-                        type=openapi.TYPE_ARRAY,
-                        items=openapi.Schema(
-                            type=openapi.TYPE_OBJECT,
-                            properties={
-                                'id': openapi.Schema(type=openapi.TYPE_STRING, example='post-id'),
-                                'author_id': openapi.Schema(type=openapi.TYPE_STRING, example='author-uuid'),
-                                'title': openapi.Schema(type=openapi.TYPE_STRING, example='Post Title'),
-                                'content': openapi.Schema(type=openapi.TYPE_STRING, example='Content of the post'),
-                                'visibility': openapi.Schema(type=openapi.TYPE_STRING, example='PUBLIC'),
-                                'published': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_DATETIME, example='2023-11-02T12:00:00Z')
-                            }
-                        )
-                    )
-                }
-            )
-        ),
-        404: openapi.Response(
-            description="Author not found",
-            schema=openapi.Schema(
-                type=openapi.TYPE_OBJECT,
-                properties={
-                    'detail': openapi.Schema(type=openapi.TYPE_STRING, example='Not found.')
-                }
-            )
-        )
-    },
-    tags=["Posts"]
-)
+# @swagger_auto_schema(
+#     method='GET',
+#     operation_summary="Retrieve posts for a specific author",
+#     operation_description="Fetches a list of posts for the author identified by `author_id`. This includes public posts, unlisted posts visible to followers, friends-only posts, and the author's own posts.",
+#     manual_parameters=[
+#         openapi.Parameter('author_id', openapi.IN_PATH, description="The UUID of the author whose posts are being fetched", type=openapi.TYPE_STRING)
+#     ],
+#     responses={
+#         200: openapi.Response(
+#             description="A paginated list of posts for the author",
+#             schema=openapi.Schema(
+#                 type=openapi.TYPE_OBJECT,
+#                 properties={
+#                     'count': openapi.Schema(type=openapi.TYPE_INTEGER, example=10),
+#                     'next': openapi.Schema(type=openapi.TYPE_STRING, example='http://localhost/api/stream/?page=2'),
+#                     'previous': openapi.Schema(type=openapi.TYPE_STRING, example='http://localhost/api/stream/?page=1'),
+#                     'results': openapi.Schema(
+#                         type=openapi.TYPE_ARRAY,
+#                         items=openapi.Schema(
+#                             type=openapi.TYPE_OBJECT,
+#                             properties={
+#                                 'id': openapi.Schema(type=openapi.TYPE_STRING, example='post-id'),
+#                                 'author_id': openapi.Schema(type=openapi.TYPE_STRING, example='author-uuid'),
+#                                 'title': openapi.Schema(type=openapi.TYPE_STRING, example='Post Title'),
+#                                 'content': openapi.Schema(type=openapi.TYPE_STRING, example='Content of the post'),
+#                                 'visibility': openapi.Schema(type=openapi.TYPE_STRING, example='PUBLIC'),
+#                                 'published': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_DATETIME, example='2023-11-02T12:00:00Z')
+#                             }
+#                         )
+#                     )
+#                 }
+#             )
+#         ),
+#         404: openapi.Response(
+#             description="Author not found",
+#             schema=openapi.Schema(
+#                 type=openapi.TYPE_OBJECT,
+#                 properties={
+#                     'detail': openapi.Schema(type=openapi.TYPE_STRING, example='Not found.')
+#                 }
+#             )
+#         )
+#     },
+#     tags=["Posts"]
+# )
+# @api_view(["GET"])
+# @permission_classes([AllowAny])
+# def author_posts(request, author_id):
+#     # Ensure the logged-in author is requesting their own posts
+#     if str(request.user.uuid) != author_id:
+#         return Response(
+#             {"detail": "Unauthorized access"}, status=status.HTTP_403_FORBIDDEN
+#         )
+
+
+#     # Get all posts created by the author
+#     author = get_object_or_404(Author, uuid=author_id)
+#     posts = Post.objects.filter(author=author).order_by("-published")
+
+
+#     serializer = PostSerializer(posts, many=True)
+#     return Response(serializer.data, status=status.HTTP_200_OK)
+
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def stream_page(request, author_id):
-    # Get the current user
-    author = get_object_or_404(Author, uuid=author_id)
+    # Get the current author
+    current_author = get_object_or_404(Author, uuid=author_id)
 
-    # Get user's followers and friends
-    following = author.following.all()
-    friends = author.followers.all()  # assuming mutual followers are friends
+    # Authors that the current author is following
+    following_authors = current_author.following.all()
 
-    # Public posts visible to everyone
+    # Authors who are following the current author
+    followers = current_author.followers.all()
+
+    # Mutual friends: authors with a mutual following relationship
+    mutual_friends = following_authors.filter(id__in=followers.values("id"))
+
+    # Posts from mutual friends with visibility PUBLIC, PRIVATE, UNLISTED, FRIENDS
+    mutual_friends_posts = Post.objects.filter(
+        author__in=mutual_friends,
+        visibility__in=["PUBLIC", "PRIVATE", "UNLISTED", "FRIENDS"]
+    )
+
+    # Posts from authors the current author is following (but not mutual friends) with visibility PUBLIC and UNLISTED
+    other_following_authors = following_authors.exclude(
+        id__in=mutual_friends.values("id"))
+    other_following_posts = Post.objects.filter(
+        author__in=other_following_authors,
+        visibility__in=["PUBLIC", "UNLISTED"]
+    )
+
+    # Public posts from any author (visible to everyone)
     public_posts = Post.objects.filter(visibility="PUBLIC")
 
-    # Unlisted posts only for followers
-    unlisted_posts = Post.objects.filter(author__in=following, visibility="UNLISTED")
+    # Current author's own posts (including private)
+    personal_posts = Post.objects.filter(author=current_author)
 
-    # Friends-only posts only for friends
-    friends_posts = Post.objects.filter(author__in=friends, visibility="FRIENDS")
-
-    # Author’s own posts (including private, only visible to the author)
-    personal_posts = Post.objects.filter(author=author)
-
-    # Combine all posts
-    all_posts = (
-        (public_posts | unlisted_posts | friends_posts | personal_posts)
-        .distinct()
-        .order_by("-published")
-    )
+    # Combine all posts and avoid duplicates
+    all_posts = (public_posts |
+                 mutual_friends_posts | other_following_posts | personal_posts
+                 ).distinct().order_by("-published")
 
     # Paginate and return response
     paginator = PageNumberPagination()
@@ -804,6 +944,7 @@ def stream_page(request, author_id):
     result_page = paginator.paginate_queryset(all_posts, request)
     serializer = PostSerializer(result_page, many=True)
     return paginator.get_paginated_response(serializer.data)
+
 
 @swagger_auto_schema(
     method='POST',
@@ -859,6 +1000,7 @@ def signup(request):
             status=status.HTTP_201_CREATED,
         )
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 @swagger_auto_schema(
     method='POST',
@@ -927,7 +1069,7 @@ def login(request):
 
 @swagger_auto_schema(
     method='get',
-    operation_summary="Get all follow requests",
+    operation_summary="Get all pending outgoing follow requests",
     operation_description="Get all pending follow requests sent by the current user.",
     responses={
         200: openapi.Response(
@@ -1009,22 +1151,22 @@ def remove_follow_request(request, author_uuid):
     """Remove a pending follow request"""
     current_author = request.user
     target_author = get_object_or_404(Author, uuid=author_uuid)
-    
+
     follow_requests = FollowRequest.objects.filter(
         actor=current_author,
         object=target_author,
         accepted=False
     )
-    
+
     if not follow_requests.exists():
         return Response(
-            {'detail': 'No follow request found.'}, 
+            {'detail': 'No follow request found.'},
             status=status.HTTP_404_NOT_FOUND
         )
-    
+
     # Delete all pending requests from this user
     follow_requests.delete()
-    
+
     # Notify the target author through WebSocket
     channel_layer = get_channel_layer()
     async_to_sync(channel_layer.group_send)(
@@ -1032,13 +1174,13 @@ def remove_follow_request(request, author_uuid):
         {
             'type': 'follow_request_notification',
             'count': FollowRequest.objects.filter(
-                object=target_author, 
+                object=target_author,
                 accepted=False
             ).count(),
             'message': f'{current_author.displayName} removed their follow request'
         }
     )
-    
+
     return Response({'detail': 'Follow request removed.'}, status=status.HTTP_200_OK)
 
 @swagger_auto_schema(
@@ -1092,12 +1234,12 @@ def unfollow_author(request, author_id):
     try:
         target_author = get_object_or_404(Author, uuid=author_id)
         current_author = request.user  # Since your user model is Author
-        
+
         # Remove from followers
         if current_author in target_author.followers.all():
             target_author.followers.remove(current_author)
             target_author.save()
-            
+
             # Notify through WebSocket
             channel_layer = get_channel_layer()
             async_to_sync(channel_layer.group_send)(
@@ -1105,13 +1247,13 @@ def unfollow_author(request, author_id):
                 {
                     'type': 'follow_request_notification',
                     'count': FollowRequest.objects.filter(
-                        object=target_author, 
+                        object=target_author,
                         accepted=False
                     ).count(),
                     'message': f'{current_author.displayName} unfollowed you'
                 }
             )
-            
+
             return Response({
                 "detail": f"Successfully unfollowed {target_author.displayName}"
             }, status=status.HTTP_200_OK)
@@ -1119,7 +1261,7 @@ def unfollow_author(request, author_id):
             return Response({
                 "detail": "You are not following this author"
             }, status=status.HTTP_400_BAD_REQUEST)
-            
+
     except Author.DoesNotExist:
         return Response({
             "detail": "Author not found"
