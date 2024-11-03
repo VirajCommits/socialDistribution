@@ -277,7 +277,7 @@ export default {
         try {
             const authorUUID = author.id.split("/").pop();
             const response = await axios.get(
-                `http://localhost:8000/project/service/api/authors/${authorUUID}/relationship/`,
+                `http://localhost:8000/service/api/authors/${authorUUID}/relationship/`,
                 {
                     headers: { Authorization: `Token ${this.token}` }
                 }

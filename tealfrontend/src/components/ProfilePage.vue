@@ -143,7 +143,7 @@ export default {
         // Debug logs
         console.log('User data:', this.user);
         console.log('User UUID:', this.user.uuid);
-        const url = `http://localhost:8000/project/service/api/authors/${this.user.uuid}/stats/`;
+        const url = `http://localhost:8000/service/api/authors/${this.user.uuid}/stats/`;
         console.log('Requesting URL:', url);
         
         const response = await axios.get(url, {
@@ -172,15 +172,6 @@ export default {
 <style scoped>
 
 /* General Container Styling */
-div {
-  padding-top: 10px;
-  max-width: 800px;
-  margin: 0 auto;
-  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-  background-color: #f5f6fa;
-  border-radius: 15px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  position: relative; /* To contain the absolutely positioned back-button */
 
 .profile-container {
   height: 100vh;
