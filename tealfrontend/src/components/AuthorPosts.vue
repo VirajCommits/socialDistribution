@@ -103,9 +103,7 @@ export default {
   },
   computed: {
     filteredPosts() {
-      return this.posts.filter(
-        (post) => post.visibility === "PUBLIC" && post.visibility !== null
-      );
+      return this.posts.filter((post) => post.visibility !== "INVISIBLE");
     },
   },
   mounted() {
