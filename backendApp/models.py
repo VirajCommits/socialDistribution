@@ -33,6 +33,10 @@ class Author(AbstractUser):
         self.followers.add(requester)
         self.save()
 
+    def is_friend_with(self, other_author):
+        """Check if this author and other_author are mutual followers (friends)"""
+        return (self.followers.filter(id=other_author.id).exists() and 
+                other_author.followers.filter(id=self.id).exists())
 
 class Post(models.Model):
     VISIBILITY_CHOICES = [
