@@ -170,6 +170,18 @@ export default {
 </script>
 
 <style scoped>
+
+/* General Container Styling */
+div {
+  padding-top: 10px;
+  max-width: 800px;
+  margin: 0 auto;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #f5f6fa;
+  border-radius: 15px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  position: relative; /* To contain the absolutely positioned back-button */
+
 .profile-container {
   height: 100vh;
   overflow-y: auto;

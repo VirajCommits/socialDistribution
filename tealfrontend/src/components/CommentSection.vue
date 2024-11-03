@@ -53,7 +53,7 @@ export default {
   methods: {
     async fetchComments() {
       try {
-        const apiUrl = `http://localhost:8000/project/service/api/posts/${this.postId}/comments/`;
+        const apiUrl = `http://localhost:8000/service/api/posts/${this.postId}/comments/`;
         const response = await axios.get(apiUrl);
         this.comments = response.data || [];
         this.loading = false;
@@ -69,7 +69,7 @@ export default {
       try {
         // Retrieve the author ID of the logged-in user from local storage
         const currentAuthorId = JSON.parse(localStorage.getItem("user")).id;
-        const apiUrl = `http://localhost:8000/project/service/api/posts/${this.postId}/comment/`;
+        const apiUrl = `http://localhost:8000/service/api/posts/${this.postId}/comment/`;
         const payload = {
           content: this.newComment,
           contentType: "text/plain",

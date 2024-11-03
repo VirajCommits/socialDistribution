@@ -99,7 +99,7 @@ TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
         # Update 'DIRS' to point to the templates directory
-        "DIRS": [os.path.join(BASE_DIR, 'backendApp', 'templates')],
+        "DIRS": [BASE_DIR/'backendApp/static/vue'],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -161,6 +161,10 @@ USE_TZ = True
 
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR/'backendApp/static/vue'),
+]
+
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
