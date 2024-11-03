@@ -1240,6 +1240,21 @@ def remove_follow_request(request, author_uuid):
     },
     tags=["Follow Requests"]
 )
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def generate_post_link(request):
+    initial_url = request.data.get('url')
+    if not initial_url:
+        return Response({'error': 'No URL provided.'}, status=400)
+
+    # Extract the post_serial from the initial URL
+    post_serial = initial_url.rstrip('/').split('/')[-1]
+    # Generate the new link
+    generated_link = f'http://localhost:8080/{post_serial}'
+
+    return Response({'link': generated_link}, status=200)
+
+
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated])
 def unfollow_author(request, author_id):
