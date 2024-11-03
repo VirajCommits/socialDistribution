@@ -119,4 +119,19 @@ urlpatterns = [
         views.get_author_stats,
         name="get-author-stats",
     ),
+    path(
+        "service/api/authors/<uuid:author_uuid>/followers/",
+        views.get_author_followers,
+        name="get-author-followers"
+    ),
+    path(
+        "service/api/authors/<uuid:author_uuid>/following/",
+        views.get_author_following,
+        name="get-author-following"
+    ),
+    path(
+        "service/api/authors/<uuid:author_uuid>/friends/",
+        views.get_author_friends,
+        name="get-author-friends"
+    ),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
