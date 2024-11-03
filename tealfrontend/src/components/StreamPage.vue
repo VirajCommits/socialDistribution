@@ -115,6 +115,24 @@
           <div class="post-actions">
             <LikeButton :postId="post.id" :authorId="authID" />
             <CommentSection :postId="post.id" :authorId="authID" />
+            <button
+              v-if="post.visibility === 'PUBLIC'"
+              class="repost-button"
+              @click="repostPost(post.id)"
+            >
+              <i class="fas fa-retweet"></i> Repost
+            </button>
+
+            <!-- Display repost count -->
+            <span v-if="post.repost_count > 0" class="repost-count">
+              {{ post.repost_count }} {{ post.repost_count === 1 ? 'Repost' : 'Reposts' }}
+            </span>
+          </div>
+
+          <!-- Repost Info -->
+          <div v-if="post.original_author" class="repost-info">
+            <i class="fas fa-retweet"></i>
+            <span>Reposted by {{ post.original_author.displayName }}</span>
           </div>
         </div>
       </div>
@@ -385,6 +403,31 @@ export default {
       // Remove all HTML tags
       return content.replace(/<\/?[^>]+(>|$)/g, "").trim();
     },
+    async repostPost(postId) {
+      try {
+        // Retrieve the author ID of the logged-in user from local storage
+        const currentAuthorId = JSON.parse(localStorage.getItem("user")).id;
+        
+        const apiUrl = `http://localhost:8000/service/api/posts/${postId}/repost/`;
+        const payload = {
+          author_id: currentAuthorId, // Include the author ID if your API requires it
+        };
+
+        // Make the POST request to repost the post
+        const response = await axios.post(apiUrl, payload, {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Token ${localStorage.getItem("token")}`, // Include the authentication token
+          },
+        });
+
+        alert(response.data.message); // Notify success
+        // Optionally, handle the response to update the UI or fetch the updated post list
+      } catch (error) {
+        console.error("Error reposting post:", error.response || error);
+        alert(error.response?.data?.error || 'An error occurred while reposting.');
+      }
+    }
   },
 };
 </script>
