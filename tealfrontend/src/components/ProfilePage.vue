@@ -61,7 +61,7 @@ export default {
 <style scoped>
 /* General Container Styling */
 div {
-  padding: 60px 20px 20px 20px;
+  padding-top: 10px;
   max-width: 800px;
   margin: 0 auto;
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;

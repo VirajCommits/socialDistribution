@@ -226,7 +226,7 @@ export default {
 
     async fetchStreamPosts() {
       try {
-        const apiUrl = `http://localhost:8000/project/service/api/authors/${encodeURIComponent(
+        const apiUrl = `http://localhost:8000/service/api/authors/${encodeURIComponent(
           this.authID
         )}/stream/`;
 
@@ -246,7 +246,7 @@ export default {
     async fetchInitialCount() {
       try {
         const response = await axios.get(
-          'http://localhost:8000/project/service/api/authors/follow_requests/',
+          'http://localhost:8000/service/api/authors/follow_requests/',
           {
             headers: { Authorization: `Token ${localStorage.getItem('token')}` },
           }
@@ -286,7 +286,7 @@ export default {
     fetchFollowRequests() {
       axios
         .get(
-          `http://localhost:8000/project/service/api/authors/follow_requests/`,
+          `http://localhost:8000/service/api/authors/follow_requests/`,
           {
             headers: {
               Authorization: `Token ${localStorage.getItem("token")}`,
@@ -304,7 +304,7 @@ export default {
     acceptFollowRequest(uuid) {
       axios
         .post(
-          `http://localhost:8000/project/service/api/authors/${uuid}/accept_follow_request/`,
+          `http://localhost:8000/service/api/authors/${uuid}/accept_follow_request/`,
           null,
           {
             headers: {
@@ -324,7 +324,7 @@ export default {
     declineFollowRequest(uuid) {
       axios
         .post(
-          `http://localhost:8000/project/service/api/authors/${uuid}/decline_follow_request/`,
+          `http://localhost:8000/service/api/authors/${uuid}/decline_follow_request/`,
           null,
           {
             headers: {

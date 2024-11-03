@@ -167,7 +167,7 @@ export default {
     // Fetch the post data from the backend
     async fetchPost() {
       try {
-        const apiUrl = `http://localhost:8000/project/service/api/authors/${encodeURIComponent(
+        const apiUrl = `http://localhost:8000/service/api/authors/${encodeURIComponent(
           this.authID
         )}/posts/${encodeURIComponent(this.id)}`;
 
@@ -271,7 +271,7 @@ export default {
     // Save the edited post
     async savePost() {
       try {
-        const apiUrl = `http://localhost:8000/project/service/api/authors/${encodeURIComponent(
+        const apiUrl = `http://localhost:8000/service/api/authors/${encodeURIComponent(
           this.authID
         )}/posts/${encodeURIComponent(this.id)}`;
 
