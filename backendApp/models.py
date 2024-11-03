@@ -7,13 +7,14 @@ import uuid
 class Author(AbstractUser):
     type = models.CharField(max_length=6, default="author", editable=False)
     uuid = models.UUIDField(unique=True, editable=False, default=uuid.uuid4)
-    id = models.URLField(primary_key=True, max_length=200)
+    id = models.URLField(primary_key=True, max_length=500)
     host = models.URLField(default="http://localhost:8000/project/")
     displayName = models.CharField(max_length=255)
     github = models.URLField(blank=True)
-    profileImage = models.URLField(blank=True)
-    page = models.URLField(max_length=200)
-    followers = models.ManyToManyField('self', symmetrical=False, related_name='following', blank=True)
+    profileImage = models.URLField(blank=True, max_length=500)
+    page = models.URLField(max_length=500)
+    followers = models.ManyToManyField(
+        'self', symmetrical=False, related_name='following', blank=True)
 
     def __str__(self):
         return self.displayName or self.username
@@ -32,11 +33,12 @@ class Author(AbstractUser):
         self.followers.add(requester)
         self.save()
 
+
 class Post(models.Model):
     VISIBILITY_CHOICES = [
         ("PUBLIC", "Public"),
         ("FRIENDS", "Friends"),
-        ("PRIVATE", "Private"),
+        ("UNLISTED", "Unlisted"),
         ("INVISIBLE", "Invisible"),
     ]
 
@@ -58,7 +60,8 @@ class Post(models.Model):
     contentType = models.CharField(max_length=50, choices=CONTENT_TYPE_CHOICES)
     content = models.TextField(blank=True, null=True)
     image = models.ImageField(upload_to="post_images/", blank=True, null=True)
-    author = models.ForeignKey(Author, on_delete=models.CASCADE, related_name="posts")
+    author = models.ForeignKey(
+        Author, on_delete=models.CASCADE, related_name="posts")
     published = models.DateTimeField()
     visibility = models.CharField(max_length=10, choices=VISIBILITY_CHOICES)
     edited_at = models.DateTimeField(auto_now=True)
@@ -80,25 +83,30 @@ class Post(models.Model):
         super(Post, self).save(*args, **kwargs)
 
 
-
 class FollowRequest(models.Model):
-    uuid = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    uuid = models.UUIDField(
+        primary_key=True, default=uuid.uuid4, editable=False)
     type = models.CharField(max_length=10, default='follow')
     summary = models.CharField(max_length=256, blank=True)
-    actor = models.ForeignKey(Author, related_name='sent_follow_requests', on_delete=models.CASCADE)
-    object = models.ForeignKey(Author, related_name='received_follow_requests', on_delete=models.CASCADE)
+    actor = models.ForeignKey(
+        Author, related_name='sent_follow_requests', on_delete=models.CASCADE)
+    object = models.ForeignKey(
+        Author, related_name='received_follow_requests', on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
     accepted = models.BooleanField(default=False)
 
     def __str__(self):
         return f"{self.actor.displayName} wants to follow {self.object.displayName}"
 
+
 class Comment(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name="comments")
+    post = models.ForeignKey(
+        Post, on_delete=models.CASCADE, related_name="comments")
     author = models.ForeignKey(Author, on_delete=models.CASCADE)
     content = models.TextField()
-    contentType = models.CharField(max_length=50, choices=Post.CONTENT_TYPE_CHOICES)
+    contentType = models.CharField(
+        max_length=50, choices=Post.CONTENT_TYPE_CHOICES)
     published = models.DateTimeField(default=timezone.now)
 
     def __str__(self):
@@ -108,7 +116,8 @@ class Comment(models.Model):
 class Like(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     author = models.ForeignKey(Author, on_delete=models.CASCADE)
-    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name="likes")
+    post = models.ForeignKey(
+        Post, on_delete=models.CASCADE, related_name="likes")
     published = models.DateTimeField(default=timezone.now)
 
     def __str__(self):

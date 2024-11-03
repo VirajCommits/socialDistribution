@@ -91,8 +91,7 @@
           <select v-model="editablePost.visibility" id="visibility">
             <option value="PUBLIC">Public</option>
             <option value="FRIENDS">Friends</option>
-            <option value="PRIVATE">Private</option>
-            <option value="INVISIBLE">Invisible</option>
+            <option value="UNLISTED">Unlisted</option>
           </select>
         </div>
 

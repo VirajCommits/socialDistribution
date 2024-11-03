@@ -36,7 +36,9 @@ export default {
 
         // Check if the logged-in author has liked the post
         const currentAuthorId = JSON.parse(localStorage.getItem("user")).id;
-        this.liked = response.data.some((like) => like.author.id === currentAuthorId);
+        this.liked = response.data.some(
+          (like) => like.author.id === currentAuthorId
+        );
       } catch (error) {
         console.error("Error fetching likes:", error.response || error);
         this.errorMessage = "An error occurred while fetching likes.";
