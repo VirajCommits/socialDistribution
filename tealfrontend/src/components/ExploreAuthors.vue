@@ -31,7 +31,7 @@
 
             <div class="author-info">
               <h2 class="author-name">{{ author.displayName }}</h2>
-              <div class="author-stats">
+              <div class="get-author-stats">
                 <span class="stat">
                   <i class="fab fa-github"></i>
                   <a
@@ -51,9 +51,15 @@
                 </span>
               </div>
             </div>
-
             <button
-              v-if="isFollowing(author)"
+              v-if="isFriend(author)"
+              @click="handleUnfollow(author)"
+              class="friend-button"
+            >
+              <i class="fas fa-user-friends"></i> Friend
+            </button>
+            <button
+              v-else-if="isFollowing(author)"
               @click="handleUnfollow(author)"
               class="following-button"
             >
@@ -118,6 +124,7 @@ export default {
       authors: [],
       pendingRequests: [],
       following: [],
+      relationships: {},
       token: localStorage.getItem("token"),
       showUnfollowModal: false,
       selectedAuthor: null,
@@ -136,9 +143,10 @@ export default {
       return;
     }
   },
-  mounted() {
+  async mounted() {
     if (this.token) {
-      this.fetchAuthors();
+      await this.fetchAuthors();
+      await this.fetchAllRelationships();
       this.startPolling();
       this.setupWebSocket();
     }
@@ -265,13 +273,32 @@ export default {
         console.error("Error removing follow request:", error);
       }
     },
+    async fetchRelationshipStatus(author) {
+        try {
+            const authorUUID = author.id.split("/").pop();
+            const response = await axios.get(
+                `http://localhost:8000/project/service/api/authors/${authorUUID}/relationship/`,
+                {
+                    headers: { Authorization: `Token ${this.token}` }
+                }
+            );
+            this.relationships[author.id] = response.data;
+        } catch (error) {
+            console.error("Error fetching relationship status:", error);
+        }
+    },
+
+    async fetchAllRelationships() {
+        for (const author of this.authors) {
+            await this.fetchRelationshipStatus(author);
+        }
+    },
+
+    isFriend(author) {
+        return this.relationships[author.id]?.is_friend || false;
+    },
     isFollowing(author) {
-      const currentUserUUID = localStorage.getItem("uuid");
-      return author.followers?.some((follower) =>
-        typeof follower === "string"
-          ? follower.includes(currentUserUUID)
-          : follower.uuid === currentUserUUID
-      );
+        return this.relationships[author.id]?.is_following || false;
     },
     hasPendingRequest(author) {
       return this.pendingRequests.includes(author.id);
@@ -279,6 +306,7 @@ export default {
     startPolling() {
       this.pollInterval = setInterval(() => {
         this.fetchAuthors();
+        this.fetchAllRelationships();
       }, 5000); // Poll every 5 seconds
     },
     stopPolling() {
@@ -292,12 +320,13 @@ export default {
 
       const ws = new WebSocket(`ws://localhost:8000/ws/notifications/${uuid}/`);
 
-      ws.onmessage = (event) => {
+      ws.onmessage = async (event) => {
         const data = JSON.parse(event.data);
         if (data.type === "follow_request_notification") {
           // Refresh the data when a follow request is updated
-          this.fetchAuthors();
-          this.fetchPendingRequests();
+          await this.fetchAuthors();
+          await this.fetchAllRelationships();
+          await this.fetchPendingRequests();
 
           // Show notification to user
           if (data.message) {
@@ -494,7 +523,7 @@ h1 {
   margin: 0.5rem 0;
 }
 
-.author-stats {
+.get-author-stats {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -525,6 +554,7 @@ h1 {
 }
 
 /* Button styles */
+.friend-button,
 .follow-button,
 .following-button,
 .pending-button {
@@ -556,8 +586,17 @@ h1 {
   color: white;
 }
 
+.friend-button {
+  background: #c233ea;
+  color: white;
+}
+
 .following-button:hover {
   background: #ff4444;
+}
+
+.friend-button:hover {
+    background: #ff4444;  
 }
 
 .pending-button {
