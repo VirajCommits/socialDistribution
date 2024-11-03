@@ -13,18 +13,23 @@ const routes = [
   { path: '/signup', component: UserSignup },
   { path: '/', redirect: '/login' }, 
   { path: '/stream', component: StreamPage }, 
-  {path: '/profile', component: ProfilePage},
-  {path: '/addPost', component: CreatePost},
-  {path: '/posts/all', component: AuthorPosts},
-  {path: '/posts/create', component: CreatePost},
-  {path: '/explore', component: ExploreAuthors},
+  { path: '/profile', component: ProfilePage },
+  { path: '/addPost', component: CreatePost },
+  { path: '/posts/all', component: AuthorPosts },
+  { path: '/posts/create', component: CreatePost },
+  { path: '/explore', component: ExploreAuthors },
   {
-    path: '/edit-post/:id',  // Ensure this path matches the structure you're using
+    path: '/edit-post/:id',
     name: 'EditPost',
     component: EditPost,
-    props: true,  // Enable route params to be passed as props
+    props: true,
   },
-
+  {
+    path: '/swagger',
+    beforeEnter() {
+      window.location.href = 'http://localhost:8080/swagger';  // Redirect to Django's Swagger UI
+    }
+  }
 ];
 
 const router = createRouter({

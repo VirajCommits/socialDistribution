@@ -1,19 +1,36 @@
-from django.urls import path, include
+from django.urls import path
 from . import views
 from django.conf import settings
 from django.conf.urls.static import static
+from drf_yasg.views import get_schema_view
+from drf_yasg import openapi
+
+schema_view = get_schema_view(
+   openapi.Info(
+      title="Your API Title",
+      default_version='v1',
+      description="API documentation for your project",
+      terms_of_service="https://www.google.com/policies/terms/",
+      contact=openapi.Contact(email="contact@yourapi.local"),
+      license=openapi.License(name="BSD License"),
+   ),
+   public=True,
+)
 
 urlpatterns = [
     path("", views.defaultPath, name="defaultPath"),
     path("api/signup/", views.signup, name="signup"),
     path("api/login/", views.login, name="login"),
-
+    
+    # Swagger paths
+    path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
+    path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
 
     # Post-related paths
     path('service/api/authors/<path:author_serial>/posts/', views.create_post, name='create_post'),
     path('service/api/authors/<path:author_serial>/posts/all/', views.get_all_posts, name='get_all_posts'),
     path('service/api/authors/<path:author_serial>/posts/<path:post_serial>', views.post_detail, name='post_detail'),
-
+    
     # Follow request paths
     path('service/api/authors/<uuid:author_uuid>/send_follow_request/', views.send_follow_request, name='send_follow_request'),
     path('service/api/authors/<uuid:author_uuid>/accept_follow_request/', views.accept_follow_request, name='accept_follow_request'),

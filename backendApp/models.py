@@ -47,14 +47,11 @@ class Post(models.Model):
         ("image/jpeg;base64", "JPEG Image (Base64)"),
     ]
 
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=True)
     type = models.CharField(max_length=10, default="post")
     title = models.CharField(max_length=200)
     page = models.URLField()
     description = models.TextField(blank=True, null=True)
-    image = models.ImageField(
-        upload_to="posts/images/", blank=True, null=True
-    )  # Field for image
     contentType = models.CharField(max_length=50, choices=CONTENT_TYPE_CHOICES)
     content = models.TextField(blank=True, null=True)
     image = models.ImageField(upload_to="post_images/", blank=True, null=True)
