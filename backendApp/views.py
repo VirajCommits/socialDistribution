@@ -547,3 +547,23 @@ def unfollow_author(request, author_id):
             "detail": str(e)
         }, status=status.HTTP_400_BAD_REQUEST)
 
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def check_relationship_status(request, author_uuid):
+    """Check complete relationship status between current user and target author"""
+    try:
+        current_author = request.user
+        target_author = get_object_or_404(Author, uuid=author_uuid)
+        
+        is_following = target_author.followers.filter(id=current_author.id).exists()
+        is_followed_by = current_author.followers.filter(id=target_author.id).exists()
+        is_friend = is_following and is_followed_by
+        
+        return Response({
+            'is_following': is_following,
+            'is_followed_by': is_followed_by,
+            'is_friend': is_friend
+        })
+    except Author.DoesNotExist:
+        return Response({'error': 'Author not found'}, status=404)
+

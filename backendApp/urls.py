@@ -29,4 +29,5 @@ urlpatterns = [
     path("service/api/authors/<path:author_id>/stream/", views.stream_page, name="stream_page"),
     
     path('service/api/authors/<str:author_id>/unfollow/', views.unfollow_author, name='unfollow_author'),
+    path('service/api/authors/<uuid:author_uuid>/relationship/', views.check_relationship_status, name='check-relationship-status'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
