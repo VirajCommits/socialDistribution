@@ -16,15 +16,12 @@ export default {
       type: String,
       required: true,
     },
-    authorId: {
-      type: String,
-      required: true,
-    },
   },
   data() {
     return {
       liked: false,
       likeCount: 0,
+      errorMessage: "",
     };
   },
   mounted() {
@@ -33,35 +30,48 @@ export default {
   methods: {
     async fetchLikes() {
       try {
-        const apiUrl = `http://localhost:8000/service/api/authors/${this.authorId}/posts/${this.postId}/likes/`;
+        const apiUrl = `http://localhost:8000/service/api/posts/${this.postId}/likes/`;
         const response = await axios.get(apiUrl);
         this.likeCount = response.data.length || 0;
 
-        // Check if the logged-in author has liked the post (for demo purposes, assuming authorId)
+        // Check if the logged-in author has liked the post
+        const currentAuthorId = JSON.parse(localStorage.getItem("user")).id;
         this.liked = response.data.some(
-          (like) => like.author.id === this.authorId
+          (like) => like.author.id === currentAuthorId
         );
       } catch (error) {
         console.error("Error fetching likes:", error.response || error);
+        this.errorMessage = "An error occurred while fetching likes.";
       }
     },
     async toggleLike() {
       try {
-        const apiUrl = `http://localhost:8000/service/api/authors/${this.authorId}/posts/${this.postId}/like/`;
+        const currentAuthorId = JSON.parse(localStorage.getItem("user")).id;
+        const apiUrl = `http://localhost:8000/service/api/posts/${this.postId}/like/`;
+
         if (this.liked) {
-          // Unlike logic can be implemented if needed (requires backend support for DELETE like)
-          alert("Unliking not implemented yet.");
+          // If unliking is needed, add the logic here
+          alert("Unliking is not implemented yet.");
         } else {
-          await axios.post(apiUrl, {
-            author_id: this.authorId,
+          // Post a like
+          const payload = {
+            author_id: currentAuthorId, // Include the author ID
             post_id: this.postId,
+          };
+
+          await axios.post(apiUrl, payload, {
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Token ${localStorage.getItem("token")}`, // Include the token for authentication
+            },
           });
 
-          this.liked = true;
-          this.likeCount += 1;
+          this.liked = true; // Mark as liked
+          this.likeCount += 1; // Increment the like count
         }
       } catch (error) {
         console.error("Error toggling like:", error.response || error);
+        this.errorMessage = "An error occurred while liking the post.";
       }
     },
   },

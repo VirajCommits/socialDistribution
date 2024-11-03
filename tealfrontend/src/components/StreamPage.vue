@@ -39,13 +39,23 @@
         </div>
         <div class="modal-body">
           <div v-if="followRequests.length" class="requests-list">
-            <div v-for="request in followRequests" :key="request.uuid" class="request-item">
+            <div
+              v-for="request in followRequests"
+              :key="request.uuid"
+              class="request-item"
+            >
               <span class="user-name">{{ request.actor.displayName }}</span>
               <div class="request-actions">
-                <button class="accept-btn" @click="acceptFollowRequest(request.actor.uuid)">
+                <button
+                  class="accept-btn"
+                  @click="acceptFollowRequest(request.actor.uuid)"
+                >
                   <i class="fas fa-check"></i> Accept
                 </button>
-                <button class="decline-btn" @click="declineFollowRequest(request.actor.uuid)">
+                <button
+                  class="decline-btn"
+                  @click="declineFollowRequest(request.actor.uuid)"
+                >
                   <i class="fas fa-times"></i> Decline
                 </button>
               </div>
@@ -82,7 +92,12 @@
               <i class="fas fa-user-circle"></i>
               <span>{{ post.author.displayName }}</span>
             </div>
-            <span :class="['visibility-badge', `visibility-${post.visibility.toLowerCase()}`]">
+            <span
+              :class="[
+                'visibility-badge',
+                `visibility-${post.visibility.toLowerCase()}`,
+              ]"
+            >
               {{ post.visibility }}
             </span>
           </div>
@@ -146,13 +161,13 @@ export default {
     // Initialize both functionalities
     await this.initializeUser();
     await this.fetchStreamPosts();
-    
-    if (localStorage.getItem('token')) {
+
+    if (localStorage.getItem("token")) {
       this.initializeWebSocket();
       await this.fetchInitialCount();
     } else {
-      console.error('No authentication token found');
-      this.$router.push('/login');
+      console.error("No authentication token found");
+      this.$router.push("/login");
     }
   },
   beforeUnmount() {
@@ -163,28 +178,32 @@ export default {
   methods: {
     // WebSocket related methods
     initializeWebSocket() {
-      const uuid = localStorage.getItem('uuid');
-      const token = localStorage.getItem('token');
-      
+      const uuid = localStorage.getItem("uuid");
+      const token = localStorage.getItem("token");
+
       if (!uuid || !token) {
-        console.error('Missing authentication information');
+        console.error("Missing authentication information");
         return;
       }
 
       try {
-        this.socket = new WebSocket(`ws://localhost:8000/ws/notifications/${uuid}/`);
-        
+        this.socket = new WebSocket(
+          `ws://localhost:8000/ws/notifications/${uuid}/`
+        );
+
         this.socket.onopen = () => {
-          console.log('WebSocket connected successfully');
-          this.socket.send(JSON.stringify({
-            type: 'authenticate',
-            token: token
-          }));
+          console.log("WebSocket connected successfully");
+          this.socket.send(
+            JSON.stringify({
+              type: "authenticate",
+              token: token,
+            })
+          );
         };
 
         this.socket.onmessage = (event) => {
           const data = JSON.parse(event.data);
-          if (data.type === 'follow_request') {
+          if (data.type === "follow_request") {
             this.followRequestCount = data.count;
             if (this.followRequestsVisible) {
               this.fetchFollowRequests();
@@ -193,7 +212,7 @@ export default {
         };
 
         this.socket.onclose = (event) => {
-          console.log('WebSocket connection closed:', event.code, event.reason);
+          console.log("WebSocket connection closed:", event.code, event.reason);
           setTimeout(() => {
             if (this.$el && document.body.contains(this.$el)) {
               this.initializeWebSocket();
@@ -202,10 +221,10 @@ export default {
         };
 
         this.socket.onerror = (error) => {
-          console.error('WebSocket error:', error);
+          console.error("WebSocket error:", error);
         };
       } catch (error) {
-        console.error('Error initializing WebSocket:', error);
+        console.error("Error initializing WebSocket:", error);
       }
     },
 
@@ -246,14 +265,16 @@ export default {
     async fetchInitialCount() {
       try {
         const response = await axios.get(
-          'http://localhost:8000/service/api/authors/follow_requests/',
+          "http://localhost:8000/service/api/authors/follow_requests/",
           {
-            headers: { Authorization: `Token ${localStorage.getItem('token')}` },
+            headers: {
+              Authorization: `Token ${localStorage.getItem("token")}`,
+            },
           }
         );
         this.followRequestCount = response.data.length;
       } catch (error) {
-        console.error('Error fetching initial count:', error);
+        console.error("Error fetching initial count:", error);
       }
     },
 
@@ -382,7 +403,7 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   position: sticky;
   top: 0;
   z-index: 100;
@@ -416,14 +437,26 @@ export default {
   font-size: 1rem;
 }
 
-.nav-button.explore { background: #4f46e5; color: white; }
-.nav-button.requests { background: #f3f4f6; color: #4b5563; }
-.nav-button.profile { background: #f3f4f6; color: #4b5563; }
-.nav-button.logout { background: #ef4444; color: white; }
+.nav-button.explore {
+  background: #4f46e5;
+  color: white;
+}
+.nav-button.requests {
+  background: #f3f4f6;
+  color: #4b5563;
+}
+.nav-button.profile {
+  background: #f3f4f6;
+  color: #4b5563;
+}
+.nav-button.logout {
+  background: #ef4444;
+  color: white;
+}
 
 .nav-button:hover {
   transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .notification-badge {
@@ -445,9 +478,15 @@ export default {
 }
 
 @keyframes badgePop {
-  0% { transform: scale(0); }
-  80% { transform: scale(1.2); }
-  100% { transform: scale(1); }
+  0% {
+    transform: scale(0);
+  }
+  80% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 .notification-badge {
@@ -551,7 +590,8 @@ export default {
   gap: 8px;
 }
 
-.accept-btn, .decline-btn {
+.accept-btn,
+.decline-btn {
   padding: 8px 16px;
   border: none;
   border-radius: 8px;
@@ -593,7 +633,7 @@ export default {
 .post-card {
   background: white;
   border-radius: 12px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
   margin-bottom: 1.5rem;
   overflow: hidden;
 }
@@ -619,9 +659,23 @@ export default {
   font-weight: 500;
 }
 
-.visibility-public { background: #dcfce7; color: #166534; }
-.visibility-friends { background: #fef3c7; color: #92400e; }
-.visibility-private { background: #fee2e2; color: #991b1b; }
+.visibility-public {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.visibility-unlisted {
+  background: #8e44ad;
+  color: #ffffff;
+}
+.visibility-friends {
+  background: #fef3c7;
+  color: #92400e;
+}
+.visibility-private {
+  background: #fee2e2;
+  color: #991b1b;
+}
 
 .post-content {
   padding: 1.5rem;
@@ -646,13 +700,15 @@ export default {
 }
 
 /* Loading & Empty States */
-.loading-state, .empty-state {
+.loading-state,
+.empty-state {
   text-align: center;
   padding: 4rem 2rem;
   color: #6b7280;
 }
 
-.loading-state i, .empty-state i {
+.loading-state i,
+.empty-state i {
   font-size: 3rem;
   margin-bottom: 1rem;
 }
@@ -670,7 +726,7 @@ export default {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 /* Responsive Design */

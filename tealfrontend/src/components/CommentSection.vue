@@ -38,10 +38,6 @@ export default {
       type: String,
       required: true,
     },
-    authorId: {
-      type: String,
-      required: true,
-    },
   },
   data() {
     return {
@@ -57,7 +53,7 @@ export default {
   methods: {
     async fetchComments() {
       try {
-        const apiUrl = `http://localhost:8000/service/api/authors/${this.authorId}/posts/${this.postId}/comments/list/`;
+        const apiUrl = `http://localhost:8000/service/api/posts/${this.postId}/comments/`;
         const response = await axios.get(apiUrl);
         this.comments = response.data || [];
         this.loading = false;
@@ -71,20 +67,25 @@ export default {
       if (!this.newComment.trim()) return;
 
       try {
-        const apiUrl = `http://localhost:8000/service/api/authors/${this.authorId}/posts/${this.postId}/comments/`;
+        // Retrieve the author ID of the logged-in user from local storage
+        const currentAuthorId = JSON.parse(localStorage.getItem("user")).id;
+        const apiUrl = `http://localhost:8000/service/api/posts/${this.postId}/comment/`;
         const payload = {
           content: this.newComment,
           contentType: "text/plain",
+          author_id: currentAuthorId, // Include the author ID
         };
 
+        // Make the POST request to submit the comment
         await axios.post(apiUrl, payload, {
           headers: {
             "Content-Type": "application/json",
+            Authorization: `Token ${localStorage.getItem("token")}`, // Include the authentication token
           },
         });
 
         this.newComment = ""; // Clear the input field
-        this.fetchComments(); // Refresh comments
+        this.fetchComments(); // Refresh comments after submission
       } catch (error) {
         console.error("Error submitting comment:", error.response || error);
         this.errorMessage = "An error occurred while submitting the comment.";
