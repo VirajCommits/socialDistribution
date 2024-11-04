@@ -809,8 +809,11 @@ def get_follow_requests(request):
 def get_all_authors(request):
     try:
         current_author = request.user
-        # Exclude the current user and get all other authors
-        authors = Author.objects.exclude(id=current_author.id)
+
+        # Exclude the current user, admin users, and superusers
+        authors = Author.objects.exclude(id=current_author.id).filter(
+            is_staff=False, is_superuser=False
+        )
 
         author_data = []
         for author in authors:
