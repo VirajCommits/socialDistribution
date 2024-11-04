@@ -7,6 +7,7 @@ import CreatePost from '../components/CreatePost.vue';
 import AuthorPosts from '../components/AuthorPosts.vue';
 import EditPost from '../components/EditPost.vue';
 import ExploreAuthors from '../components/ExploreAuthors.vue';
+import PostDetail from '../components/PostDetail.vue';
 
 const routes = [
   { path: '/login', component: UserLogin },
@@ -23,6 +24,12 @@ const routes = [
     name: 'EditPost',
     component: EditPost,
     props: true,  // Enable route params to be passed as props
+  },
+  {
+    path: '/posts/:postId',  // Path for viewing a specific post by ID
+    name: 'PostDetail',
+    component: PostDetail,
+    props: true,  // Pass route params as props
   },
 
 ];

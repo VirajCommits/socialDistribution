@@ -25,7 +25,16 @@ urlpatterns = [
     # path("", views.index, name="index"),
     path("admin/", admin.site.urls),
     path("project/", include("backendApp.urls")),
-    path("service/api/authors/<path:author_id>/stream/", views.stream_page, name="stream_page"),
+    path(
+        "service/api/authors/<path:author_id>/stream/",
+        views.stream_page,
+        name="stream_page",
+    ),
+    path(
+        "service/api/posts/<uuid:post_id>/",
+        views.get_post_by_link,
+        name="get_post_by_link",
+    ),
 ]
 
 if settings.DEBUG:

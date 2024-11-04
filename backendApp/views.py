@@ -562,6 +562,21 @@ def stream_page(request, author_id):
     serializer = PostSerializer(result_page, many=True)
     return paginator.get_paginated_response(serializer.data)
 
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def get_post_by_link(request, post_id):
+    """
+    Fetch a post by ID if it's either public or unlisted.
+    """
+    post = get_object_or_404(Post, id=post_id)
+
+    # Check if the post is public or unlisted
+    if post.visibility in ["PUBLIC", "UNLISTED"]:
+        serializer = PostSerializer(post)
+        return Response(serializer.data, status=200)
+    
+    # If the post is private or friends-only, return a 403 Forbidden
+    return Response({"detail": "You are not authorized to view this post."}, status=403)
 
 @csrf_exempt
 @api_view(["POST"])

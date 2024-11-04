@@ -82,6 +82,9 @@ class Post(models.Model):
             self.published = timezone.now()
         super(Post, self).save(*args, **kwargs)
 
+    def get_post_url(self):
+        return f"{self.author.host}service/api/posts/{self.id}/link/"
+
 
 class FollowRequest(models.Model):
     uuid = models.UUIDField(
