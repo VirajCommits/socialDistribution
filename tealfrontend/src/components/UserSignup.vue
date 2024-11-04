@@ -310,7 +310,7 @@ export default {
       
       try {
         const response = await axios.post(
-          "http://localhost:8000/api/signup/",
+          "/signup/",
           {
             username: this.username,
             email: this.email,
