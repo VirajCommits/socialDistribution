@@ -80,7 +80,7 @@ export default {
       
       try {
         const response = await axios.post(
-          "http://localhost:8000/api/login/",
+          "/login/",
           {
             username: this.username,
             password: this.password,
@@ -125,7 +125,6 @@ export default {
   /* Remove padding to prevent scrolling */
   padding: 0;
   /* Prevent overflow */
-  overflow: hidden;
   position: fixed;
   top: 0;
   left: 0;
@@ -147,7 +146,6 @@ export default {
   max-width: 400px;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
   /* Prevent overflow */
-  overflow: hidden;
 }
 
 form {

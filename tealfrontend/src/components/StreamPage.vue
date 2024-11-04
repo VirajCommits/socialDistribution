@@ -110,6 +110,9 @@
               <img :src="extractImageSrc(post.content)" alt="Post Image" />
             </div>
             <div v-else class="post-text" v-html="post.content"></div>
+            <button @click="copyToClipboard(post)" class="copy-url-button">
+            <i class="fas fa-copy"></i> Copy URL
+          </button> <!-- New Button -->
           </div>
 
           <div class="post-actions">
@@ -195,6 +198,21 @@ export default {
     }
   },
   methods: {
+  copyToClipboard(post) {
+      // Construct a simpler URL for the post
+      const postUrl = `${window.location.origin}/posts/${post.id}`;
+
+      // Copy the URL to the clipboard
+      navigator.clipboard
+        .writeText(postUrl)
+        .then(() => {
+          alert("URL copied to clipboard!");
+        })
+        .catch((err) => {
+          console.error("Failed to copy: ", err);
+          this.errorMessage = "Failed to copy URL.";
+        });
+    },
     // WebSocket related methods
     initializeWebSocket() {
       const uuid = localStorage.getItem("uuid");
@@ -264,7 +282,7 @@ export default {
 
     async fetchStreamPosts() {
       try {
-        const apiUrl = `http://localhost:8000/service/api/authors/${encodeURIComponent(
+        const apiUrl = `/authors/${encodeURIComponent(
           this.authID
         )}/stream/`;
 
@@ -284,7 +302,7 @@ export default {
     async fetchInitialCount() {
       try {
         const response = await axios.get(
-          "http://localhost:8000/service/api/authors/follow_requests/",
+          "/authors/follow_requests/",
           {
             headers: {
               Authorization: `Token ${localStorage.getItem("token")}`,
@@ -326,7 +344,7 @@ export default {
     fetchFollowRequests() {
       axios
         .get(
-          `http://localhost:8000/service/api/authors/follow_requests/`,
+          `/authors/follow_requests/`,
           {
             headers: {
               Authorization: `Token ${localStorage.getItem("token")}`,
@@ -344,7 +362,7 @@ export default {
     acceptFollowRequest(uuid) {
       axios
         .post(
-          `http://localhost:8000/service/api/authors/${uuid}/accept_follow_request/`,
+          `/authors/${uuid}/accept_follow_request/`,
           null,
           {
             headers: {
@@ -364,7 +382,7 @@ export default {
     declineFollowRequest(uuid) {
       axios
         .post(
-          `http://localhost:8000/service/api/authors/${uuid}/decline_follow_request/`,
+          `/authors/${uuid}/decline_follow_request/`,
           null,
           {
             headers: {
@@ -679,7 +697,7 @@ export default {
   border-radius: 12px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
   margin-bottom: 1.5rem;
-  overflow: hidden;
+
 }
 
 .post-header {

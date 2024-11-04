@@ -334,7 +334,7 @@ def post_detail(request, author_serial, post_serial):
     # If the action doesn't match any known value, return an error
     return Response({"detail": "Invalid request"}, status=status.HTTP_400_BAD_REQUEST)
 
-  
+
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def post_comment(request, post_id):
@@ -810,8 +810,11 @@ def get_follow_requests(request):
 def get_all_authors(request):
     try:
         current_author = request.user
-        # Exclude the current user and get all other authors
-        authors = Author.objects.exclude(id=current_author.id)
+
+        # Exclude the current user, admin users, and superusers
+        authors = Author.objects.exclude(id=current_author.id).filter(
+            is_staff=False, is_superuser=False
+        )
 
         author_data = []
         for author in authors:
@@ -948,7 +951,7 @@ def stream_page(request, author_id):
 
 
 @swagger_auto_schema(
-    method='POST',
+    method="POST",
     operation_summary="User Signup",
     operation_description="Creates a new user account. The user data must include the necessary fields as defined in the AuthorSerializer.",
     request_body=AuthorSerializer,
@@ -958,44 +961,59 @@ def stream_page(request, author_id):
             schema=openapi.Schema(
                 type=openapi.TYPE_OBJECT,
                 properties={
-                    'refresh': openapi.Schema(type=openapi.TYPE_STRING, example='refresh-token'),
-                    'access': openapi.Schema(type=openapi.TYPE_STRING, example='access-token'),
-                    'user': openapi.Schema(
+                    "refresh": openapi.Schema(
+                        type=openapi.TYPE_STRING, example="refresh-token"
+                    ),
+                    "access": openapi.Schema(
+                        type=openapi.TYPE_STRING, example="access-token"
+                    ),
+                    "user": openapi.Schema(
                         type=openapi.TYPE_OBJECT,
                         properties={
-                            'id': openapi.Schema(type=openapi.TYPE_STRING, example='user-id'),
-                            'username': openapi.Schema(type=openapi.TYPE_STRING, example='username'),
-                            'email': openapi.Schema(type=openapi.TYPE_STRING, example='user@example.com'),
+                            "id": openapi.Schema(
+                                type=openapi.TYPE_STRING, example="user-id"
+                            ),
+                            "username": openapi.Schema(
+                                type=openapi.TYPE_STRING, example="username"
+                            ),
+                            "email": openapi.Schema(
+                                type=openapi.TYPE_STRING, example="user@example.com"
+                            ),
                             # Add other fields from AuthorSerializer as necessary
-                        }
-                    )
-                }
-            )
+                        },
+                    ),
+                },
+            ),
         ),
         400: openapi.Response(
             description="Invalid input",
             schema=openapi.Schema(
                 type=openapi.TYPE_OBJECT,
                 properties={
-                    'errors': openapi.Schema(type=openapi.TYPE_OBJECT)  # Detailed error messages
-                }
-            )
-        )
+                    "errors": openapi.Schema(
+                        type=openapi.TYPE_OBJECT
+                    )  # Detailed error messages
+                },
+            ),
+        ),
     },
-    tags=["Authentication"]
+    tags=["Authentication"],
 )
 @csrf_exempt
-@api_view(['POST'])
+@api_view(["POST"])
 @permission_classes([AllowAny])
 def signup(request):
     serializer = AuthorSerializer(data=request.data)
     if serializer.is_valid():
+        # Save the user with is_approved set to False
         user = serializer.save()
-        refresh = RefreshToken.for_user(user)
+        user.is_approved = False  # Require admin approval
+        user.save()
+
+        # Notify the user that their account is pending approval
         return Response(
             {
-                "refresh": str(refresh),
-                "access": str(refresh.access_token),
+                "message": "User created. Your account is pending admin approval.",
                 "user": AuthorSerializer(user).data,
             },
             status=status.HTTP_201_CREATED,
@@ -1004,16 +1022,20 @@ def signup(request):
 
 
 @swagger_auto_schema(
-    method='POST',
+    method="POST",
     operation_summary="User Login",
     operation_description="Authenticates a user and returns JWT tokens if successful.",
     request_body=openapi.Schema(
         type=openapi.TYPE_OBJECT,
         properties={
-            'username': openapi.Schema(type=openapi.TYPE_STRING, example='example_username'),
-            'password': openapi.Schema(type=openapi.TYPE_STRING, example='example_password'),
+            "username": openapi.Schema(
+                type=openapi.TYPE_STRING, example="example_username"
+            ),
+            "password": openapi.Schema(
+                type=openapi.TYPE_STRING, example="example_password"
+            ),
         },
-        required=['username', 'password']
+        required=["username", "password"],
     ),
     responses={
         200: openapi.Response(
@@ -1021,42 +1043,62 @@ def signup(request):
             schema=openapi.Schema(
                 type=openapi.TYPE_OBJECT,
                 properties={
-                    'refresh': openapi.Schema(type=openapi.TYPE_STRING, example='refresh-token'),
-                    'access': openapi.Schema(type=openapi.TYPE_STRING, example='access-token'),
-                    'user': openapi.Schema(
+                    "refresh": openapi.Schema(
+                        type=openapi.TYPE_STRING, example="refresh-token"
+                    ),
+                    "access": openapi.Schema(
+                        type=openapi.TYPE_STRING, example="access-token"
+                    ),
+                    "user": openapi.Schema(
                         type=openapi.TYPE_OBJECT,
                         properties={
-                            'id': openapi.Schema(type=openapi.TYPE_STRING, example='user-id'),
-                            'username': openapi.Schema(type=openapi.TYPE_STRING, example='example_username'),
-                            'email': openapi.Schema(type=openapi.TYPE_STRING, example='user@example.com'),
+                            "id": openapi.Schema(
+                                type=openapi.TYPE_STRING, example="user-id"
+                            ),
+                            "username": openapi.Schema(
+                                type=openapi.TYPE_STRING, example="example_username"
+                            ),
+                            "email": openapi.Schema(
+                                type=openapi.TYPE_STRING, example="user@example.com"
+                            ),
                             # Add other fields from AuthorSerializer as necessary
-                        }
-                    )
-                }
-            )
+                        },
+                    ),
+                },
+            ),
         ),
         401: openapi.Response(
             description="Invalid credentials",
             schema=openapi.Schema(
                 type=openapi.TYPE_OBJECT,
                 properties={
-                    'error': openapi.Schema(type=openapi.TYPE_STRING, example='Invalid Credentials')
-                }
-            )
-        )
+                    "error": openapi.Schema(
+                        type=openapi.TYPE_STRING, example="Invalid Credentials"
+                    )
+                },
+            ),
+        ),
     },
-    tags=["Authentication"]
+    tags=["Authentication"],
 )
 @csrf_exempt
-@api_view(['POST'])
+@api_view(["POST"])
 @permission_classes([AllowAny])
 def login(request):
     username = request.data.get("username")
     password = request.data.get("password")
     user = authenticate(username=username, password=password)
-    if user:
-        refresh = RefreshToken.for_user(user)
 
+    if user:
+        # Check if the user is approved by the admin
+        if not user.is_approved:
+            return Response(
+                {"error": "Your account is pending admin approval."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        # Generate tokens if the user is approved
+        refresh = RefreshToken.for_user(user)
         return Response(
             {
                 "refresh": str(refresh),
@@ -1064,9 +1106,11 @@ def login(request):
                 "user": AuthorSerializer(user).data,
             }
         )
+
     return Response(
         {"error": "Invalid Credentials"}, status=status.HTTP_401_UNAUTHORIZED
     )
+
 
 @swagger_auto_schema(
     method='get',
@@ -1351,3 +1395,72 @@ def repost_post(request, post_id):
         'message': 'Post reposted successfully.',
         'repost_count': original_post.repost_count
     }, status=200)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_author_followers(request, author_uuid):
+    try:
+        author = get_object_or_404(Author, uuid=author_uuid)
+        followers = author.followers.all()
+        serializer = AuthorSerializer(followers, many=True)
+        return Response(serializer.data)
+    except Author.DoesNotExist:
+        return Response({'error': 'Author not found'}, status=404)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_author_following(request, author_uuid):
+    try:
+        author = get_object_or_404(Author, uuid=author_uuid)
+        following = author.following.all()
+        serializer = AuthorSerializer(following, many=True)
+        return Response(serializer.data)
+    except Author.DoesNotExist:
+        return Response({'error': 'Author not found'}, status=404)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_author_friends(request, author_uuid):
+    try:
+        author = get_object_or_404(Author, uuid=author_uuid)
+        followers = author.followers.all()
+        following = author.following.all()
+        friends = followers.filter(id__in=following.values('id'))
+        serializer = AuthorSerializer(friends, many=True)
+        return Response(serializer.data)
+    except Author.DoesNotExist:
+        return Response({'error': 'Author not found'}, status=404)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def update_author_profile(request, author_uuid):
+    try:
+        author = Author.objects.get(uuid=author_uuid)
+        if request.user != author:
+            return Response({"error": "Permission denied"}, status=status.HTTP_403_FORBIDDEN)
+
+        serializer = AuthorSerializer(author, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    except Author.DoesNotExist:
+        return Response({"error": "Author not found"}, status=status.HTTP_404_NOT_FOUND)
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def get_post_by_link(request, post_id):
+    """
+    Fetch a post by ID if it's either public or unlisted.
+    """
+    # print("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAa")
+    post = get_object_or_404(Post, id=post_id)
+
+    # Check if the post is public or unlisted
+    if post.visibility in ["PUBLIC", "UNLISTED"]:
+        serializer = PostSerializer(post)
+        return Response(serializer.data, status=200)
+
+    # If the post is private or friends-only, return a 403 Forbidden
+    return Response({"detail": "You are not authorized to view this post."}, status=403)

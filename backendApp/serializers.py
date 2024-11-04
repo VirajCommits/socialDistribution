@@ -70,7 +70,10 @@ class PostSerializer(serializers.ModelSerializer):
         author = get_object_or_404(Author, uuid=author_id)
         post = Post.objects.create(author=author, **validated_data)
         return post
-    
+
+    def get_post_url(self, obj):
+        return obj.get_post_url()
+
 
 class FollowRequestSerializer(serializers.ModelSerializer):
     actor = AuthorSerializer(read_only=True)
