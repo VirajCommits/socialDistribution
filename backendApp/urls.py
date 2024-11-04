@@ -20,8 +20,8 @@ schema_view = get_schema_view(
 
 urlpatterns = [
     path("", views.defaultPath, name="defaultPath"),
-    path("api/signup/", views.signup, name="signup"),
-    path("api/login/", views.login, name="login"),
+    path("service/api/signup/", views.signup, name="signup"),
+    path("service/api/login/", views.login, name="login"),
     # Swagger paths
     path(
         "swagger/",

@@ -129,7 +129,7 @@ export default {
     },
     async saveProfile() {
       try {
-        const url = `http://localhost:8000/service/api/authors/${this.user.uuid}/`;
+        const url = `/authors/${this.user.uuid}/`;
       
         const response = await axios.post(url, this.user, {
           headers: {
