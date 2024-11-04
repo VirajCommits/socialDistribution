@@ -492,7 +492,6 @@ h1 {
   width: 80px;
   height: 80px;
   border-radius: 50%;
-  overflow: hidden;
   background: #f3f4f6;
   display: flex;
   align-items: center;

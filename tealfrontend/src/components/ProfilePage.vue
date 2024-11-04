@@ -308,6 +308,7 @@ export default {
     flex-direction: column;
     gap: 0.5rem;
   }
+}
 
   .profile-image-wrapper {
     width: 120px;
