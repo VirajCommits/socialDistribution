@@ -6,7 +6,7 @@ from django.utils import timezone
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 
-
+from .models import AdminSettings
 from .serializers import PostSerializer, CommentSerializer, LikeSerializer
 from .models import Author, Post, Comment, Like, FollowRequest
 
@@ -948,8 +948,9 @@ def get_follow_requests(request):
     serializer = FollowRequestSerializer(pending_requests, many=True)
     return Response(serializer.data)
 
+
 @swagger_auto_schema(
-    method='GET',
+    method="GET",
     operation_summary="Retrieve all authors excluding the current user",
     operation_description="Fetch a list of all authors, excluding the currently authenticated user. Each author object will include their followers.",
     responses={
@@ -960,38 +961,50 @@ def get_follow_requests(request):
                 items=openapi.Schema(
                     type=openapi.TYPE_OBJECT,
                     properties={
-                        'uuid': openapi.Schema(type=openapi.TYPE_STRING, example='author-uuid'),
-                        'displayName': openapi.Schema(type=openapi.TYPE_STRING, example='Author Name'),
-                        'followers': openapi.Schema(
+                        "uuid": openapi.Schema(
+                            type=openapi.TYPE_STRING, example="author-uuid"
+                        ),
+                        "displayName": openapi.Schema(
+                            type=openapi.TYPE_STRING, example="Author Name"
+                        ),
+                        "followers": openapi.Schema(
                             type=openapi.TYPE_ARRAY,
-                            items=openapi.Schema(type=openapi.TYPE_STRING, example='follower-uuid')
-                        )
-                    }
-                )
-            )
+                            items=openapi.Schema(
+                                type=openapi.TYPE_STRING, example="follower-uuid"
+                            ),
+                        ),
+                    },
+                ),
+            ),
         ),
         401: openapi.Response(
             description="Unauthorized access",
             schema=openapi.Schema(
                 type=openapi.TYPE_OBJECT,
                 properties={
-                    'detail': openapi.Schema(type=openapi.TYPE_STRING, example='Authentication credentials were not provided.')
-                }
-            )
+                    "detail": openapi.Schema(
+                        type=openapi.TYPE_STRING,
+                        example="Authentication credentials were not provided.",
+                    )
+                },
+            ),
         ),
         500: openapi.Response(
             description="Internal server error",
             schema=openapi.Schema(
                 type=openapi.TYPE_OBJECT,
                 properties={
-                    'detail': openapi.Schema(type=openapi.TYPE_STRING, example='An error occurred while fetching authors.')
-                }
-            )
-        )
+                    "detail": openapi.Schema(
+                        type=openapi.TYPE_STRING,
+                        example="An error occurred while fetching authors.",
+                    )
+                },
+            ),
+        ),
     },
-    tags=["Authors"]
+    tags=["Authors"],
 )
-@api_view(['GET'])
+@api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def get_all_authors(request):
     try:
@@ -1009,7 +1022,7 @@ def get_all_authors(request):
 
             # Add followers data
             followers = author.followers.all()
-            serialized_author['followers'] = [
+            serialized_author["followers"] = [
                 str(follower.uuid) for follower in followers
             ]
 
@@ -1018,12 +1031,14 @@ def get_all_authors(request):
         return Response(author_data)
     except Exception as e:
         import traceback
+
         print(f"Error in get_all_authors: {str(e)}")
         print(f"Traceback: {traceback.format_exc()}")
         return Response(
             {"detail": "An error occurred while fetching authors."},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
+
 
 # @swagger_auto_schema(
 #     method='GET',
@@ -1246,23 +1261,33 @@ def stream_page(request, author_id):
     },
     tags=["Authentication"],
 )
+
+
 @csrf_exempt
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def signup(request):
     serializer = AuthorSerializer(data=request.data)
     if serializer.is_valid():
-        # Save the user with is_approved set to False
         user = serializer.save()
-        user.is_approved = False  # Require admin approval
+        
+        # Fetch the toggle setting from the database
+        settings = AdminSettings.objects.first()
+        if settings and not settings.user_approval_required:
+            user.is_approved = True  # Automatically approve the user
+        else:
+            user.is_approved = False  # Require admin approval
+        
         user.save()
 
-        # Notify the user that their account is pending approval
+        # Notify the user about their approval status
+        if user.is_approved:
+            message = "User created and approved."
+        else:
+            message = "User created. Your account is pending admin approval."
+        
         return Response(
-            {
-                "message": "User created. Your account is pending admin approval.",
-                "user": AuthorSerializer(user).data,
-            },
+            {"message": message, "user": AuthorSerializer(user).data},
             status=status.HTTP_201_CREATED,
         )
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -1337,14 +1362,12 @@ def login(request):
     user = authenticate(username=username, password=password)
 
     if user:
-        # Check if the user is approved by the admin
         if not user.is_approved:
             return Response(
                 {"error": "Your account is pending admin approval."},
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        # Generate tokens if the user is approved
         refresh = RefreshToken.for_user(user)
         return Response(
             {

@@ -30,6 +30,9 @@ SECRET_KEY = "django-insecure-w)getnsr)9z21am-v4i2%)vz10ji05zcxkoa+xrzx)h7$=zaad
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
+
+USER_APPROVAL_REQUIRED = True
+
 ALLOWED_HOSTS = [
     "127.0.0.1",
     "localhost",
