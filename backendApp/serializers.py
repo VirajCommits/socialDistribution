@@ -62,6 +62,7 @@ class PostSerializer(serializers.ModelSerializer):
             "author_id",
             "published",
             "visibility",
+            "repost_count",
         ]
 
     def create(self, validated_data):

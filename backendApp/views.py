@@ -308,11 +308,12 @@ def post_detail(request, author_serial, post_serial):
                 print("Serializer errors:", serializer.errors)
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    # Handle DELETE request to delete the post
-    elif request.method == "DELETE" and not action:
-        post.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        # Handle DELETE request to delete the post
+        elif request.method == "DELETE" and not action:
+            post.delete()  # Now delete the original post or repost
+            return Response(status=status.HTTP_204_NO_CONTENT)
 
+            
     # Handle PUT request to update the post
     elif request.method == "PUT" and not action:
         data = request.data
@@ -1307,3 +1308,46 @@ def get_author_stats(request, author_uuid):
         })
     except Author.DoesNotExist:
         return Response({'error': 'Author not found'}, status=404)
+    
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def repost_post(request, post_id):
+    reposted_post = get_object_or_404(Post, id=post_id)
+
+    # Determine the original post
+    if reposted_post.is_repost:
+        original_post = get_object_or_404(Post, id=reposted_post.original_post_id)
+    else:
+        original_post = reposted_post
+
+    # Check if the original post is public
+    if original_post.visibility != 'PUBLIC':
+        return Response({'error': 'Post is not public.'}, status=403)
+
+    # Check if the user has already reposted the original post
+    if request.user in original_post.reposted_by.all():
+        return Response({'error': 'You have already reposted this post.'}, status=400)
+
+    # Create a new post for the repost
+    new_repost = Post(
+        author=request.user,
+        title=f"Reposted: {original_post.author.displayName} {original_post.title}",
+        description=original_post.description,
+        content=original_post.content,
+        contentType=original_post.contentType,
+        visibility="PUBLIC",
+        published=timezone.now(),
+        is_repost=True,
+        original_post_id=original_post.id,  # Reference the original post ID
+    )
+    new_repost.save()
+
+    # Track the repost and increment the count
+    original_post.reposted_by.add(request.user)
+    original_post.repost_count += 1
+    original_post.save()
+
+    return Response({
+        'message': 'Post reposted successfully.',
+        'repost_count': original_post.repost_count
+    }, status=200)

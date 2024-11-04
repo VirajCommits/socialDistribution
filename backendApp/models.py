@@ -66,6 +66,13 @@ class Post(models.Model):
     published = models.DateTimeField()
     visibility = models.CharField(max_length=10, choices=VISIBILITY_CHOICES)
     edited_at = models.DateTimeField(auto_now=True)
+    reposted_by = models.ManyToManyField(
+        Author, related_name='reposted_posts', blank=True)
+    repost_count = models.PositiveIntegerField(default=0)
+    is_repost = models.BooleanField(default=False)
+    original_post = models.ForeignKey(
+        'self', null=True, blank=True, related_name='reposts', on_delete=models.CASCADE
+    )
 
     def __str__(self):
         return self.title
@@ -82,6 +89,10 @@ class Post(models.Model):
         if not self.published:
             self.published = timezone.now()
         super(Post, self).save(*args, **kwargs)
+        
+    def repost(self, author):
+        self.reposted_by.add(author)
+        self.save()
 
 
 class FollowRequest(models.Model):
