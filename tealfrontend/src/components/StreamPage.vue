@@ -116,11 +116,12 @@
             <LikeButton :postId="post.id" :authorId="authID" />
             <CommentSection :postId="post.id" :authorId="authID" />
             <button
-              v-if="post.visibility === 'PUBLIC'"
-              class="repost-button"
-              @click="repostPost(post.id)"
+            v-if="post.visibility === 'PUBLIC'"
+            class="repost-button"
+            @click="repostPost(post.id)"
             >
-              <i class="fas fa-retweet"></i> Repost
+            <i class="fas fa-retweet"></i>
+            <span>Repost</span>
             </button>
 
             <!-- Display repost count -->
@@ -740,6 +741,29 @@ export default {
 .post-actions {
   padding: 1rem;
   border-top: 1px solid #f3f4f6;
+}
+
+.repost-button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: #4f46e5; /* Match to your theme */
+  color: white; /* Adjust for visibility */
+}
+
+.repost-button:hover {
+  background: #4338ca; /* Darker shade on hover */
+}
+
+.repost-count {
+  margin-left: auto; /* Push the repost count to the end */
 }
 
 /* Loading & Empty States */
