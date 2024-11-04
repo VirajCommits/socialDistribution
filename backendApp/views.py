@@ -1202,7 +1202,7 @@ def stream_page(request, author_id):
     # Combine all posts and avoid duplicates
     all_posts = (public_posts |
                  mutual_friends_posts | other_following_posts | personal_posts
-                 ).distinct().order_by("-published")
+                 ).distinct().order_by("-edited_at")
 
     # Paginate and return response
     paginator = PageNumberPagination()
