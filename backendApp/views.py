@@ -1308,7 +1308,7 @@ def get_author_stats(request, author_uuid):
         })
     except Author.DoesNotExist:
         return Response({'error': 'Author not found'}, status=404)
-    
+      
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def repost_post(request, post_id):
@@ -1351,3 +1351,39 @@ def repost_post(request, post_id):
         'message': 'Post reposted successfully.',
         'repost_count': original_post.repost_count
     }, status=200)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_author_followers(request, author_uuid):
+    try:
+        author = get_object_or_404(Author, uuid=author_uuid)
+        followers = author.followers.all()
+        serializer = AuthorSerializer(followers, many=True)
+        return Response(serializer.data)
+    except Author.DoesNotExist:
+        return Response({'error': 'Author not found'}, status=404)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_author_following(request, author_uuid):
+    try:
+        author = get_object_or_404(Author, uuid=author_uuid)
+        following = author.following.all()
+        serializer = AuthorSerializer(following, many=True)
+        return Response(serializer.data)
+    except Author.DoesNotExist:
+        return Response({'error': 'Author not found'}, status=404)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_author_friends(request, author_uuid):
+    try:
+        author = get_object_or_404(Author, uuid=author_uuid)
+        followers = author.followers.all()
+        following = author.following.all()
+        friends = followers.filter(id__in=following.values('id'))
+        serializer = AuthorSerializer(friends, many=True)
+        return Response(serializer.data)
+    except Author.DoesNotExist:
+        return Response({'error': 'Author not found'}, status=404)
+      
