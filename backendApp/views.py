@@ -133,20 +133,17 @@ def create_post(request, author_serial):
     # Set the 'author_id' field to the author's ID (URL)
     data["author_id"] = author.uuid  # This will be accepted by the serializer
 
-    if "content" in data:
-        data["content"] = markdown2.markdown(
-            data["content"], extras=["fenced-code-blocks", "tables"]
-        )
+    if 'content' in data:
+        data['content'] = markdown2.markdown(
+            data['content'], extras=["fenced-code-blocks", "tables"])
 
-    if "title" in data:
-        data["title"] = markdown2.markdown(
-            data["title"], extras=["fenced-code-blocks", "tables"]
-        )
+    if 'title' in data:
+        data['title'] = markdown2.markdown(
+            data['title'], extras=["fenced-code-blocks", "tables"])
 
-    if "description" in data:
-        data["description"] = markdown2.markdown(
-            data["description"], extras=["fenced-code-blocks", "tables"]
-        )
+    if 'description' in data:
+        data['description'] = markdown2.markdown(data['description'], extras=[
+                                                 "fenced-code-blocks", "tables"])
     # Remove fields that are generated automatically and 'author' if present
     data.pop("id", None)
     data.pop("page", None)
@@ -464,11 +461,8 @@ def get_all_posts(request, author_serial):
 
     serializer = PostSerializer(result_page, many=True)
 
-    return paginator.get_paginated_response({"type": "posts", "items": serializer.data})
+    return paginator.get_paginated_response({'type': 'posts', 'items': serializer.data})
 
-
-
-@api_view(["POST"])
 
 @swagger_auto_schema(
     method='POST',
@@ -507,7 +501,6 @@ def get_all_posts(request, author_serial):
     tags=["Follow Requests"]
 )
 @api_view(['POST'])
-
 @permission_classes([IsAuthenticated])
 def send_follow_request(request, author_uuid):
     current_author = request.user  # The one sending the request
@@ -517,24 +510,27 @@ def send_follow_request(request, author_uuid):
     # Check if already following
     if current_author in target_author.followers.all():
         return Response(
-            {"detail": "You are already following this author."},
-            status=status.HTTP_400_BAD_REQUEST,
+            {'detail': 'You are already following this author.'},
+            status=status.HTTP_400_BAD_REQUEST
         )
 
     # Check if a pending request already exists
     existing_request = FollowRequest.objects.filter(
-        actor=current_author, object=target_author, accepted=False
+        actor=current_author,
+        object=target_author,
+        accepted=False
     ).exists()
 
     if existing_request:
         return Response(
-            {"detail": "A follow request is already pending."},
-            status=status.HTTP_400_BAD_REQUEST,
+            {'detail': 'A follow request is already pending.'},
+            status=status.HTTP_400_BAD_REQUEST
         )
 
     # Create new follow request
     follow_request = FollowRequest.objects.create(
-        actor=current_author, object=target_author
+        actor=current_author,
+        object=target_author
     )
 
     # Notify through WebSocket
@@ -542,18 +538,16 @@ def send_follow_request(request, author_uuid):
     async_to_sync(channel_layer.group_send)(
         f"notifications_{target_author.uuid}",
         {
-            "type": "follow_request_notification",
-            "count": FollowRequest.objects.filter(
-                object=target_author, accepted=False
+            'type': 'follow_request_notification',
+            'count': FollowRequest.objects.filter(
+                object=target_author,
+                accepted=False
             ).count(),
-            "message": f"{current_author.displayName} sent you a follow request",
-        },
+            'message': f'{current_author.displayName} sent you a follow request'
+        }
     )
 
-    return Response({"detail": "Follow request sent."}, status=status.HTTP_201_CREATED)
-
-
-@api_view(["POST"])
+    return Response({'detail': 'Follow request sent.'}, status=status.HTTP_201_CREATED)
 
 @swagger_auto_schema(
     method='POST',
@@ -600,31 +594,31 @@ def send_follow_request(request, author_uuid):
     tags=["Follow Requests"]
 )
 @api_view(['POST'])
-
 @permission_classes([IsAuthenticated])
 def accept_follow_request(request, author_uuid):
     current_author = request.user  # The one accepting
     requesting_author = get_object_or_404(
-        Author, uuid=author_uuid
-    )  # The one who sent request
+        Author, uuid=author_uuid)  # The one who sent request
 
     # Check if request still exists and hasn't been resolved
     follow_request = FollowRequest.objects.filter(
-        actor=requesting_author, object=current_author, accepted=False
+        actor=requesting_author,
+        object=current_author,
+        accepted=False
     ).first()
 
     if not follow_request:
         return Response(
-            {"detail": "Follow request no longer exists or has already been resolved."},
-            status=status.HTTP_404_NOT_FOUND,
+            {'detail': 'Follow request no longer exists or has already been resolved.'},
+            status=status.HTTP_404_NOT_FOUND
         )
 
     # Check if already following
     if requesting_author in current_author.followers.all():
         follow_request.delete()
         return Response(
-            {"detail": "This author is already following you."},
-            status=status.HTTP_400_BAD_REQUEST,
+            {'detail': 'This author is already following you.'},
+            status=status.HTTP_400_BAD_REQUEST
         )
 
     # Accept the request
@@ -640,16 +634,13 @@ def accept_follow_request(request, author_uuid):
     async_to_sync(channel_layer.group_send)(
         f"notifications_{requesting_author.uuid}",
         {
-            "type": "follow_request_notification",
-            "message": f"{current_author.displayName} accepted your follow request",
-            "status": "accepted",
-        },
+            'type': 'follow_request_notification',
+            'message': f'{current_author.displayName} accepted your follow request',
+            'status': 'accepted'
+        }
     )
 
-    return Response({"detail": "Follow request accepted."}, status=status.HTTP_200_OK)
-
-
-@api_view(["POST"])
+    return Response({'detail': 'Follow request accepted.'}, status=status.HTTP_200_OK)
 
 @swagger_auto_schema(
     method='POST',
@@ -687,7 +678,6 @@ def accept_follow_request(request, author_uuid):
     tags=["Follow Requests"]
 )
 @api_view(['POST'])
-
 @permission_classes([IsAuthenticated])
 def decline_follow_request(request, author_uuid):
     current_author = request.user
@@ -695,13 +685,15 @@ def decline_follow_request(request, author_uuid):
 
     # Check if request still exists and hasn't been resolved
     follow_requests = FollowRequest.objects.filter(
-        actor=requesting_author, object=current_author, accepted=False
+        actor=requesting_author,
+        object=current_author,
+        accepted=False
     )
 
     if not follow_requests.exists():
         return Response(
-            {"detail": "Follow request no longer exists or has already been resolved."},
-            status=status.HTTP_404_NOT_FOUND,
+            {'detail': 'Follow request no longer exists or has already been resolved.'},
+            status=status.HTTP_404_NOT_FOUND
         )
 
     # Delete all pending requests from this user
@@ -712,18 +704,13 @@ def decline_follow_request(request, author_uuid):
     async_to_sync(channel_layer.group_send)(
         f"notifications_{requesting_author.uuid}",
         {
-            "type": "follow_request_notification",
-            "count": FollowRequest.objects.filter(
-                object=requesting_author, accepted=False
-            ).count(),
-            "message": "Follow request declined",
-        },
+            'type': 'follow_request_notification',
+            'count': FollowRequest.objects.filter(object=requesting_author, accepted=False).count(),
+            'message': 'Follow request declined'
+        }
     )
 
-    return Response({"detail": "Follow request declined."}, status=status.HTTP_200_OK)
-
-
-@api_view(["GET"])
+    return Response({'detail': 'Follow request declined.'}, status=status.HTTP_200_OK)
 
 @swagger_auto_schema(
     method='GET',
@@ -765,20 +752,14 @@ def decline_follow_request(request, author_uuid):
     tags=["Follow Requests"]
 )
 @api_view(['GET'])
-
 @permission_classes([IsAuthenticated])
 def get_follow_requests(request):
     current_author = request.user
     # Filter to only show pending follow requests
     pending_requests = FollowRequest.objects.filter(
-        object=current_author, accepted=False
-    )
+        object=current_author, accepted=False)
     serializer = FollowRequestSerializer(pending_requests, many=True)
     return Response(serializer.data)
-
-
-
-@api_view(["GET"])
 
 @swagger_auto_schema(
     method='GET',
@@ -824,7 +805,6 @@ def get_follow_requests(request):
     tags=["Authors"]
 )
 @api_view(['GET'])
-
 @permission_classes([IsAuthenticated])
 def get_all_authors(request):
     try:
@@ -839,7 +819,7 @@ def get_all_authors(request):
 
             # Add followers data
             followers = author.followers.all()
-            serialized_author["followers"] = [
+            serialized_author['followers'] = [
                 str(follower.uuid) for follower in followers
             ]
 
@@ -848,12 +828,11 @@ def get_all_authors(request):
         return Response(author_data)
     except Exception as e:
         import traceback
-
         print(f"Error in get_all_authors: {str(e)}")
         print(f"Traceback: {traceback.format_exc()}")
         return Response(
             {"detail": "An error occurred while fetching authors."},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
 # @swagger_auto_schema(
@@ -937,15 +916,15 @@ def stream_page(request, author_id):
     # Posts from mutual friends with visibility PUBLIC, PRIVATE, UNLISTED, FRIENDS
     mutual_friends_posts = Post.objects.filter(
         author__in=mutual_friends,
-        visibility__in=["PUBLIC", "PRIVATE", "UNLISTED", "FRIENDS"],
+        visibility__in=["PUBLIC", "PRIVATE", "UNLISTED", "FRIENDS"]
     )
 
     # Posts from authors the current author is following (but not mutual friends) with visibility PUBLIC and UNLISTED
     other_following_authors = following_authors.exclude(
-        id__in=mutual_friends.values("id")
-    )
+        id__in=mutual_friends.values("id"))
     other_following_posts = Post.objects.filter(
-        author__in=other_following_authors, visibility__in=["PUBLIC", "UNLISTED"]
+        author__in=other_following_authors,
+        visibility__in=["PUBLIC", "UNLISTED"]
     )
 
     # Public posts from any author (visible to everyone)
@@ -955,11 +934,9 @@ def stream_page(request, author_id):
     personal_posts = Post.objects.filter(author=current_author)
 
     # Combine all posts and avoid duplicates
-    all_posts = (
-        (public_posts | mutual_friends_posts | other_following_posts | personal_posts)
-        .distinct()
-        .order_by("-published")
-    )
+    all_posts = (public_posts |
+                 mutual_friends_posts | other_following_posts | personal_posts
+                 ).distinct().order_by("-published")
 
     # Paginate and return response
     paginator = PageNumberPagination()
@@ -967,24 +944,6 @@ def stream_page(request, author_id):
     result_page = paginator.paginate_queryset(all_posts, request)
     serializer = PostSerializer(result_page, many=True)
     return paginator.get_paginated_response(serializer.data)
-
-
-@api_view(["GET"])
-@permission_classes([AllowAny])
-def get_post_by_link(request, post_id):
-    """
-    Fetch a post by ID if it's either public or unlisted.
-    """
-    # print("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAa")
-    post = get_object_or_404(Post, id=post_id)
-
-    # Check if the post is public or unlisted
-    if post.visibility in ["PUBLIC", "UNLISTED"]:
-        serializer = PostSerializer(post)
-        return Response(serializer.data, status=200)
-
-    # If the post is private or friends-only, return a 403 Forbidden
-    return Response({"detail": "You are not authorized to view this post."}, status=403)
 
 
 @swagger_auto_schema(
@@ -1025,7 +984,7 @@ def get_post_by_link(request, post_id):
     tags=["Authentication"]
 )
 @csrf_exempt
-@api_view(["POST"])
+@api_view(['POST'])
 @permission_classes([AllowAny])
 def signup(request):
     serializer = AuthorSerializer(data=request.data)
@@ -1088,7 +1047,7 @@ def signup(request):
     tags=["Authentication"]
 )
 @csrf_exempt
-@api_view(["POST"])
+@api_view(['POST'])
 @permission_classes([AllowAny])
 def login(request):
     username = request.data.get("username")
@@ -1107,9 +1066,6 @@ def login(request):
     return Response(
         {"error": "Invalid Credentials"}, status=status.HTTP_401_UNAUTHORIZED
     )
-
-
-@api_view(["GET"])
 
 @swagger_auto_schema(
     method='get',
@@ -1142,19 +1098,16 @@ def login(request):
     tags=["Follow Requests"]
 )
 @api_view(['GET'])
-
 @permission_classes([IsAuthenticated])
 def get_pending_requests(request):
     """Get all pending follow requests sent by the current user"""
     current_author = request.user
     pending_requests = FollowRequest.objects.filter(
-        actor=current_author, accepted=False
+        actor=current_author,
+        accepted=False
     )
     serializer = FollowRequestSerializer(pending_requests, many=True)
     return Response(serializer.data)
-
-
-@api_view(["DELETE"])
 
 @swagger_auto_schema(
     method='delete',
@@ -1193,7 +1146,6 @@ def get_pending_requests(request):
     tags=["Follow Requests"]
 )
 @api_view(['DELETE'])
-
 @permission_classes([IsAuthenticated])
 def remove_follow_request(request, author_uuid):
     """Remove a pending follow request"""
@@ -1201,12 +1153,15 @@ def remove_follow_request(request, author_uuid):
     target_author = get_object_or_404(Author, uuid=author_uuid)
 
     follow_requests = FollowRequest.objects.filter(
-        actor=current_author, object=target_author, accepted=False
+        actor=current_author,
+        object=target_author,
+        accepted=False
     )
 
     if not follow_requests.exists():
         return Response(
-            {"detail": "No follow request found."}, status=status.HTTP_404_NOT_FOUND
+            {'detail': 'No follow request found.'},
+            status=status.HTTP_404_NOT_FOUND
         )
 
     # Delete all pending requests from this user
@@ -1217,19 +1172,16 @@ def remove_follow_request(request, author_uuid):
     async_to_sync(channel_layer.group_send)(
         f"notifications_{target_author.uuid}",
         {
-            "type": "follow_request_notification",
-            "count": FollowRequest.objects.filter(
-                object=target_author, accepted=False
+            'type': 'follow_request_notification',
+            'count': FollowRequest.objects.filter(
+                object=target_author,
+                accepted=False
             ).count(),
-            "message": f"{current_author.displayName} removed their follow request",
-        },
+            'message': f'{current_author.displayName} removed their follow request'
+        }
     )
 
-    return Response({"detail": "Follow request removed."}, status=status.HTTP_200_OK)
-
-
-
-@api_view(["DELETE"])
+    return Response({'detail': 'Follow request removed.'}, status=status.HTTP_200_OK)
 
 @swagger_auto_schema(
     method='delete',
@@ -1277,7 +1229,6 @@ def remove_follow_request(request, author_uuid):
     tags=["Follow Requests"]
 )
 @api_view(['DELETE'])
-
 @permission_classes([IsAuthenticated])
 def unfollow_author(request, author_id):
     try:
@@ -1294,32 +1245,31 @@ def unfollow_author(request, author_id):
             async_to_sync(channel_layer.group_send)(
                 f"notifications_{target_author.uuid}",
                 {
-                    "type": "follow_request_notification",
-                    "count": FollowRequest.objects.filter(
-                        object=target_author, accepted=False
+                    'type': 'follow_request_notification',
+                    'count': FollowRequest.objects.filter(
+                        object=target_author,
+                        accepted=False
                     ).count(),
-                    "message": f"{current_author.displayName} unfollowed you",
-                },
+                    'message': f'{current_author.displayName} unfollowed you'
+                }
             )
 
-            return Response(
-                {"detail": f"Successfully unfollowed {target_author.displayName}"},
-                status=status.HTTP_200_OK,
-            )
+            return Response({
+                "detail": f"Successfully unfollowed {target_author.displayName}"
+            }, status=status.HTTP_200_OK)
         else:
-            return Response(
-                {"detail": "You are not following this author"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return Response({
+                "detail": "You are not following this author"
+            }, status=status.HTTP_400_BAD_REQUEST)
 
     except Author.DoesNotExist:
-        return Response(
-            {"detail": "Author not found"}, status=status.HTTP_404_NOT_FOUND
-        )
+        return Response({
+            "detail": "Author not found"
+        }, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
-
-        return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
+        return Response({
+            "detail": str(e)
+        }, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -1435,7 +1385,7 @@ def update_author_profile(request, author_uuid):
         author = Author.objects.get(uuid=author_uuid)
         if request.user != author:
             return Response({"error": "Permission denied"}, status=status.HTTP_403_FORBIDDEN)
-        
+
         serializer = AuthorSerializer(author, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
@@ -1443,3 +1393,21 @@ def update_author_profile(request, author_uuid):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     except Author.DoesNotExist:
         return Response({"error": "Author not found"}, status=status.HTTP_404_NOT_FOUND)
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def get_post_by_link(request, post_id):
+    """
+    Fetch a post by ID if it's either public or unlisted.
+    """
+    # print("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAa")
+    post = get_object_or_404(Post, id=post_id)
+
+    # Check if the post is public or unlisted
+    if post.visibility in ["PUBLIC", "UNLISTED"]:
+        serializer = PostSerializer(post)
+        return Response(serializer.data, status=200)
+
+    # If the post is private or friends-only, return a 403 Forbidden
+    return Response({"detail": "You are not authorized to view this post."}, status=403)

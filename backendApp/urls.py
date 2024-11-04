@@ -60,9 +60,7 @@ urlpatterns = [
         views.post_comment,
         name="post_comment",
     ),
-
     path("service/api/posts/<uuid:post_id>/like/", views.like_post, name="like_post"),
-
     # Follow request paths
     path(
         "service/api/authors/<uuid:author_uuid>/send_follow_request/",
@@ -141,6 +139,11 @@ urlpatterns = [
         views.get_author_friends,
         name="get-author-friends",
     ),
+    path(
+        "service/api/authors/<uuid:author_uuid>/",
+        views.update_author_profile,
+        name="update_author_profile",
+    ),
     # path(
     #     "stream", TemplateView.as_view(template_name="vue/index.html"), name="stream"
     # ),
@@ -151,5 +154,4 @@ urlpatterns = [
         TemplateView.as_view(template_name="index.html"),
         name="post_detail",
     ),
-    path("service/api/authors/<uuid:author_uuid>/", views.update_author_profile, name="update_author_profile"),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
