@@ -467,6 +467,9 @@ def get_all_posts(request, author_serial):
     return paginator.get_paginated_response({"type": "posts", "items": serializer.data})
 
 
+
+@api_view(["POST"])
+
 @swagger_auto_schema(
     method='POST',
     operation_summary="Send a follow request to an author",
@@ -504,6 +507,7 @@ def get_all_posts(request, author_serial):
     tags=["Follow Requests"]
 )
 @api_view(['POST'])
+
 @permission_classes([IsAuthenticated])
 def send_follow_request(request, author_uuid):
     current_author = request.user  # The one sending the request
@@ -547,6 +551,9 @@ def send_follow_request(request, author_uuid):
     )
 
     return Response({"detail": "Follow request sent."}, status=status.HTTP_201_CREATED)
+
+
+@api_view(["POST"])
 
 @swagger_auto_schema(
     method='POST',
@@ -593,6 +600,7 @@ def send_follow_request(request, author_uuid):
     tags=["Follow Requests"]
 )
 @api_view(['POST'])
+
 @permission_classes([IsAuthenticated])
 def accept_follow_request(request, author_uuid):
     current_author = request.user  # The one accepting
@@ -640,6 +648,9 @@ def accept_follow_request(request, author_uuid):
 
     return Response({"detail": "Follow request accepted."}, status=status.HTTP_200_OK)
 
+
+@api_view(["POST"])
+
 @swagger_auto_schema(
     method='POST',
     operation_summary="Decline a follow request from an author",
@@ -676,6 +687,7 @@ def accept_follow_request(request, author_uuid):
     tags=["Follow Requests"]
 )
 @api_view(['POST'])
+
 @permission_classes([IsAuthenticated])
 def decline_follow_request(request, author_uuid):
     current_author = request.user
@@ -709,6 +721,9 @@ def decline_follow_request(request, author_uuid):
     )
 
     return Response({"detail": "Follow request declined."}, status=status.HTTP_200_OK)
+
+
+@api_view(["GET"])
 
 @swagger_auto_schema(
     method='GET',
@@ -750,6 +765,7 @@ def decline_follow_request(request, author_uuid):
     tags=["Follow Requests"]
 )
 @api_view(['GET'])
+
 @permission_classes([IsAuthenticated])
 def get_follow_requests(request):
     current_author = request.user
@@ -759,6 +775,10 @@ def get_follow_requests(request):
     )
     serializer = FollowRequestSerializer(pending_requests, many=True)
     return Response(serializer.data)
+
+
+
+@api_view(["GET"])
 
 @swagger_auto_schema(
     method='GET',
@@ -804,6 +824,7 @@ def get_follow_requests(request):
     tags=["Authors"]
 )
 @api_view(['GET'])
+
 @permission_classes([IsAuthenticated])
 def get_all_authors(request):
     try:
@@ -954,7 +975,7 @@ def get_post_by_link(request, post_id):
     """
     Fetch a post by ID if it's either public or unlisted.
     """
-    print("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAa")
+    # print("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAa")
     post = get_object_or_404(Post, id=post_id)
 
     # Check if the post is public or unlisted
@@ -1087,6 +1108,9 @@ def login(request):
         {"error": "Invalid Credentials"}, status=status.HTTP_401_UNAUTHORIZED
     )
 
+
+@api_view(["GET"])
+
 @swagger_auto_schema(
     method='get',
     operation_summary="Get all pending outgoing follow requests",
@@ -1118,6 +1142,7 @@ def login(request):
     tags=["Follow Requests"]
 )
 @api_view(['GET'])
+
 @permission_classes([IsAuthenticated])
 def get_pending_requests(request):
     """Get all pending follow requests sent by the current user"""
@@ -1127,6 +1152,9 @@ def get_pending_requests(request):
     )
     serializer = FollowRequestSerializer(pending_requests, many=True)
     return Response(serializer.data)
+
+
+@api_view(["DELETE"])
 
 @swagger_auto_schema(
     method='delete',
@@ -1165,6 +1193,7 @@ def get_pending_requests(request):
     tags=["Follow Requests"]
 )
 @api_view(['DELETE'])
+
 @permission_classes([IsAuthenticated])
 def remove_follow_request(request, author_uuid):
     """Remove a pending follow request"""
@@ -1197,6 +1226,10 @@ def remove_follow_request(request, author_uuid):
     )
 
     return Response({"detail": "Follow request removed."}, status=status.HTTP_200_OK)
+
+
+
+@api_view(["DELETE"])
 
 @swagger_auto_schema(
     method='delete',
@@ -1244,6 +1277,7 @@ def remove_follow_request(request, author_uuid):
     tags=["Follow Requests"]
 )
 @api_view(['DELETE'])
+
 @permission_classes([IsAuthenticated])
 def unfollow_author(request, author_id):
     try:
@@ -1283,9 +1317,9 @@ def unfollow_author(request, author_id):
             {"detail": "Author not found"}, status=status.HTTP_404_NOT_FOUND
         )
     except Exception as e:
-        return Response({
-            "detail": str(e)
-        }, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])

@@ -60,7 +60,9 @@ urlpatterns = [
         views.post_comment,
         name="post_comment",
     ),
+
     path("service/api/posts/<uuid:post_id>/like/", views.like_post, name="like_post"),
+
     # Follow request paths
     path(
         "service/api/authors/<uuid:author_uuid>/send_follow_request/",
