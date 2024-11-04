@@ -127,3 +127,23 @@ class Like(models.Model):
 
     def __str__(self):
         return f"Like by {self.author.displayName} on {self.post.title}"
+
+
+# class Inbox(models.Model):
+#     author = models.OneToOneField(
+#         Author, on_delete=models.CASCADE, related_name="inbox"
+#     )
+#     posts = models.ManyToManyField(Post, blank=True)
+#     likes = models.ManyToManyField(Like, blank=True)
+#     comments = models.ManyToManyField(Comment, blank=True)
+#     follow_requests = models.ManyToManyField(Follow, blank=True)
+
+#     def __str__(self):
+#         return f"Inbox of {self.author.displayName}"
+
+
+class AdminSettings(models.Model):
+    user_approval_required = models.BooleanField(default=True)
+
+    def __str__(self):
+        return f"User Approval Required: {self.user_approval_required}"

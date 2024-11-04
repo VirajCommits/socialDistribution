@@ -31,7 +31,7 @@ SECRET_KEY = "django-insecure-w)getnsr)9z21am-v4i2%)vz10ji05zcxkoa+xrzx)h7$=zaad
 DEBUG = True
 
 ALLOWED_HOSTS = []
-
+USER_APPROVAL_REQUIRED = True
 
 # Application definition
 
