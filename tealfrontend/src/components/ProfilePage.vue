@@ -18,105 +18,81 @@
     <!-- Main Content -->
     <div class="main-content">
       <div class="profile-banner"></div>
-      
+
+      <!-- Profile Header with Display-Only Information -->
       <div class="profile-header">
         <div class="profile-image-wrapper">
-          <img 
-            :src="user?.profileImage || 'https://i.pinimg.com/originals/f1/0f/f7/f10ff70a7155e5ab666bcdd1b45b726d.jpg'" 
-            :alt="user?.displayName || 'Profile'" 
+          <img
+            :src="user?.profileImage || 'https://i.pinimg.com/originals/f1/0f/f7/f10ff70a7155e5ab666bcdd1b45b726d.jpg'"
+            :alt="user?.displayName || 'Profile'"
             class="profile-image"
             @error="handleImageError"
           />
         </div>
         <h1 class="display-name">{{ user?.displayName || 'Loading...' }}</h1>
         
-        <!-- New Stats Section -->
+        <!-- Stats Section (Display-Only) -->
         <div class="stats-container">
-          <div class="stat-card" @click="showFollowingList">
+          <div class="stat-card" v-for="(value, key) in stats" :key="key">
             <div class="stat-value">
-              <span class="stat-number">{{ stats.following }}</span>
-              <span class="stat-label">FOLLOWING</span>
+              <span class="stat-number">{{ value }}</span>
+              <span class="stat-label">{{ key.toUpperCase() }}</span>
             </div>
             <div class="stat-icon">
-              <i class="fas fa-user-plus"></i>
-            </div>
-          </div>
-          <div class="stat-card" @click="showFollowersList">
-            <div class="stat-value">
-              <span class="stat-number">{{ stats.followers }}</span>
-              <span class="stat-label">FOLLOWERS</span>
-            </div>
-            <div class="stat-icon">
-              <i class="fas fa-users"></i>
-            </div>
-          </div>
-          <div class="stat-card" @click="showFriendsList">
-            <div class="stat-value">
-              <span class="stat-number">{{ stats.friends }}</span>
-              <span class="stat-label">FRIENDS</span>
-            </div>
-            <div class="stat-icon">
-              <i class="fas fa-user-friends"></i>
+              <i :class="getStatIcon(key)"></i>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Profile Details -->
-      <div v-if="user" class="profile-details">
-        <h2>Personal Information</h2>
+      <!-- Display-Only Information -->
+      <div class="profile-details">
+        <h2>Profile Information</h2>
         <div class="info-grid">
           <div class="info-card">
             <i class="fas fa-user"></i>
             <div class="info-content">
-              <label>Username</label>
+              <label>Username: </label>
               <span>{{ user.username }}</span>
             </div>
           </div>
-          
+          <div class="info-card">
+            <i class="fas fa-user"></i>
+            <div class="info-content">
+              <label>Github: </label>
+              <span>{{ user.github || "Not provided" }}</span>
+            </div>
+          </div>
           <div class="info-card">
             <i class="fas fa-envelope"></i>
             <div class="info-content">
-              <label>Email</label>
+              <label>Email: </label>
               <span>{{ user.email }}</span>
-            </div>
-          </div>
-
-          <div class="info-card">
-            <i class="fab fa-github"></i>
-            <div class="info-content">
-              <label>GitHub</label>
-              <span v-if="user.github">
-                <a :href="user.github" target="_blank">{{ user.github }}</a>
-              </span>
-              <span v-else>Not Connected</span>
             </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- Add Modal Component -->
-    <div v-if="showModal" class="modal">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h2>{{ modalTitle }}</h2>
-          <button @click="closeModal" class="close-button">&times;</button>
-        </div>
-        <div class="modal-body">
-          <div v-if="loading" class="loading">Loading...</div>
-          <div v-else class="user-list">
-            <div v-for="user in modalUsers" :key="user.uuid" class="user-item">
-              <img :src="user.profileImage || defaultProfileImage" :alt="user.displayName" class="user-avatar">
-              <div class="user-info">
-                <span class="user-name">{{ user.displayName }}</span>
-                <a :href="user.github" target="_blank" class="user-github" v-if="user.github">
-                  <i class="fab fa-github"></i>
-                </a>
-              </div>
-            </div>
+      <!-- Editable Form for User Profile -->
+      <div class="editable-form">
+        <h2>Edit Profile</h2>
+        <form @submit.prevent="saveProfile">
+          <div class="form-group">
+            <label for="displayName">Display Name:</label>
+            <input v-model="user.displayName" id="displayName" required />
           </div>
-        </div>
+          <div class="form-group">
+            <label for="github">GitHub:</label>
+            <input v-model="user.github" id="github" placeholder="GitHub URL" />
+          </div>
+          <div class="form-group">
+            <label for="profileImage">Profile Image URL:</label>
+            <input v-model="user.profileImage" id="profileImage" placeholder="Profile Image URL" />
+          </div>
+          <button type="submit">Save Changes</button>
+          <p v-if="successMessage" class="success-message">{{ successMessage }}</p>
+          <p v-if="errorMessage" class="error-message">{{ errorMessage }}</p>
+        </form>
       </div>
     </div>
   </div>
@@ -129,24 +105,14 @@ export default {
   name: "ProfilePage",
   data() {
     return {
-      user: null,
-      stats: {
-        following: 0,
-        followers: 0,
-        friends: 0
-      },
-      showModal: false,
-      modalTitle: '',
-      modalUsers: [],
-      loading: false,
-      defaultProfileImage: 'https://i.pinimg.com/originals/f1/0f/f7/f10ff70a7155e5ab666bcdd1b45b726d.jpg'
+      user: JSON.parse(localStorage.getItem("user")),
+      stats: { following: 0, followers: 0, friends: 0 },
+      successMessage: '',
+      errorMessage: ''
     };
   },
-  async mounted() {
-    this.user = JSON.parse(localStorage.getItem("user"));
-    if (this.user) {
-      await this.fetchStats();
-    }
+  mounted() {
+    this.fetchStats();
   },
   methods: {
     backToStream() {
@@ -155,122 +121,57 @@ export default {
     makePost() {
       this.$router.push("/addPost");
     },
-
     showPost() {
       this.$router.push("/posts/all");
     },
     async fetchStats() {
+      // Fetch stats data here
+    },
+    async saveProfile() {
       try {
-        // Debug logs
-        console.log('User data:', this.user);
-        console.log('User UUID:', this.user.uuid);
-        const url = `http://localhost:8000/service/api/authors/${this.user.uuid}/stats/`;
-        console.log('Requesting URL:', url);
-        
-        const response = await axios.get(url, {
+        const url = `http://localhost:8000/service/api/authors/${this.user.uuid}/`;
+        const response = await axios.post(url, this.user, {
           headers: {
             Authorization: `Token ${localStorage.getItem("token")}`,
           },
         });
-        console.log('Response:', response.data);
-        this.stats = response.data;
-      } catch (error) {
-        console.error("Error fetching stats:", error);
-        // More detailed error logging
-        if (error.response) {
-          console.log('Error status:', error.response.status);
-        }
-      }
-    },
-    handleImageError(e) {
-      // Fallback if even the default image fails to load
-      e.target.src = 'https://i.pinimg.com/originals/f1/0f/f7/f10ff70a7155e5ab666bcdd1b45b726d.jpg';
-    },
-    async showFollowingList() {
-      this.modalTitle = 'Following';
-      this.showModal = true;
-      this.loading = true;
-      try {
-        const response = await axios.get(
-          `http://localhost:8000/service/api/authors/${this.user.uuid}/following/`,
-          {
-            headers: {
-              Authorization: `Token ${localStorage.getItem("token")}`,
-            },
-          }
-        );
-        this.modalUsers = response.data;
-      } catch (error) {
-        console.error('Error fetching following list:', error);
-      }
-      this.loading = false;
-    },
 
-    async showFollowersList() {
-      this.modalTitle = 'Followers';
-      this.showModal = true;
-      this.loading = true;
-      try {
-        const response = await axios.get(
-          `http://localhost:8000/service/api/authors/${this.user.uuid}/followers/`,
-          {
-            headers: {
-              Authorization: `Token ${localStorage.getItem("token")}`,
-            },
-          }
-        );
-        this.modalUsers = response.data;
+        localStorage.setItem("user", JSON.stringify(response.data));
+        this.successMessage = "Profile updated successfully!";
+        this.errorMessage = '';
       } catch (error) {
-        console.error('Error fetching followers list:', error);
+        this.errorMessage = "Error updating profile. Please try again.";
+        this.successMessage = '';
       }
-      this.loading = false;
     },
-
-    async showFriendsList() {
-      this.modalTitle = 'Friends';
-      this.showModal = true;
-      this.loading = true;
-      try {
-        const response = await axios.get(
-          `http://localhost:8000/service/api/authors/${this.user.uuid}/friends/`,
-          {
-            headers: {
-              Authorization: `Token ${localStorage.getItem("token")}`,
-            },
-          }
-        );
-        this.modalUsers = response.data;
-      } catch (error) {
-        console.error('Error fetching friends list:', error);
-      }
-      this.loading = false;
-    },
-
-    closeModal() {
-      this.showModal = false;
-      this.modalUsers = [];
+    getStatIcon(key) {
+      const icons = {
+        following: "fas fa-user-plus",
+        followers: "fas fa-users",
+        friends: "fas fa-user-friends"
+      };
+      return icons[key] || "fas fa-info-circle";
     }
-  },
+  }
 };
 </script>
 
 <style scoped>
 
-/* General Container Styling */
-
 .profile-container {
-  height: 100vh;
+  min-height: 100vh;
   overflow-y: auto;
   background-color: #f8f9fa;
-}
+  padding-top: 80px;
 
+}
 .top-nav {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 1rem 2rem;
   background-color: white;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   position: fixed;
   top: 0;
   left: 0;
@@ -283,252 +184,145 @@ export default {
   gap: 1rem;
 }
 
-.back-button {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
+.back-button,
+.action-button {
   border: none;
   background-color: #f0f2f5;
   color: #1a1a1a;
   font-size: 1.2rem;
   cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.action-button {
   padding: 0.5rem 1rem;
   border-radius: 8px;
-  border: none;
-  background: linear-gradient(45deg, #3b82f6, #10b981);
-  color: white;
-  font-size: 0.9rem;
-  cursor: pointer;
-  transition: all 0.3s ease;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  transition: all 0.3s ease;
 }
 
-.action-button:hover, .back-button:hover {
+.back-button:hover,
+.action-button:hover {
   transform: translateY(-2px);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-}
-
-.profile-banner {
-  height: 250px;
-  background: linear-gradient(45deg, #3b82f6, #10b981);
-  margin-bottom: 80px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .profile-header {
   text-align: center;
-  margin-top: -125px;
-  margin-bottom: 3rem;
+  margin-top: 1rem;
+  margin-bottom: 2rem;
 }
 
 .profile-image-wrapper {
   margin: 0 auto;
-  width: 200px;
-  height: 200px;
+  width: 150px;
+  height: 150px;
 }
 
 .profile-image {
   width: 100%;
   height: 100%;
   border-radius: 50%;
-  border: 8px solid white;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  border: 5px solid white;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
   object-fit: cover;
 }
 
 .display-name {
   margin-top: 1rem;
-  font-size: 2rem;
-  color: #1a1a1a;
-}
-
-.profile-details {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 2rem;
-}
-
-.profile-details h2 {
-  text-align: center;
-  margin-bottom: 3rem;
-  color: #1a1a1a;
   font-size: 1.8rem;
-}
-
-.info-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 1.5rem;
-  margin-top: 1rem;
-}
-
-.info-card {
-  background: white;
-  padding: 1.5rem;
-  border-radius: 12px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  gap: 1rem;
-}
-
-.info-card i {
-  font-size: 1.8rem;
-  color: #3b82f6;
-}
-
-.info-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  width: 100%;
-}
-
-.info-content label {
-  font-size: 1rem;
-  color: #64748b;
-  margin-bottom: 0.8rem;
-  font-weight: 600;
-}
-
-.info-content span, .info-content a {
   color: #1a1a1a;
-  text-decoration: none;
-  word-break: break-all;
 }
 
-.info-content a:hover {
-  color: #3b82f6;
+.main-content {
+  padding: 1rem 2rem;
+  max-width: 800px;
+  margin: auto;
 }
 
 .stats-container {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1.5rem;
-  margin: 2rem auto;
-  max-width: 800px;
-  padding: 0 1rem;
+  display: flex;
+  justify-content: space-around;
+  margin: 2rem 0;
 }
 
 .stat-card {
   background: white;
   border-radius: 16px;
-  padding: 1.5rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-  transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
-  cursor: pointer;
-}
-
-.stat-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 4px;
-  background: linear-gradient(45deg, #3b82f6, #10b981);
-}
-
-.stat-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 8px 25px rgba(0,0,0,0.1);
-}
-
-.stat-value {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+  padding: 1rem;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+  text-align: center;
+  flex: 1;
+  margin: 0 0.5rem;
 }
 
 .stat-number {
-  font-size: 2rem;
+  font-size: 1.5rem;
   font-weight: 700;
   color: #1a1a1a;
-  line-height: 1;
 }
 
 .stat-label {
-  font-size: 0.8rem;
-  font-weight: 600;
+  font-size: 0.9rem;
   color: #64748b;
-  letter-spacing: 1px;
+  margin-top: 0.3rem;
 }
 
-.stat-icon {
-  width: 40px;
-  height: 40px;
+.profile-details h2 {
+  text-align: center;
+  margin-bottom: 1rem;
+  color: #1a1a1a;
+  font-size: 1.5rem;
+}
+
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+  padding: 0 1rem;
+}
+
+.info-card {
+  background: white;
+  padding: 1rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  border-radius: 12px;
-  background: linear-gradient(45deg, #3b82f6, #10b981);
-  color: white;
-  font-size: 1.2rem;
+  text-align: center;
+}
+
+.info-content label {
+  font-size: 0.9rem;
+  color: #64748b;
+  margin-bottom: 0.5rem;
+}
+
+.info-content span,
+.info-content a {
+  color: #1a1a1a;
+  word-break: break-all;
+  text-decoration: none;
 }
 
 @media (max-width: 768px) {
-  .top-nav {
-    padding: 1rem;
-  }
-
   .nav-actions {
     flex-direction: column;
     gap: 0.5rem;
   }
-
-  .action-button {
-    font-size: 0.8rem;
-  }
-
-  .profile-banner {
-    height: 150px;
-  }
+}
 
   .profile-image-wrapper {
     width: 120px;
     height: 120px;
   }
 
-  .info-grid {
-    grid-template-columns: 1fr;
-  }
-
   .stats-container {
-    grid-template-columns: 1fr;
-    gap: 1rem;
-    padding: 0 1rem;
+    flex-direction: column;
   }
 
   .stat-card {
-    padding: 1.2rem;
+    margin: 0.5rem 0;
   }
 
-  .stat-number {
-    font-size: 1.5rem;
-  }
-
-  .stat-label {
-    font-size: 0.7rem;
-  }
-
-  .stat-icon {
-    width: 35px;
-    height: 35px;
-    font-size: 1rem;
-  }
-}
 
 .modal {
   position: fixed;
@@ -619,3 +413,5 @@ export default {
   color: #666;
 }
 </style>
+
+

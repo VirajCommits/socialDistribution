@@ -1342,3 +1342,54 @@ def get_author_friends(request, author_uuid):
         return Response(serializer.data)
     except Author.DoesNotExist:
         return Response({'error': 'Author not found'}, status=404)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_author_followers(request, author_uuid):
+    try:
+        author = get_object_or_404(Author, uuid=author_uuid)
+        followers = author.followers.all()
+        serializer = AuthorSerializer(followers, many=True)
+        return Response(serializer.data)
+    except Author.DoesNotExist:
+        return Response({'error': 'Author not found'}, status=404)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_author_following(request, author_uuid):
+    try:
+        author = get_object_or_404(Author, uuid=author_uuid)
+        following = author.following.all()
+        serializer = AuthorSerializer(following, many=True)
+        return Response(serializer.data)
+    except Author.DoesNotExist:
+        return Response({'error': 'Author not found'}, status=404)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_author_friends(request, author_uuid):
+    try:
+        author = get_object_or_404(Author, uuid=author_uuid)
+        followers = author.followers.all()
+        following = author.following.all()
+        friends = followers.filter(id__in=following.values('id'))
+        serializer = AuthorSerializer(friends, many=True)
+        return Response(serializer.data)
+    except Author.DoesNotExist:
+        return Response({'error': 'Author not found'}, status=404)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def update_author_profile(request, author_uuid):
+    try:
+        author = Author.objects.get(uuid=author_uuid)
+        if request.user != author:
+            return Response({"error": "Permission denied"}, status=status.HTTP_403_FORBIDDEN)
+        
+        serializer = AuthorSerializer(author, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    except Author.DoesNotExist:
+        return Response({"error": "Author not found"}, status=status.HTTP_404_NOT_FOUND)
