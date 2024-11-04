@@ -308,11 +308,12 @@ def post_detail(request, author_serial, post_serial):
                 print("Serializer errors:", serializer.errors)
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    # Handle DELETE request to delete the post
-    elif request.method == "DELETE" and not action:
-        post.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        # Handle DELETE request to delete the post
+        elif request.method == "DELETE" and not action:
+            post.delete()  # Now delete the original post or repost
+            return Response(status=status.HTTP_204_NO_CONTENT)
 
+            
     # Handle PUT request to update the post
     elif request.method == "PUT" and not action:
         data = request.data
