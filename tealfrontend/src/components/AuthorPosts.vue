@@ -174,7 +174,7 @@ export default {
       this.user = JSON.parse(localStorage.getItem("user"));
       this.authID = this.user.id.split("/").pop();
       try {
-        const apiUrl = `http://localhost:8000/service/api/authors/${encodeURIComponent(
+        const apiUrl = `/authors/${encodeURIComponent(
           this.authID
         )}/posts/all/`;
 
@@ -194,7 +194,7 @@ export default {
       const authorId = this.authID;
       const postId = post.id;
 
-      const updateUrl = `http://localhost:8000/service/api/authors/${authorId}/posts/${postId}`;
+      const updateUrl = `/authors/${authorId}/posts/${postId}`;
 
 
       if (
