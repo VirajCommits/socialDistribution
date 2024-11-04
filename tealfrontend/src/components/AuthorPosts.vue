@@ -51,6 +51,7 @@
 
           <CommentSection :postId="post.id" :authorId="authID" />
         </div>
+
         <div class="post-actions">
           <router-link
             :to="{ name: 'EditPost', params: { id: post.id } }"
@@ -61,6 +62,9 @@
           <button @click="setPostInvisible(post)" class="delete-button">
             <i class="fas fa-trash-alt"></i> Delete
           </button>
+          <button @click="copyToClipboard(post)" class="copy-url-button">
+            <i class="fas fa-copy"></i> Copy URL
+          </button> <!-- New Button -->
         </div>
       </div>
     </div>
@@ -71,6 +75,7 @@
     </div>
   </div>
 </template>
+
 
 <script>
 import axios from "axios";
@@ -111,6 +116,21 @@ export default {
     this.fetchPosts();
   },
   methods: {
+    copyToClipboard(post) {
+      // Construct a simpler URL for the post
+      const postUrl = `${window.location.origin}/posts/${post.id}`;
+
+      // Copy the URL to the clipboard
+      navigator.clipboard
+        .writeText(postUrl)
+        .then(() => {
+          alert("URL copied to clipboard!");
+        })
+        .catch((err) => {
+          console.error("Failed to copy: ", err);
+          this.errorMessage = "Failed to copy URL.";
+        });
+    },
     isImageContent(content) {
       if (!content) return false;
 
@@ -158,8 +178,6 @@ export default {
           this.authID
         )}/posts/all/`;
 
-        // try {
-        //  const apiUrl = `${process.env.VUE_APP_API_BASE_URL}/authors/${encodeURIComponent(this.authID)}/posts/all/`;
 
         const response = await axios.get(apiUrl);
         // Safely access the API response structure
@@ -177,7 +195,7 @@ export default {
       const postId = post.id;
 
       const updateUrl = `http://localhost:8000/service/api/authors/${authorId}/posts/${postId}`;
-      // const updateUrl = `${process.env.VUE_APP_API_BASE_URL}/authors/${authorId}/posts/${postId}`;
+
 
       if (
         confirm(

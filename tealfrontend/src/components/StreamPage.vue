@@ -110,6 +110,9 @@
               <img :src="extractImageSrc(post.content)" alt="Post Image" />
             </div>
             <div v-else class="post-text" v-html="post.content"></div>
+            <button @click="copyToClipboard(post)" class="copy-url-button">
+            <i class="fas fa-copy"></i> Copy URL
+          </button> <!-- New Button -->
           </div>
 
           <div class="post-actions">
@@ -176,6 +179,21 @@ export default {
     }
   },
   methods: {
+  copyToClipboard(post) {
+      // Construct a simpler URL for the post
+      const postUrl = `${window.location.origin}/posts/${post.id}`;
+
+      // Copy the URL to the clipboard
+      navigator.clipboard
+        .writeText(postUrl)
+        .then(() => {
+          alert("URL copied to clipboard!");
+        })
+        .catch((err) => {
+          console.error("Failed to copy: ", err);
+          this.errorMessage = "Failed to copy URL.";
+        });
+    },
     // WebSocket related methods
     initializeWebSocket() {
       const uuid = localStorage.getItem("uuid");

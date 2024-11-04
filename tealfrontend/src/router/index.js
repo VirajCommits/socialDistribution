@@ -7,12 +7,14 @@ import CreatePost from '../components/CreatePost.vue';
 import AuthorPosts from '../components/AuthorPosts.vue';
 import EditPost from '../components/EditPost.vue';
 import ExploreAuthors from '../components/ExploreAuthors.vue';
+// Import your PostDetail component if needed
+import PostDetail from '../components/PostDetail.vue';
 
 const routes = [
   { path: '/login', component: UserLogin },
   { path: '/signup', component: UserSignup },
-  { path: '/', redirect: '/login' }, 
-  { path: '/stream', component: StreamPage }, 
+  { path: '/', redirect: '/login' },
+  { path: '/stream', component: StreamPage },
   { path: '/profile', component: ProfilePage },
   { path: '/addPost', component: CreatePost },
   { path: '/posts/all', component: AuthorPosts },
@@ -27,9 +29,17 @@ const routes = [
   {
     path: '/swagger',
     beforeEnter() {
-      window.location.href = 'http://localhost:8080/swagger';  // Redirect to Django's Swagger UI
-    }
-  }
+      window.location.href = 'http://localhost:8000/swagger'; // Redirect to Swagger UI
+    },
+  },
+  {
+    path: '/posts/:postId',
+    name: 'PostDetail',
+    component: PostDetail,
+    props: true,
+  },
+  // Catch-all route to redirect to the main app
+  { path: '/:catchAll(.*)', redirect: '/stream' },
 ];
 
 const router = createRouter({

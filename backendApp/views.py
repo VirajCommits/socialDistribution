@@ -333,7 +333,7 @@ def post_detail(request, author_serial, post_serial):
     # If the action doesn't match any known value, return an error
     return Response({"detail": "Invalid request"}, status=status.HTTP_400_BAD_REQUEST)
 
-  
+
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def post_comment(request, post_id):
@@ -1385,7 +1385,7 @@ def update_author_profile(request, author_uuid):
         author = Author.objects.get(uuid=author_uuid)
         if request.user != author:
             return Response({"error": "Permission denied"}, status=status.HTTP_403_FORBIDDEN)
-        
+
         serializer = AuthorSerializer(author, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
@@ -1393,3 +1393,21 @@ def update_author_profile(request, author_uuid):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     except Author.DoesNotExist:
         return Response({"error": "Author not found"}, status=status.HTTP_404_NOT_FOUND)
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def get_post_by_link(request, post_id):
+    """
+    Fetch a post by ID if it's either public or unlisted.
+    """
+    # print("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAa")
+    post = get_object_or_404(Post, id=post_id)
+
+    # Check if the post is public or unlisted
+    if post.visibility in ["PUBLIC", "UNLISTED"]:
+        serializer = PostSerializer(post)
+        return Response(serializer.data, status=200)
+
+    # If the post is private or friends-only, return a 403 Forbidden
+    return Response({"detail": "You are not authorized to view this post."}, status=403)
