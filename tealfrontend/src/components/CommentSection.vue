@@ -85,7 +85,7 @@ export default {
   methods: {
     async fetchComments() {
       try {
-        const apiUrl = `http://localhost:8000/service/api/posts/${this.postId}/comments/`;
+        const apiUrl = `/posts/${this.postId}/comments/`;
         const response = await axios.get(apiUrl);
         this.comments = response.data || [];
         this.loading = false;
@@ -108,7 +108,7 @@ export default {
           return;
         }
 
-        const apiUrl = `http://localhost:8000/service/api/posts/${this.postId}/comment/`;
+        const apiUrl = `/posts/${this.postId}/comment/`;
         const payload = {
           content: this.newComment,
           contentType: "text/plain",
