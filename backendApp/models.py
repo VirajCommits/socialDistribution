@@ -8,7 +8,7 @@ class Author(AbstractUser):
     type = models.CharField(max_length=6, default="author", editable=False)
     uuid = models.UUIDField(unique=True, editable=False, default=uuid.uuid4)
     id = models.URLField(primary_key=True, max_length=500)
-    host = models.URLField(default="http://localhost:8000/project/")
+    host = models.URLField(default="http://localhost:8000/")
     displayName = models.CharField(max_length=255)
     github = models.URLField(blank=True)
     profileImage = models.URLField(blank=True, max_length=500)
@@ -33,6 +33,10 @@ class Author(AbstractUser):
         self.followers.add(requester)
         self.save()
 
+    def is_friend_with(self, other_author):
+        """Check if this author and other_author are mutual followers (friends)"""
+        return (self.followers.filter(id=other_author.id).exists() and 
+                other_author.followers.filter(id=self.id).exists())
 
 class Post(models.Model):
     VISIBILITY_CHOICES = [
@@ -49,14 +53,11 @@ class Post(models.Model):
         ("image/jpeg;base64", "JPEG Image (Base64)"),
     ]
 
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=True)
     type = models.CharField(max_length=10, default="post")
     title = models.CharField(max_length=200)
     page = models.URLField()
     description = models.TextField(blank=True, null=True)
-    image = models.ImageField(
-        upload_to="posts/images/", blank=True, null=True
-    )  # Field for image
     contentType = models.CharField(max_length=50, choices=CONTENT_TYPE_CHOICES)
     content = models.TextField(blank=True, null=True)
     image = models.ImageField(upload_to="post_images/", blank=True, null=True)

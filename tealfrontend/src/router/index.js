@@ -7,35 +7,43 @@ import CreatePost from '../components/CreatePost.vue';
 import AuthorPosts from '../components/AuthorPosts.vue';
 import EditPost from '../components/EditPost.vue';
 import ExploreAuthors from '../components/ExploreAuthors.vue';
+// Import your PostDetail component if needed
 import PostDetail from '../components/PostDetail.vue';
 
 const routes = [
   { path: '/login', component: UserLogin },
   { path: '/signup', component: UserSignup },
-  { path: '/', redirect: '/login' }, 
-  { path: '/stream', component: StreamPage }, 
-  {path: '/profile', component: ProfilePage},
-  {path: '/addPost', component: CreatePost},
-  {path: '/posts/all', component: AuthorPosts},
-  {path: '/posts/create', component: CreatePost},
-  {path: '/explore', component: ExploreAuthors},
+  { path: '/', redirect: '/login' },
+  { path: '/stream', component: StreamPage },
+  { path: '/profile', component: ProfilePage },
+  { path: '/addPost', component: CreatePost },
+  { path: '/posts/all', component: AuthorPosts },
+  { path: '/posts/create', component: CreatePost },
+  { path: '/explore', component: ExploreAuthors },
   {
-    path: '/edit-post/:id',  // Ensure this path matches the structure you're using
+    path: '/edit-post/:id',
     name: 'EditPost',
     component: EditPost,
-    props: true,  // Enable route params to be passed as props
+    props: true,
   },
   {
-    path: '/posts/:postId',  // Path for viewing a specific post by ID
+    path: '/swagger',
+    beforeEnter() {
+      window.location.href = 'http://localhost:8000/swagger'; // Redirect to Swagger UI
+    },
+  },
+  {
+    path: '/posts/:postId',
     name: 'PostDetail',
     component: PostDetail,
-    props: true,  // Pass route params as props
+    props: true,
   },
-
+  // Catch-all route to redirect to the main app
+  { path: '/:catchAll(.*)', redirect: '/stream' },
 ];
 
 const router = createRouter({
-  history: createWebHistory('/project'),
+  history: createWebHistory(''),
   routes,
 });
 

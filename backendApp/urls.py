@@ -1,13 +1,35 @@
-from django.urls import path, include
+from django.urls import path, re_path
 from . import views
 from django.conf import settings
 from django.conf.urls.static import static
+from drf_yasg.views import get_schema_view
+from drf_yasg import openapi
+from django.views.generic import TemplateView
+
+schema_view = get_schema_view(
+    openapi.Info(
+        title="Your API Title",
+        default_version="v1",
+        description="API documentation for your project",
+        terms_of_service="https://www.google.com/policies/terms/",
+        contact=openapi.Contact(email="contact@yourapi.local"),
+        license=openapi.License(name="BSD License"),
+    ),
+    public=True,
+)
 
 urlpatterns = [
     path("", views.defaultPath, name="defaultPath"),
     path("api/signup/", views.signup, name="signup"),
     path("api/login/", views.login, name="login"),
-    # Post-related paths
+    # Swagger paths
+    path(
+        "swagger/",
+        schema_view.with_ui("swagger", cache_timeout=0),
+        name="schema-swagger-ui",
+    ),
+    path("redoc/", schema_view.with_ui("redoc", cache_timeout=0), name="schema-redoc"),
+    # API paths
     path(
         "service/api/authors/<path:author_serial>/posts/",
         views.create_post,
@@ -71,8 +93,12 @@ urlpatterns = [
         name="remove-follow-request",
     ),
     # Fetch all authors path
-    path("service/api/authors/", views.get_all_authors, name="get_all_authors"),
-    # To get the posts for displaying on the stream
+    path(
+        "service/api/authors/",
+        views.get_all_authors,
+        name="get_all_authors",
+    ),
+    # Stream and follow-related paths
     path(
         "service/api/authors/<path:author_id>/stream/",
         views.stream_page,
@@ -87,5 +113,40 @@ urlpatterns = [
         "service/api/posts/<uuid:post_id>/",
         views.get_post_by_link,
         name="get_post_by_link",
+    ),
+    path(
+        "service/api/authors/<uuid:author_uuid>/relationship/",
+        views.check_relationship_status,
+        name="check-relationship-status",
+    ),
+    path(
+        "service/api/authors/<uuid:author_uuid>/stats/",
+        views.get_author_stats,
+        name="get-author-stats",
+    ),
+    path(
+        "service/api/authors/<uuid:author_uuid>/followers/",
+        views.get_author_followers,
+        name="get-author-followers",
+    ),
+    path(
+        "service/api/authors/<uuid:author_uuid>/following/",
+        views.get_author_following,
+        name="get-author-following",
+    ),
+    path(
+        "service/api/authors/<uuid:author_uuid>/friends/",
+        views.get_author_friends,
+        name="get-author-friends",
+    ),
+    # path(
+    #     "stream", TemplateView.as_view(template_name="vue/index.html"), name="stream"
+    # ),
+    # Catch-all route for Vue frontend
+    re_path(r"^.*$", TemplateView.as_view(template_name="index.html")),
+    path(
+        "posts/<uuid:post_id>/",
+        TemplateView.as_view(template_name="index.html"),
+        name="post_detail",
     ),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

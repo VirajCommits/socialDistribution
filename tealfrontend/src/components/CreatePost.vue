@@ -134,7 +134,7 @@ export default {
         this.authID = this.user.id.split("/").pop(-1);
         // Use the actual author ID
         const authorId = this.authID;
-        const apiUrl = `http://localhost:8000/project/service/api/authors/${authorId}/posts/`;
+        const apiUrl = `http://localhost:8000/service/api/authors/${authorId}/posts/`;
 
         // Create form data to handle both text and image uploads
         const formData = new FormData();

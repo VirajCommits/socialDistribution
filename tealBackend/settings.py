@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'drf_yasg',
     'corsheaders',
     'backendApp',
     'channels',
@@ -97,8 +98,7 @@ ROOT_URLCONF = "tealBackend.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        # Update 'DIRS' to point to the templates directory
-        "DIRS": [os.path.join(BASE_DIR, 'backendApp', 'templates')],
+        "DIRS": [BASE_DIR / "backendApp/static/vue"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -110,6 +110,7 @@ TEMPLATES = [
         },
     },
 ]
+
 
 WSGI_APPLICATION = "tealBackend.wsgi.application"
 
@@ -165,6 +166,8 @@ USE_TZ = True
 
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATICFILES_DIRS = [BASE_DIR / "backendApp/static"]
+
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field

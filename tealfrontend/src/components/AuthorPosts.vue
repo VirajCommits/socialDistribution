@@ -174,12 +174,10 @@ export default {
       this.user = JSON.parse(localStorage.getItem("user"));
       this.authID = this.user.id.split("/").pop();
       try {
-        const apiUrl = `http://localhost:8000/project/service/api/authors/${encodeURIComponent(
+        const apiUrl = `http://localhost:8000/service/api/authors/${encodeURIComponent(
           this.authID
         )}/posts/all/`;
 
-        // try {
-        //  const apiUrl = `${process.env.VUE_APP_API_BASE_URL}/authors/${encodeURIComponent(this.authID)}/posts/all/`;
 
         const response = await axios.get(apiUrl);
         // Safely access the API response structure
@@ -196,8 +194,8 @@ export default {
       const authorId = this.authID;
       const postId = post.id;
 
-      const updateUrl = `http://localhost:8000/project/service/api/authors/${authorId}/posts/${postId}`;
-      // const updateUrl = `${process.env.VUE_APP_API_BASE_URL}/authors/${authorId}/posts/${postId}`;
+      const updateUrl = `http://localhost:8000/service/api/authors/${authorId}/posts/${postId}`;
+
 
       if (
         confirm(
