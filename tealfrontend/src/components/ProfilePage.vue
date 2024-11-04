@@ -32,7 +32,7 @@
         
         <!-- New Stats Section -->
         <div class="stats-container">
-          <div class="stat-card">
+          <div class="stat-card" @click="showFollowingList">
             <div class="stat-value">
               <span class="stat-number">{{ stats.following }}</span>
               <span class="stat-label">FOLLOWING</span>
@@ -41,7 +41,7 @@
               <i class="fas fa-user-plus"></i>
             </div>
           </div>
-          <div class="stat-card">
+          <div class="stat-card" @click="showFollowersList">
             <div class="stat-value">
               <span class="stat-number">{{ stats.followers }}</span>
               <span class="stat-label">FOLLOWERS</span>
@@ -50,7 +50,7 @@
               <i class="fas fa-users"></i>
             </div>
           </div>
-          <div class="stat-card">
+          <div class="stat-card" @click="showFriendsList">
             <div class="stat-value">
               <span class="stat-number">{{ stats.friends }}</span>
               <span class="stat-label">FRIENDS</span>
@@ -92,12 +92,28 @@
               <span v-else>Not Connected</span>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
 
-          <div class="info-card">
-            <i class="fas fa-globe"></i>
-            <div class="info-content">
-              <label>Personal Page</label>
-              <a :href="user.page" target="_blank">{{ user.page }}</a>
+    <!-- Add Modal Component -->
+    <div v-if="showModal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>{{ modalTitle }}</h2>
+          <button @click="closeModal" class="close-button">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div v-if="loading" class="loading">Loading...</div>
+          <div v-else class="user-list">
+            <div v-for="user in modalUsers" :key="user.uuid" class="user-item">
+              <img :src="user.profileImage || defaultProfileImage" :alt="user.displayName" class="user-avatar">
+              <div class="user-info">
+                <span class="user-name">{{ user.displayName }}</span>
+                <a :href="user.github" target="_blank" class="user-github" v-if="user.github">
+                  <i class="fab fa-github"></i>
+                </a>
+              </div>
             </div>
           </div>
         </div>
@@ -118,7 +134,12 @@ export default {
         following: 0,
         followers: 0,
         friends: 0
-      }
+      },
+      showModal: false,
+      modalTitle: '',
+      modalUsers: [],
+      loading: false,
+      defaultProfileImage: 'https://i.pinimg.com/originals/f1/0f/f7/f10ff70a7155e5ab666bcdd1b45b726d.jpg'
     };
   },
   async mounted() {
@@ -164,6 +185,70 @@ export default {
     handleImageError(e) {
       // Fallback if even the default image fails to load
       e.target.src = 'https://i.pinimg.com/originals/f1/0f/f7/f10ff70a7155e5ab666bcdd1b45b726d.jpg';
+    },
+    async showFollowingList() {
+      this.modalTitle = 'Following';
+      this.showModal = true;
+      this.loading = true;
+      try {
+        const response = await axios.get(
+          `http://localhost:8000/service/api/authors/${this.user.uuid}/following/`,
+          {
+            headers: {
+              Authorization: `Token ${localStorage.getItem("token")}`,
+            },
+          }
+        );
+        this.modalUsers = response.data;
+      } catch (error) {
+        console.error('Error fetching following list:', error);
+      }
+      this.loading = false;
+    },
+
+    async showFollowersList() {
+      this.modalTitle = 'Followers';
+      this.showModal = true;
+      this.loading = true;
+      try {
+        const response = await axios.get(
+          `http://localhost:8000/service/api/authors/${this.user.uuid}/followers/`,
+          {
+            headers: {
+              Authorization: `Token ${localStorage.getItem("token")}`,
+            },
+          }
+        );
+        this.modalUsers = response.data;
+      } catch (error) {
+        console.error('Error fetching followers list:', error);
+      }
+      this.loading = false;
+    },
+
+    async showFriendsList() {
+      this.modalTitle = 'Friends';
+      this.showModal = true;
+      this.loading = true;
+      try {
+        const response = await axios.get(
+          `http://localhost:8000/service/api/authors/${this.user.uuid}/friends/`,
+          {
+            headers: {
+              Authorization: `Token ${localStorage.getItem("token")}`,
+            },
+          }
+        );
+        this.modalUsers = response.data;
+      } catch (error) {
+        console.error('Error fetching friends list:', error);
+      }
+      this.loading = false;
+    },
+
+    closeModal() {
+      this.showModal = false;
+      this.modalUsers = [];
     }
   },
 };
@@ -278,15 +363,15 @@ export default {
 .info-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 2rem;
-  padding: 0 1rem;
+  gap: 1.5rem;
+  margin-top: 1rem;
 }
 
 .info-card {
   background: white;
-  padding: 2rem 1.5rem;
+  padding: 1.5rem;
   border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -343,6 +428,7 @@ export default {
   transition: all 0.3s ease;
   position: relative;
   overflow: hidden;
+  cursor: pointer;
 }
 
 .stat-card::before {
@@ -442,5 +528,94 @@ export default {
     height: 35px;
     font-size: 1rem;
   }
+}
+
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 500px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.modal-header {
+  padding: 1rem;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.close-button {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: #666;
+}
+
+.modal-body {
+  padding: 1rem;
+}
+
+.user-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.user-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.5rem;
+  border-radius: 8px;
+  transition: background-color 0.2s;
+}
+
+.user-item:hover {
+  background-color: #f3f4f6;
+}
+
+.user-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.user-name {
+  font-weight: 500;
+}
+
+.user-github {
+  color: #333;
+  text-decoration: none;
+}
+
+.loading {
+  text-align: center;
+  padding: 2rem;
+  color: #666;
 }
 </style>
