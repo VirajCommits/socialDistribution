@@ -92,13 +92,7 @@
                   </div>
                 </div>
                 <div class="info-value">
-                  <span v-if="!isEditing">{{ user.username }}</span>
-                  <input
-                    v-else
-                    v-model="editedUser.username"
-                    type="text"
-                    class="edit-input"
-                  />
+                  <span>{{ user.username }}</span>
                 </div>
               </div>
             </div>
@@ -152,26 +146,23 @@
     </div>
 
     <!-- Add Modal Component -->
-    <div v-if="showModal" class="modal-overlay" @click="closeModal">
-      <div class="modal-content" @click.stop>
+    <div v-if="showModal" class="modal">
+      <div class="modal-content">
         <div class="modal-header">
-          <h3>{{ modalTitle }}</h3>
-          <button class="close-button" @click="closeModal">×</button>
+          <h2>{{ modalTitle }}</h2>
+          <button @click="closeModal" class="close-button">&times;</button>
         </div>
-        
         <div class="modal-body">
-          <div v-if="loading" class="loading-spinner">
-            <i class="fas fa-spinner fa-spin"></i>
-          </div>
-          <div v-else>
-            <div v-if="modalUsers.length === 0" class="empty-state">
-              <i class="fas fa-user-friends empty-icon"></i>
-              <p v-if="modalTitle === 'Following'">You are not following anyone yet</p>
-              <p v-else-if="modalTitle === 'Followers'">You don't have any followers yet</p>
-              <p v-else-if="modalTitle === 'Friends'">You don't have any friends yet</p>
-            </div>
-            <div v-else>
-              <!-- Existing user list content -->
+          <div v-if="loading" class="loading">Loading...</div>
+          <div v-else class="user-list">
+            <div v-for="user in modalUsers" :key="user.uuid" class="user-item">
+              <img :src="user.profileImage || defaultProfileImage" :alt="user.displayName" class="user-avatar">
+              <div class="user-info">
+                <span class="user-name">{{ user.displayName }}</span>
+                <a :href="user.github" target="_blank" class="user-github" v-if="user.github">
+                  <i class="fab fa-github"></i>
+                </a>
+              </div>
             </div>
           </div>
         </div>
@@ -382,7 +373,6 @@ export default {
     startEditing() {
       this.editedUser = {
         displayName: this.user.displayName,
-        username: this.user.username,
         email: this.user.email,
         github: this.user.github,
         profileImage: this.user.profileImage
@@ -769,64 +759,70 @@ export default {
 }
 
 .modal-header {
-  padding: 1.5rem;
+  padding: 1rem;
   border-bottom: 1px solid #e5e7eb;
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
-.modal-header h3 {
-  margin: 0;
-  font-size: 1.25rem;
-  color: #374151;
-}
-
-.modal-body {
-  padding: 3rem 1.5rem;
-  min-height: 300px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 1.5rem;
-  text-align: center;
-}
-
-.empty-icon {
-  font-size: 4rem;
-  color: #d1d5db;
-}
-
-.empty-state p {
-  margin: 0;
-  font-size: 1.1rem;
-  color: #6b7280;
-}
-
 .close-button {
   background: none;
   border: none;
-  color: #6b7280;
+  font-size: 1.5rem;
   cursor: pointer;
-  padding: 0.5rem;
-  font-size: 1.25rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  transition: all 0.2s;
+  color: #666;
 }
 
-.close-button:hover {
+.modal-body {
+  padding: 1rem;
+}
+
+.user-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.user-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.5rem;
+  border-radius: 8px;
+  transition: background-color 0.2s;
+}
+
+.user-item:hover {
   background-color: #f3f4f6;
-  color: #374151;
+}
+
+.user-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.user-name {
+  font-weight: 500;
+}
+
+.user-github {
+  color: #333;
+  text-decoration: none;
+}
+
+.loading {
+  text-align: center;
+  padding: 2rem;
+  color: #666;
 }
 
 .edit-button {
@@ -925,7 +921,22 @@ export default {
 .info-value {
   text-align: center;
   width: 100%;
-  margin-top: 0.5rem;
+}
+
+.edit-input {
+  width: 80%;
+  padding: 0.5rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 1rem;
+  text-align: center;
+}
+
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+  padding: 1.5rem;
 }
 
 .modal-overlay {
@@ -943,70 +954,18 @@ export default {
 
 .modal-content {
   background: white;
+  padding: 2rem;
   border-radius: 12px;
   width: 90%;
-  max-width: 400px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  max-width: 500px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 }
 
-.modal-header {
-  padding: 1rem 1.5rem;
-  border-bottom: 1px solid #e5e7eb;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.modal-header h3 {
-  margin: 0;
-  font-size: 1.25rem;
-  color: #374151;
-}
-
-.close-button {
-  background: none;
-  border: none;
-  font-size: 1.5rem;
-  color: #9ca3af;
-  cursor: pointer;
-  padding: 0.25rem;
-  line-height: 1;
-}
-
-.close-button:hover {
-  color: #4b5563;
-}
-
-.modal-body {
-  padding: 2rem 1.5rem;
-  min-height: 120px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.75rem;
+.modal-content h3 {
+  margin-top: 0;
+  margin-bottom: 1.5rem;
   text-align: center;
-}
-
-.empty-icon {
-  font-size: 2rem;
-  color: #9ca3af;
-}
-
-.empty-state p {
-  margin: 0;
-  font-size: 0.875rem;
-  color: #6b7280;
-}
-
-.loading-spinner {
-  color: #3b82f6;
-  font-size: 1.5rem;
+  color: #374151;
 }
 
 .image-url-input {
@@ -1048,38 +1007,5 @@ export default {
 
 .cancel-button:hover {
   background-color: #d1d5db;
-}
-
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 2rem;
-  text-align: center;
-  color: #6b7280;
-}
-
-.empty-icon {
-  font-size: 3rem;
-  margin-bottom: 1rem;
-  color: #d1d5db;
-}
-
-.empty-state p {
-  margin: 0;
-  font-size: 1rem;
-}
-
-.modal-body {
-  min-height: 200px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.loading-spinner {
-  font-size: 2rem;
-  color: #3b82f6;
 }
 </style>
