@@ -119,4 +119,5 @@ urlpatterns = [
         views.get_author_stats,
         name="get-author-stats",
     ),
+    path("service/api/authors/<uuid:author_uuid>/", views.update_author_profile, name="update_author_profile"),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

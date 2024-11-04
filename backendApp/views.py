@@ -1307,3 +1307,19 @@ def get_author_stats(request, author_uuid):
         })
     except Author.DoesNotExist:
         return Response({'error': 'Author not found'}, status=404)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def update_author_profile(request, author_uuid):
+    try:
+        author = Author.objects.get(uuid=author_uuid)
+        if request.user != author:
+            return Response({"error": "Permission denied"}, status=status.HTTP_403_FORBIDDEN)
+        
+        serializer = AuthorSerializer(author, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    except Author.DoesNotExist:
+        return Response({"error": "Author not found"}, status=status.HTTP_404_NOT_FOUND)
