@@ -84,7 +84,7 @@ export default {
     async fetchPost() {
       try {
         console.log("fetching post");
-        const apiUrl = `http://localhost:8000/service/api/posts/${this.postId}/`;
+        const apiUrl = `/posts/${this.postId}/`;
         
         const response = await axios.get(apiUrl);
         this.post = response.data;
