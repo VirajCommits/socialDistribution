@@ -11,6 +11,7 @@ class Author(AbstractUser):
     host = models.URLField(default="http://localhost:8000/")
     displayName = models.CharField(max_length=255)
     github = models.URLField(blank=True)
+    is_approved = models.BooleanField(default=False)
     profileImage = models.URLField(blank=True, max_length=500)
     page = models.URLField(max_length=500)
     followers = models.ManyToManyField(

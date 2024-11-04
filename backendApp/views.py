@@ -947,7 +947,7 @@ def stream_page(request, author_id):
 
 
 @swagger_auto_schema(
-    method='POST',
+    method="POST",
     operation_summary="User Signup",
     operation_description="Creates a new user account. The user data must include the necessary fields as defined in the AuthorSerializer.",
     request_body=AuthorSerializer,
@@ -957,44 +957,59 @@ def stream_page(request, author_id):
             schema=openapi.Schema(
                 type=openapi.TYPE_OBJECT,
                 properties={
-                    'refresh': openapi.Schema(type=openapi.TYPE_STRING, example='refresh-token'),
-                    'access': openapi.Schema(type=openapi.TYPE_STRING, example='access-token'),
-                    'user': openapi.Schema(
+                    "refresh": openapi.Schema(
+                        type=openapi.TYPE_STRING, example="refresh-token"
+                    ),
+                    "access": openapi.Schema(
+                        type=openapi.TYPE_STRING, example="access-token"
+                    ),
+                    "user": openapi.Schema(
                         type=openapi.TYPE_OBJECT,
                         properties={
-                            'id': openapi.Schema(type=openapi.TYPE_STRING, example='user-id'),
-                            'username': openapi.Schema(type=openapi.TYPE_STRING, example='username'),
-                            'email': openapi.Schema(type=openapi.TYPE_STRING, example='user@example.com'),
+                            "id": openapi.Schema(
+                                type=openapi.TYPE_STRING, example="user-id"
+                            ),
+                            "username": openapi.Schema(
+                                type=openapi.TYPE_STRING, example="username"
+                            ),
+                            "email": openapi.Schema(
+                                type=openapi.TYPE_STRING, example="user@example.com"
+                            ),
                             # Add other fields from AuthorSerializer as necessary
-                        }
-                    )
-                }
-            )
+                        },
+                    ),
+                },
+            ),
         ),
         400: openapi.Response(
             description="Invalid input",
             schema=openapi.Schema(
                 type=openapi.TYPE_OBJECT,
                 properties={
-                    'errors': openapi.Schema(type=openapi.TYPE_OBJECT)  # Detailed error messages
-                }
-            )
-        )
+                    "errors": openapi.Schema(
+                        type=openapi.TYPE_OBJECT
+                    )  # Detailed error messages
+                },
+            ),
+        ),
     },
-    tags=["Authentication"]
+    tags=["Authentication"],
 )
 @csrf_exempt
-@api_view(['POST'])
+@api_view(["POST"])
 @permission_classes([AllowAny])
 def signup(request):
     serializer = AuthorSerializer(data=request.data)
     if serializer.is_valid():
+        # Save the user with is_approved set to False
         user = serializer.save()
-        refresh = RefreshToken.for_user(user)
+        user.is_approved = False  # Require admin approval
+        user.save()
+
+        # Notify the user that their account is pending approval
         return Response(
             {
-                "refresh": str(refresh),
-                "access": str(refresh.access_token),
+                "message": "User created. Your account is pending admin approval.",
                 "user": AuthorSerializer(user).data,
             },
             status=status.HTTP_201_CREATED,
@@ -1003,16 +1018,20 @@ def signup(request):
 
 
 @swagger_auto_schema(
-    method='POST',
+    method="POST",
     operation_summary="User Login",
     operation_description="Authenticates a user and returns JWT tokens if successful.",
     request_body=openapi.Schema(
         type=openapi.TYPE_OBJECT,
         properties={
-            'username': openapi.Schema(type=openapi.TYPE_STRING, example='example_username'),
-            'password': openapi.Schema(type=openapi.TYPE_STRING, example='example_password'),
+            "username": openapi.Schema(
+                type=openapi.TYPE_STRING, example="example_username"
+            ),
+            "password": openapi.Schema(
+                type=openapi.TYPE_STRING, example="example_password"
+            ),
         },
-        required=['username', 'password']
+        required=["username", "password"],
     ),
     responses={
         200: openapi.Response(
@@ -1020,42 +1039,62 @@ def signup(request):
             schema=openapi.Schema(
                 type=openapi.TYPE_OBJECT,
                 properties={
-                    'refresh': openapi.Schema(type=openapi.TYPE_STRING, example='refresh-token'),
-                    'access': openapi.Schema(type=openapi.TYPE_STRING, example='access-token'),
-                    'user': openapi.Schema(
+                    "refresh": openapi.Schema(
+                        type=openapi.TYPE_STRING, example="refresh-token"
+                    ),
+                    "access": openapi.Schema(
+                        type=openapi.TYPE_STRING, example="access-token"
+                    ),
+                    "user": openapi.Schema(
                         type=openapi.TYPE_OBJECT,
                         properties={
-                            'id': openapi.Schema(type=openapi.TYPE_STRING, example='user-id'),
-                            'username': openapi.Schema(type=openapi.TYPE_STRING, example='example_username'),
-                            'email': openapi.Schema(type=openapi.TYPE_STRING, example='user@example.com'),
+                            "id": openapi.Schema(
+                                type=openapi.TYPE_STRING, example="user-id"
+                            ),
+                            "username": openapi.Schema(
+                                type=openapi.TYPE_STRING, example="example_username"
+                            ),
+                            "email": openapi.Schema(
+                                type=openapi.TYPE_STRING, example="user@example.com"
+                            ),
                             # Add other fields from AuthorSerializer as necessary
-                        }
-                    )
-                }
-            )
+                        },
+                    ),
+                },
+            ),
         ),
         401: openapi.Response(
             description="Invalid credentials",
             schema=openapi.Schema(
                 type=openapi.TYPE_OBJECT,
                 properties={
-                    'error': openapi.Schema(type=openapi.TYPE_STRING, example='Invalid Credentials')
-                }
-            )
-        )
+                    "error": openapi.Schema(
+                        type=openapi.TYPE_STRING, example="Invalid Credentials"
+                    )
+                },
+            ),
+        ),
     },
-    tags=["Authentication"]
+    tags=["Authentication"],
 )
 @csrf_exempt
-@api_view(['POST'])
+@api_view(["POST"])
 @permission_classes([AllowAny])
 def login(request):
     username = request.data.get("username")
     password = request.data.get("password")
     user = authenticate(username=username, password=password)
-    if user:
-        refresh = RefreshToken.for_user(user)
 
+    if user:
+        # Check if the user is approved by the admin
+        if not user.is_approved:
+            return Response(
+                {"error": "Your account is pending admin approval."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        # Generate tokens if the user is approved
+        refresh = RefreshToken.for_user(user)
         return Response(
             {
                 "refresh": str(refresh),
@@ -1063,9 +1102,11 @@ def login(request):
                 "user": AuthorSerializer(user).data,
             }
         )
+
     return Response(
         {"error": "Invalid Credentials"}, status=status.HTTP_401_UNAUTHORIZED
     )
+
 
 @swagger_auto_schema(
     method='get',
