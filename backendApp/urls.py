@@ -149,4 +149,5 @@ urlpatterns = [
         TemplateView.as_view(template_name="index.html"),
         name="post_detail",
     ),
+    path("service/api/authors/<uuid:author_uuid>/", views.update_author_profile, name="update_author_profile"),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

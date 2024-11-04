@@ -111,7 +111,6 @@
   justify-content: center;
   background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
   padding: 0;
-  overflow: hidden;
   position: fixed;
   top: 0;
   left: 0;
@@ -126,7 +125,6 @@
   width: 100%;
   max-width: 460px;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-  overflow-y: hidden;
   max-height: 100vh;
 }
 
