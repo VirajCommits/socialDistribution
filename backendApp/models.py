@@ -2,7 +2,7 @@ from django.utils import timezone
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 import uuid
-
+from urllib.parse import urlparse
 
 class Author(AbstractUser):
     type = models.CharField(max_length=6, default="author", editable=False)
@@ -38,6 +38,16 @@ class Author(AbstractUser):
         """Check if this author and other_author are mutual followers (friends)"""
         return (self.followers.filter(id=other_author.id).exists() and 
                 other_author.followers.filter(id=self.id).exists())
+
+    @property
+    def github_username(self):
+        if self.github:
+            # Parse the GitHub URL to get the path and extract the username
+            path_parts = urlparse(self.github).path.strip("/").split("/")
+            if path_parts:  # Ensure there is a username in the path
+                return path_parts[-1]  # The username should be the last part of the URL
+        return None
+
 
 class Post(models.Model):
     VISIBILITY_CHOICES = [
@@ -140,21 +150,25 @@ class Like(models.Model):
         return f"Like by {self.author.displayName} on {self.post.title}"
 
 
-# class Inbox(models.Model):
-#     author = models.OneToOneField(
-#         Author, on_delete=models.CASCADE, related_name="inbox"
-#     )
-#     posts = models.ManyToManyField(Post, blank=True)
-#     likes = models.ManyToManyField(Like, blank=True)
-#     comments = models.ManyToManyField(Comment, blank=True)
-#     follow_requests = models.ManyToManyField(Follow, blank=True)
-
-#     def __str__(self):
-#         return f"Inbox of {self.author.displayName}"
-
-
 class AdminSettings(models.Model):
     user_approval_required = models.BooleanField(default=True)
 
     def __str__(self):
         return f"User Approval Required: {self.user_approval_required}"
+
+
+class GitHubPost(models.Model):
+    author = models.ForeignKey(
+        Author, on_delete=models.CASCADE, related_name="github_posts"
+    )
+    activity_type = models.CharField(
+        max_length=50
+    )  # e.g., 'PushEvent', 'PullRequestEvent'
+    activity_data = models.JSONField()  # Store event data in JSON format
+    created_at = models.DateTimeField(auto_now_add=True)
+    github_event_id = models.CharField(
+        max_length=100, unique=True
+    )  # Ensure we don't repost the same event
+
+    def __str__(self):
+        return f"{self.author.displayName}'s GitHub {self.activity_type}"

@@ -5,12 +5,9 @@ from rest_framework import status
 from django.utils import timezone
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
-
 from .models import AdminSettings
 from .serializers import PostSerializer, CommentSerializer, LikeSerializer
 from .models import Author, Post, Comment, Like, FollowRequest
-
-
 from django.shortcuts import get_object_or_404
 from urllib.parse import urlparse
 from django.shortcuts import render
@@ -27,7 +24,12 @@ import markdown2
 from .serializers import FollowRequestSerializer
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
-
+import requests
+import threading
+import time
+import requests
+from django.utils import timezone
+from .models import Author, GitHubPost, Post
 
 def defaultPath(request):
     return render(request, "index.html")
@@ -1698,7 +1700,7 @@ def get_author_stats(request, author_uuid):
         })
     except Author.DoesNotExist:
         return Response({'error': 'Author not found'}, status=404)
-    
+
 @swagger_auto_schema(
     method='post',
     operation_summary="Repost a Post",
@@ -2120,3 +2122,82 @@ def get_post_by_link(request, post_id):
 
     # If the post is private or friends-only, return a 403 Forbidden
     return Response({"detail": "You are not authorized to view this post."}, status=403)
+
+
+GITHUB_API_URL = "https://api.github.com/users/{}/events/public"
+
+
+def fetch_and_create_github_posts():
+    authors = Author.objects.filter(github__isnull=False)
+    for author in authors:
+        github_username = author.github.split("/")[-1]
+        if github_username:
+            response = requests.get(GITHUB_API_URL.format(github_username))
+            if response.status_code == 200:
+                events = response.json()
+                print("Fetched Events", events)
+                for event in events:
+                    if not GitHubPost.objects.filter(
+                        github_event_id=event["id"]
+                    ).exists():
+                        github_post = GitHubPost.objects.create(
+                            author=author,
+                            activity_type=event["type"],
+                            activity_data=event,
+                            github_event_id=event["id"],
+                        )
+                        create_public_post_from_github_activity(author, github_post)
+            else:
+                print(
+                    f"Failed to fetch events for {github_username}: {response.status_code}"
+                )
+
+
+def create_public_post_from_github_activity(author, github_post):
+    event_type = github_post.activity_type
+    event_data = github_post.activity_data
+    title = f"{author.displayName} performed a {event_type} on GitHub"
+    content = f"Event data: {event_data}"
+
+    Post.objects.create(
+        title=title,
+        description=f"GitHub activity: {event_type}",
+        contentType="text/plain",
+        content=content,
+        author=author,
+        published=timezone.now(),
+        visibility="PUBLIC",
+    )
+
+
+# def fetch_and_create_github_posts():
+#     authors = Author.objects.filter(github__isnull=False)
+#     mock_events = [
+#         {
+#             "id": "1234567890",
+#             "type": "PushEvent",
+#             "payload": {"commits": [{"message": "Initial commit"}]},
+#         },
+#         {
+#             "id": "0987654321",
+#             "type": "PullRequestEvent",
+#             "payload": {
+#                 "pull_request": {
+#                     "title": "Add new feature",
+#                     "body": "This is a new feature pull request.",
+#                 }
+#             },
+#         },
+#     ]
+
+#     for author in authors:
+#         for event in mock_events:
+#             # Check if this event has already been stored
+#             if not GitHubPost.objects.filter(github_event_id=event["id"]).exists():
+#                 github_post = GitHubPost.objects.create(
+#                     author=author,
+#                     activity_type=event["type"],
+#                     activity_data=event,
+#                     github_event_id=event["id"],
+#                 )
+#                 create_public_post_from_github_activity(author, github_post)
