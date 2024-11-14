@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 from pathlib import Path
 import os
 import django_heroku
+import dj_database_url
 
 # Build paths inside the project like this: BASE_DIR / 'subdir' or os.path.join(BASE_DIR, 'subdir')
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -108,11 +109,17 @@ WSGI_APPLICATION = "tealBackend.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
-if os.environ.get("ENV") == "production":
-    # Heroku will automatically configure the PostgreSQL settings
-    django_heroku.settings(locals())
+if os.environ.get("DATABASE_URL") != None:
+    # Running on Heroku
+    DATABASES = {
+        "default": dj_database_url.config(
+            conn_max_age=600,
+            conn_health_checks=True,
+            ssl_require=True
+        )
+    }
 else:
-    # Use SQLite for local development
+    # Running locally.
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
