@@ -81,6 +81,7 @@ REST_FRAMEWORK = {
 CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:8000",
+    "https://teal-rakshit-a972530cc317.herokuapp.com",
 ]
 CORS_ALLOW_CREDENTIALS = True
 
