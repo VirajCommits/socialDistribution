@@ -106,7 +106,13 @@ ROOT_URLCONF = "tealBackend.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [BASE_DIR / "backendApp/static/vue"],
+        'DIRS': [
+            # Add the directory where your templates are located
+            os.path.join(BASE_DIR, 'templates'),
+            os.path.join(BASE_DIR, 'backendApp', 'templates'),
+            # If you're using a frontend framework build
+            os.path.join(BASE_DIR, 'backendApp', 'static', 'vue'),
+        ],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
