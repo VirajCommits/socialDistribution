@@ -36,6 +36,7 @@ USER_APPROVAL_REQUIRED = True
 ALLOWED_HOSTS = [
     "127.0.0.1",
     "localhost",
+    "teal-rakshit-a972530cc317.herokuapp.com",
     ".herokuapp.com",
 ]
 
