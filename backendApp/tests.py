@@ -11,8 +11,8 @@ class identityTests(TestCase):
     def test_author_id_page(self):      # Identity1, Identity3
         author = Author.objects.create(username="testuser", displayName="Test User")
         
-        self.assertEqual(author.id, f"http://localhost:8000/authors/{author.uuid}")
-        self.assertEqual(author.page, f"http://localhost:8000/authors/{author.username}")
+        self.assertEqual(author.id, f"http://social-distribution-1-3adb84f120d9.herokuapp.com/authors/{author.uuid}")
+        self.assertEqual(author.page, f"http://social-distribution-1-3adb84f120d9.herokuapp.com/authors/{author.username}")
     
     def test_multiple_authors(self):        # Identity2
         author1 = Author.objects.create(username="author1", displayName="Author 1")
@@ -21,7 +21,7 @@ class identityTests(TestCase):
         self.assertNotEqual(author1.id, author2.id)
         self.assertNotEqual(author1.page, author2.page)
         
-        expected_host = "http://localhost:8000/authors/"
+        expected_host = "http://social-distribution-1-3adb84f120d9.herokuapp.com/authors/"
         self.assertTrue(author1.id.startswith(expected_host))
         self.assertTrue(author2.id.startswith(expected_host))
         
