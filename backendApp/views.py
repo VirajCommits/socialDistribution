@@ -7,8 +7,9 @@ from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from .models import AdminSettings
 from .serializers import PostSerializer, CommentSerializer, LikeSerializer
-from .models import Author, Post, Comment, Like, FollowRequest
+from .models import Author, Post, Comment, Like, FollowRequest, RemoteNode
 from django.shortcuts import get_object_or_404
+from .utils import connect_to_remote_node
 from urllib.parse import urlparse
 from django.shortcuts import render
 from urllib.parse import unquote
@@ -2170,34 +2171,13 @@ def create_public_post_from_github_activity(author, github_post):
     )
 
 
-# def fetch_and_create_github_posts():
-#     authors = Author.objects.filter(github__isnull=False)
-#     mock_events = [
-#         {
-#             "id": "1234567890",
-#             "type": "PushEvent",
-#             "payload": {"commits": [{"message": "Initial commit"}]},
-#         },
-#         {
-#             "id": "0987654321",
-#             "type": "PullRequestEvent",
-#             "payload": {
-#                 "pull_request": {
-#                     "title": "Add new feature",
-#                     "body": "This is a new feature pull request.",
-#                 }
-#             },
-#         },
-#     ]
-
-#     for author in authors:
-#         for event in mock_events:
-#             # Check if this event has already been stored
-#             if not GitHubPost.objects.filter(github_event_id=event["id"]).exists():
-#                 github_post = GitHubPost.objects.create(
-#                     author=author,
-#                     activity_type=event["type"],
-#                     activity_data=event,
-#                     github_event_id=event["id"],
-#                 )
-#                 create_public_post_from_github_activity(author, github_post)
+class TestRemoteNodeConnectionView(APIView):
+    def post(self, request, pk):
+        try:
+            node = RemoteNode.objects.get(pk=pk)
+            success = connect_to_remote_node(node)
+            return Response({"connected": success}, status=status.HTTP_200_OK)
+        except RemoteNode.DoesNotExist:
+            return Response(
+                {"error": "Node not found"}, status=status.HTTP_404_NOT_FOUND
+            )

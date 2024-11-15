@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 from pathlib import Path
 import os
 import django_heroku
+from cryptography.fernet import Fernet
 
 # Build paths inside the project like this: BASE_DIR / 'subdir' or os.path.join(BASE_DIR, 'subdir')
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -176,3 +177,23 @@ CHANNEL_LAYERS = {
         'BACKEND': 'channels.layers.InMemoryChannelLayer'
     }
 }
+
+# Path to store the Fernet key
+FERNET_KEY_PATH = os.path.join(BASE_DIR, "fernet.key")
+
+
+def get_or_create_fernet_key():
+    """Generate a new Fernet key or retrieve the existing one."""
+    if not os.path.exists(FERNET_KEY_PATH):
+        # Generate and save a new key
+        key = Fernet.generate_key()
+        with open(FERNET_KEY_PATH, "wb") as key_file:
+            key_file.write(key)
+    else:
+        # Read the existing key
+        with open(FERNET_KEY_PATH, "rb") as key_file:
+            key = key_file.read()
+    return key
+
+
+FERNET_KEY = get_or_create_fernet_key()

@@ -6,6 +6,7 @@ from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 from django.views.generic import TemplateView
 from rest_framework import permissions
+from .views import TestRemoteNodeConnectionView
 
 schema_view = get_schema_view(
     openapi.Info(
@@ -62,12 +63,12 @@ urlpatterns = [
         views.post_comment,
         name="post_comment",
     ),
-    path("service/api/posts/<uuid:post_id>/like/",
-         views.like_post, name="like_post"
+    path("service/api/posts/<uuid:post_id>/like/", views.like_post, name="like_post"),
+    path(
+        "service/api/posts/<uuid:post_id>/repost/",
+        views.repost_post,
+        name="repost_post",
     ),
-    path("service/api/posts/<uuid:post_id>/repost/",
-         views.repost_post, name="repost_post"),
-
     # Follow request paths
     path(
         "service/api/authors/<uuid:author_uuid>/send_follow_request/",
@@ -150,6 +151,11 @@ urlpatterns = [
         "service/api/authors/<uuid:author_uuid>/",
         views.update_author_profile,
         name="update_author_profile",
+    ),
+    path(
+        "nodes/<int:pk>/test_connection/",
+        TestRemoteNodeConnectionView.as_view(),
+        name="test_connection",
     ),
     # path(
     #     "stream", TemplateView.as_view(template_name="vue/index.html"), name="stream"

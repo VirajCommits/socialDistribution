@@ -1,6 +1,6 @@
 from django.contrib import admin
 from .models import Author
-from .models import AdminSettings
+from .models import AdminSettings, RemoteNode
 
 @admin.register(Author)
 class AuthorAdmin(admin.ModelAdmin):
@@ -29,3 +29,20 @@ class AuthorAdmin(admin.ModelAdmin):
 @admin.register(AdminSettings)
 class AdminSettingsAdmin(admin.ModelAdmin):
     list_display = ("user_approval_required",)
+
+
+class RemoteNodeAdmin(admin.ModelAdmin):
+    list_display = ("url", "username", "connected")
+    search_fields = ("url",)
+
+    # Override the save_model method
+    def save_model(self, request, obj, form, change):
+        if not obj._password.startswith(
+            "gAAAA"
+        ):  # Check if the password is already encrypted
+            obj.set_password(obj._password)  # Encrypt the password
+        super().save_model(request, obj, form, change)
+
+
+# Register the model with the customized admin class
+admin.site.register(RemoteNode, RemoteNodeAdmin)

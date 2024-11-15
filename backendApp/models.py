@@ -3,6 +3,8 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models
 import uuid
 from urllib.parse import urlparse
+from cryptography.fernet import Fernet
+from django.conf import settings
 
 class Author(AbstractUser):
     type = models.CharField(max_length=6, default="author", editable=False)
@@ -172,3 +174,31 @@ class GitHubPost(models.Model):
 
     def __str__(self):
         return f"{self.author.displayName}'s GitHub {self.activity_type}"
+
+
+class RemoteNode(models.Model):
+    url = models.URLField(unique=True)
+    username = models.CharField(max_length=255)
+    _password = models.TextField()  # Store encrypted password
+    connected = models.BooleanField(default=False)
+
+    def set_password(self, raw_password):
+        """Encrypt and save the password."""
+        cipher = Fernet(settings.FERNET_KEY)
+        self._password = cipher.encrypt(raw_password.encode()).decode()
+
+    def get_password(self):
+        """Decrypt and retrieve the password."""
+        cipher = Fernet(settings.FERNET_KEY)
+        return cipher.decrypt(self._password.encode()).decode()
+
+    def save(self, *args, **kwargs):
+        """Ensure the password is encrypted before saving."""
+        if not self._password.startswith(
+            "gAAAA"
+        ):  # Fernet-encrypted data starts with "gAAAA"
+            raise ValueError("Password must be encrypted using set_password().")
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"Remote Node at {self.url} (Connected: {self.connected})"
