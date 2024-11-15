@@ -21,7 +21,7 @@ schema_view = get_schema_view(
 )
 
 urlpatterns = [
-    path("", views.defaultPath, name="defaultPath"),
+    # path("", views.defaultPath, name="defaultPath"),
     path("service/api/signup/", views.signup, name="signup"),
     path("service/api/login/", views.login, name="login"),
     # Swagger paths
@@ -160,5 +160,6 @@ urlpatterns = [
         name="post_detail",
     ),
     # Catch-all route for Vue frontend
-    re_path(r"^.*$", TemplateView.as_view(template_name="vue/index.html")),
+    re_path(r"^(?!service/api|admin|swagger|static|media).*$", 
+        TemplateView.as_view(template_name="vue/index.html")),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

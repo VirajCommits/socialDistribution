@@ -11,7 +11,10 @@ axios.defaults.withCredentials = true;
 const app = createApp(App);
 
 // Set up Axios base URL (replace with your API's base URL)
-axios.defaults.baseURL = 'http://localhost:8000/service/api';
+// Update the axios base URL configuration
+axios.defaults.baseURL = process.env.NODE_ENV === 'production'
+  ? 'https://teal-rakshit-a972530cc317.herokuapp.com/service/api'
+  : 'http://localhost:8000/service/api';
 
 // Request Interceptor to add the Authorization header with the token
 axios.interceptors.request.use(
