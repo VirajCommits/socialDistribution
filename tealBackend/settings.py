@@ -108,10 +108,10 @@ TEMPLATES = [
         "BACKEND": "django.template.backends.django.DjangoTemplates",
         'DIRS': [
             # Add the directory where your templates are located
-            os.path.join(BASE_DIR, 'templates'),
+            # os.path.join(BASE_DIR, 'templates'),
             os.path.join(BASE_DIR, 'backendApp', 'templates'),
             # If you're using a frontend framework build
-            os.path.join(BASE_DIR, 'backendApp', 'static', 'vue'),
+            # os.path.join(BASE_DIR, 'backendApp', 'static', 'vue'),
         ],
         "APP_DIRS": True,
         "OPTIONS": {
