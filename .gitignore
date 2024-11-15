@@ -274,7 +274,7 @@ dist
 *.min.js.map
 *.db
 # static/
-# staticfiles/
+staticfiles/
 
 staticfiles/
 node_modules/
