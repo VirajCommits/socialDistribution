@@ -154,11 +154,11 @@ urlpatterns = [
     # path(
     #     "stream", TemplateView.as_view(template_name="vue/index.html"), name="stream"
     # ),
-    # Catch-all route for Vue frontend
-    re_path(r"^.*$", TemplateView.as_view(template_name="index.html")),
     path(
         "posts/<uuid:post_id>/",
         TemplateView.as_view(template_name="index.html"),
         name="post_detail",
     ),
+    # Catch-all route for Vue frontend
+    re_path(r"^.*$", TemplateView.as_view(template_name="vue/index.html")),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
