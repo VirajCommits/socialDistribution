@@ -35,7 +35,7 @@ from django.views.decorators.csrf import csrf_exempt
 
 
 def defaultPath(request):
-    return render(request, "main/index.html")
+    return render(request, "index.html")
 
 
 @swagger_auto_schema(

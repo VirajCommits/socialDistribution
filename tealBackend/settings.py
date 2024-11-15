@@ -106,7 +106,7 @@ ROOT_URLCONF = "tealBackend.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [BASE_DIR / "backendApp/templates"],
+        "DIRS": [BASE_DIR / "backendApp/static/vue"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
