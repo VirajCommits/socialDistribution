@@ -131,6 +131,7 @@ if os.environ.get("DATABASE_URL") != None:
             ssl_require=True
         )
     }
+    DATABASES['default']['OPTIONS'] = {'sslmode': 'require'}
 else:
     # Running locally.
     DATABASES = {
@@ -205,3 +206,7 @@ CHANNEL_LAYERS = {
         'BACKEND': 'channels.layers.InMemoryChannelLayer'
     }
 }
+
+
+import django_heroku
+django_heroku.settings(locals())
