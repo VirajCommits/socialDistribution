@@ -64,6 +64,7 @@ INSTALLED_APPS = [
 ]
 
 AUTH_USER_MODEL = 'backendApp.Author'
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',  
