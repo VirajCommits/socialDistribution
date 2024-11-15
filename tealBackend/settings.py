@@ -49,6 +49,7 @@ ALLOWED_HOSTS = [
 # Application definition
 
 INSTALLED_APPS = [
+    'backendApp',
     'daphne',
     'django.contrib.admin',
     'django.contrib.auth',
@@ -106,7 +107,7 @@ ROOT_URLCONF = "tealBackend.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [BASE_DIR / "backendApp/static/vue"],
+        "DIRS": [BASE_DIR / "backendApp/templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
