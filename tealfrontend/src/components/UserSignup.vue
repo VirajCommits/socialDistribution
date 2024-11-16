@@ -320,11 +320,19 @@ export default {
             profileImage: this.profileImage,
           }
         );
-        localStorage.setItem("token", response.data.access);
-        localStorage.setItem("user", JSON.stringify(response.data.user));
-        this.$router.push("/stream");
+        if (response.data.access) {
+          // User was approved and tokens were returned
+          localStorage.setItem("token", response.data.access);
+          localStorage.setItem("user", JSON.stringify(response.data.user));
+          this.$router.push("/stream");
+        } else {
+          // User needs approval
+          this.error = response.data.message || "Account created. Waiting for admin approval.";
+          setTimeout(() => this.$router.push("/login"), 3000);
+        }
       } catch (error) {
-        this.error = "Signup failed. Please check your information and try again.";
+        console.error("Signup error:", error.response?.data);
+        this.error = error.response?.data?.error || "Signup failed. Please try again.";
       } finally {
         this.isLoading = false;
       }
