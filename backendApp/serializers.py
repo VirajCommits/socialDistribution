@@ -10,11 +10,11 @@ from django.shortcuts import get_object_or_404
 
 class AuthorSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=False)
-    is_approved = serializers.BooleanField(read_only=True)
+    # is_approved = serializers.BooleanField(read_only=True)
 
     class Meta:
         model = Author
-        fields = ['id', 'uuid', 'host', 'displayName', 'github', 'profileImage', 'page', 'username', 'email', 'password', 'is_approved']
+        fields = ['id', 'uuid', 'host', 'displayName', 'github', 'profileImage', 'page', 'username', 'email', 'password']
 
         extra_kwargs = {
             "id": {"read_only": True},
