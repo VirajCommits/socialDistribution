@@ -29,8 +29,8 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 SECRET_KEY = "django-insecure-w)getnsr)9z21am-v4i2%)vz10ji05zcxkoa+xrzx)h7$=zaad"
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get('ENV') != 'production'
-   
+# DEBUG = os.environ.get('ENV') != 'production'
+DEBUG = True
 USER_APPROVAL_REQUIRED = True
 
 ALLOWED_HOSTS = [
@@ -79,7 +79,7 @@ REST_FRAMEWORK = {
     ],
 }
 
-CORS_ALLOW_ALL_ORIGINS = False
+CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:8000",
     "http://127.0.0.1:8000",
