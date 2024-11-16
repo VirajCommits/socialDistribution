@@ -16,16 +16,21 @@ axios.defaults.baseURL = process.env.NODE_ENV === 'production'
   ? 'https://teal-rakshit-a972530cc317.herokuapp.com/service/api'
   : 'http://localhost:8000/service/api';
 
+console.log('Current Axios base URL:', axios.defaults.baseURL);
 // Request Interceptor to add the Authorization header with the token
 axios.interceptors.request.use(
   config => {
     const token = localStorage.getItem('token'); // Get the token from localStorage
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`; // Set the Authorization header
+      console.log('Token found and added to request');
+    } else {
+      console.log('No token found in localStorage');
     }
     return config;
   },
   error => {
+    console.error('Request interceptor error:', error);
     return Promise.reject(error);
   }
 );
