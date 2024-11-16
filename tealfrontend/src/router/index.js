@@ -47,16 +47,5 @@ const router = createRouter({
   routes,
 });
 
-// Add navigation guard
-router.beforeEach((to, from, next) => {
-  const publicPages = ['/login', '/signup'];
-  const authRequired = !publicPages.includes(to.path);
-  const token = localStorage.getItem('token');
-
-  if (authRequired && !token) {
-    return next('/login');
-  }
-  next();
-});
 
 export default router;

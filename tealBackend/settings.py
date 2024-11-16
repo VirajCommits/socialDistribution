@@ -29,7 +29,6 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 SECRET_KEY = "django-insecure-w)getnsr)9z21am-v4i2%)vz10ji05zcxkoa+xrzx)h7$=zaad"
 
 # SECURITY WARNING: don't run with debug turned on in production!
-# DEBUG = os.environ.get('ENV') != 'production'
 DEBUG = True
 USER_APPROVAL_REQUIRED = True
 
@@ -168,11 +167,12 @@ USE_TZ = True
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
-STATICFILES_DIRS = [BASE_DIR / "backendApp/static/"]
+STATICFILES_DIRS = [BASE_DIR / "backendApp/static/",]
 
 WHITENOISE_USE_FINDERS = True
 WHITENOISE_MANIFEST_STRICT = False
 WHITENOISE_ALLOW_ALL_ORIGINS = True
+WHITENOISE_INDEX_FILE = True
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
