@@ -12,8 +12,9 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 
 from pathlib import Path
 import os
-import django_heroku
 from cryptography.fernet import Fernet
+import dj_database_url
+from decouple import config
 
 # Build paths inside the project like this: BASE_DIR / 'subdir' or os.path.join(BASE_DIR, 'subdir')
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -21,15 +22,17 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
-
+SECRET_KEY = config("SECRET_KEY", default="default-secret-key")
+DEBUG = config("DEBUG", default=False, cast=bool)
+FERNET_KEY = config("FERNET_KEY", default=None)
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-w)getnsr)9z21am-v4i2%)vz10ji05zcxkoa+xrzx)h7$=zaad"
+# SECRET_KEY = "django-insecure-w)getnsr)9z21am-v4i2%)vz10ji05zcxkoa+xrzx)h7$=zaad"
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+# DEBUG = True
 
 ALLOWED_HOSTS = [
     "127.0.0.1",
@@ -106,9 +109,11 @@ WSGI_APPLICATION = "tealBackend.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
+
 if os.environ.get("ENV") == "production":
-    # Heroku will automatically configure the PostgreSQL settings
-    django_heroku.settings(locals())
+    DATABASES = {
+        "default": dj_database_url.config(conn_max_age=600, ssl_require=True),
+    }
 else:
     # Use SQLite for local development
     DATABASES = {
@@ -117,7 +122,6 @@ else:
             "NAME": BASE_DIR / "db.sqlite3",
         }
     }
-
 
 # Password validation
 # https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators
@@ -196,4 +200,4 @@ def get_or_create_fernet_key():
     return key
 
 
-FERNET_KEY = get_or_create_fernet_key()
+# FERNET_KEY = get_or_create_fernet_key()
