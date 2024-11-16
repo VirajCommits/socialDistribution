@@ -161,5 +161,5 @@ urlpatterns = [
     ),
     # Catch-all route for Vue frontend
     re_path(r"^(?!service/api|admin|swagger|static|media).*$", 
-        TemplateView.as_view(template_name="vue/index.html")),
+        TemplateView.as_view(template_name="index.html")),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
