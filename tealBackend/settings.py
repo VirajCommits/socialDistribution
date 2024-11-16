@@ -81,7 +81,6 @@ REST_FRAMEWORK = {
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:8000",
-    "http://127.0.0.1:8000",
     "https://teal-rakshit-a972530cc317.herokuapp.com",
 ]
 CORS_ALLOW_CREDENTIALS = True
@@ -104,9 +103,6 @@ TEMPLATES = [
         },
     },
 ]
-
-
-WSGI_APPLICATION = "tealBackend.wsgi.application"
 
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
@@ -188,6 +184,7 @@ SIMPLE_JWT = {
 
 # Channels configuration
 ASGI_APPLICATION = 'tealBackend.asgi.application'
+WSGI_APPLICATION = 'tealBackend.wsgi.application'
 CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels.layers.InMemoryChannelLayer'
