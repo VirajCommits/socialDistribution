@@ -1217,14 +1217,18 @@ def signup(request):
 
         # Notify the user about their approval status
         if user.is_approved:
-            message = "User created and approved."
-        else:
-            message = "User created. Your account is pending admin approval."
+            refresh = RefreshToken.for_user(user)
+            return Response({
+                "message": "User created and approved.",
+                "refresh": str(refresh),
+                "access": str(refresh.access_token),
+                "user": AuthorSerializer(user).data
+            }, status=status.HTTP_201_CREATED)
         
-        return Response(
-            {"message": message, "user": AuthorSerializer(user).data},
-            status=status.HTTP_201_CREATED,
-        )
+        return Response({
+            "message": "User created. Your account is pending admin approval.",
+            "user": AuthorSerializer(user).data
+        }, status=status.HTTP_201_CREATED)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
