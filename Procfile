@@ -1,1 +1,1 @@
-web: gunicorn tealBackend.wsgi:application & daphne tealBackend.asgi:application -b 0.0.0.0 -p $PORT
+web: daphne tealBackend.asgi:application -b 0.0.0.0 -p $PORT

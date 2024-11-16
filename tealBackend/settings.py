@@ -28,8 +28,14 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = "django-insecure-w)getnsr)9z21am-v4i2%)vz10ji05zcxkoa+xrzx)h7$=zaad"
 
-# SECURITY WARNING: don't run with debug turned on in production!
+# Set Debug to False for production
+# DEBUG = False if os.environ.get("DATABASE_URL") else True
 DEBUG = True
+# Add secure headers
+# SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+# SECURE_SSL_REDIRECT = not DEBUG
+# SESSION_COOKIE_SECURE = not DEBUG
+# CSRF_COOKIE_SECURE = not DEBUG
 USER_APPROVAL_REQUIRED = True
 
 ALLOWED_HOSTS = [
@@ -80,7 +86,8 @@ REST_FRAMEWORK = {
 
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:8000",
+    "http://localhost:8080",  # Frontend development server
+    "http://localhost:8000",  # Backend development server
     "https://teal-rakshit-a972530cc317.herokuapp.com",
 ]
 CORS_ALLOW_CREDENTIALS = True
