@@ -4,19 +4,22 @@ import App from './App.vue';
 import router from './router/index.js';
 import axios from 'axios';
 
-axios.defaults.headers.common['Content-Type'] = 'application/json';
-axios.defaults.withCredentials = true;
-
-// Create the Vue app
-const app = createApp(App);
-
-// Set up Axios base URL (replace with your API's base URL)
-// Update the axios base URL configuration
-axios.defaults.baseURL = process.env.NODE_ENV === 'production'
+// Determine environment using window.location instead of NODE_ENV for consistency
+const isProduction = window.location.hostname.includes('herokuapp.com');
+const baseURL = isProduction
   ? 'https://teal-rakshit-a972530cc317.herokuapp.com/service/api'
   : 'http://localhost:8000/service/api';
 
-console.log('Current Axios base URL:', axios.defaults.baseURL);
+// Axios configuration
+axios.defaults.headers.common['Content-Type'] = 'application/json';
+axios.defaults.withCredentials = true;
+axios.defaults.baseURL = baseURL;
+
+console.log('Environment:', isProduction ? 'Production' : 'Development');
+console.log('Using API URL:', baseURL);
+
+// Create the Vue app
+const app = createApp(App);
 // Request Interceptor to add the Authorization header with the token
 axios.interceptors.request.use(
   config => {
@@ -39,10 +42,27 @@ axios.interceptors.request.use(
 axios.interceptors.response.use(
   response => response,
   error => {
-    if (error.response && error.response.status === 401) {
-      // Token might be invalid or expired, handle re-authentication
-      localStorage.removeItem('token'); // Clear the token
-      router.push('/login'); // Redirect to login page
+    if (error.response) {
+      switch (error.response.status) {
+        case 401:
+          console.warn('Authentication error - redirecting to login');
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          router.push('/login');
+          break;
+        case 403:
+          console.error('Authorization error:', error.response.data);
+          break;
+        case 500:
+          console.error('Server error:', error.response.data);
+          break;
+        default:
+          console.error('API error:', error.response.status, error.response.data);
+      }
+    } else if (error.request) {
+      console.error('Network error - no response received');
+    } else {
+      console.error('Error:', error.message);
     }
     return Promise.reject(error);
   }
