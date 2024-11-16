@@ -24,7 +24,7 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 SECRET_KEY = config("SECRET_KEY", default="default-secret-key")
 DEBUG = config("DEBUG", default=False, cast=bool)
-FERNET_KEY = config("FERNET_KEY", default=None)
+# FERNET_KEY = config("FERNET_KEY", default=None)
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
@@ -200,4 +200,4 @@ def get_or_create_fernet_key():
     return key
 
 
-# FERNET_KEY = get_or_create_fernet_key()
+FERNET_KEY = get_or_create_fernet_key()

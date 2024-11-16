@@ -193,11 +193,9 @@ class RemoteNode(models.Model):
         return cipher.decrypt(self._password.encode()).decode()
 
     def save(self, *args, **kwargs):
-        """Ensure the password is encrypted before saving."""
-        if not self._password.startswith(
-            "gAAAA"
-        ):  # Fernet-encrypted data starts with "gAAAA"
-            raise ValueError("Password must be encrypted using set_password().")
+        """Automatically encrypt the password if it's not encrypted before saving."""
+        if self._password and not self._password.startswith("gAAAA"):
+            self.set_password(self._password)
         super().save(*args, **kwargs)
 
     def __str__(self):
