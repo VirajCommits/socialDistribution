@@ -241,7 +241,7 @@ export default {
         // Debug logs
         console.log('User data:', this.user);
         console.log('User UUID:', this.user.uuid);
-        const url = `http://localhost:8000/service/api/authors/${this.user.uuid}/stats/`;
+        const url = `/authors/${this.user.uuid}/stats/`;
         console.log('Requesting URL:', url);
         
         const response = await axios.get(url, {
@@ -269,7 +269,7 @@ export default {
       this.loading = true;
       try {
         const response = await axios.get(
-          `http://localhost:8000/service/api/authors/${this.user.uuid}/following/`,
+          `/authors/${this.user.uuid}/following/`,
           {
             headers: {
               Authorization: `Token ${localStorage.getItem("token")}`,
@@ -289,7 +289,7 @@ export default {
       this.loading = true;
       try {
         const response = await axios.get(
-          `http://localhost:8000/service/api/authors/${this.user.uuid}/followers/`,
+          `/authors/${this.user.uuid}/followers/`,
           {
             headers: {
               Authorization: `Token ${localStorage.getItem("token")}`,
@@ -309,7 +309,7 @@ export default {
       this.loading = true;
       try {
         const response = await axios.get(
-          `http://localhost:8000/service/api/authors/${this.user.uuid}/friends/`,
+          `/authors/${this.user.uuid}/friends/`,
           {
             headers: {
               Authorization: `Token ${localStorage.getItem("token")}`,
@@ -341,7 +341,7 @@ export default {
             formData.append('profileImage', file);
             
             const response = await axios.post(
-              `http://localhost:8000/service/api/authors/${this.user.uuid}/`,
+              `/authors/${this.user.uuid}/`,
               formData,
               {
                 headers: {
@@ -383,7 +383,7 @@ export default {
     async saveChanges() {
       try {
         const response = await axios.post(
-          `http://localhost:8000/service/api/authors/${this.user.uuid}/`,
+          `/authors/${this.user.uuid}/`,
           this.editedUser,
           {
             headers: {
@@ -417,7 +417,7 @@ export default {
     async updateProfileImage() {
       try {
         await axios.post(
-          `http://localhost:8000/service/api/authors/${this.user.uuid}/`,
+          `/authors/${this.user.uuid}/`,
           { ...this.user, profileImage: this.newImageUrl },
           {
             headers: {

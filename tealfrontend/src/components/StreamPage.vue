@@ -224,9 +224,17 @@ export default {
       }
 
       try {
+        // Use environment variable or fallback for WebSocket URL
+        const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsBaseUrl = process.env.NODE_ENV === 'production'
+          ? 'teal-rakshit-a972530cc317.herokuapp.com'
+          : 'localhost:8000';
+        
         this.socket = new WebSocket(
-          `ws://localhost:8000/ws/notifications/${uuid}/`
+          `${wsProtocol}//${wsBaseUrl}/ws/notifications/${uuid}/`
         );
+
+        console.log("Connecting to WebSocket:", this.socket.url); // Debug log
 
         this.socket.onopen = () => {
           console.log("WebSocket connected successfully");
@@ -427,7 +435,7 @@ export default {
         // Retrieve the author ID of the logged-in user from local storage
         const currentAuthorId = JSON.parse(localStorage.getItem("user")).id;
         
-        const apiUrl = `http://localhost:8000/service/api/posts/${postId}/repost/`;
+        const apiUrl = `/posts/${postId}/repost/`;
         const payload = {
           author_id: currentAuthorId, // Include the author ID if your API requires it
         };

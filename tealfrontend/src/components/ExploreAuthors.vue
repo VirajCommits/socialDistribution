@@ -316,27 +316,56 @@ export default {
     },
     setupWebSocket() {
       const uuid = localStorage.getItem("uuid");
-      if (!uuid) return;
+      if (!uuid) {
+        console.log('No UUID found, skipping WebSocket setup');
+        return;
+      }
 
-      const ws = new WebSocket(`ws://localhost:8000/ws/notifications/${uuid}/`);
+      // Check if we're in production
+      const isProduction = window.location.hostname.includes('herokuapp.com');
+      
+      // Set up the WebSocket URL based on environment
+      const wsProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+      const wsHost = isProduction 
+        ? 'teal-rakshit-a972530cc317.herokuapp.com'  // Production host
+        : 'localhost:8000';                          // Development host
+      
+      const wsUrl = `${wsProtocol}://${wsHost}/ws/notifications/${uuid}/`;
+      
+      console.log('Setting up WebSocket connection to:', wsUrl);
+      
+      const ws = new WebSocket(wsUrl);
+
+      // WebSocket event handlers
+      ws.onopen = () => {
+        console.log('WebSocket connected successfully');
+      };
 
       ws.onmessage = async (event) => {
-        const data = JSON.parse(event.data);
-        if (data.type === "follow_request_notification") {
-          // Refresh the data when a follow request is updated
-          await this.fetchAuthors();
-          await this.fetchAllRelationships();
-          await this.fetchPendingRequests();
+        try {
+          const data = JSON.parse(event.data);
+          console.log('Received WebSocket message:', data);
+          
+          if (data.type === "follow_request_notification") {
+            await this.fetchAuthors();
+            await this.fetchAllRelationships();
+            await this.fetchPendingRequests();
 
-          // Show notification to user
-          if (data.message) {
-            alert(data.message);
+            if (data.message) {
+              this.showNotification(data.message, "info", "fas fa-bell");
+            }
           }
+        } catch (error) {
+          console.error('Error processing WebSocket message:', error);
         }
       };
 
+      ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+      };
+
       ws.onclose = () => {
-        // Attempt to reconnect after a delay
+        console.log('WebSocket connection closed, attempting to reconnect...');
         setTimeout(() => this.setupWebSocket(), 1000);
       };
 

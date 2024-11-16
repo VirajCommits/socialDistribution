@@ -273,5 +273,13 @@ dist
 *.min.js
 *.min.js.map
 *.db
-static/
+# static/
+# staticfiles/
+
 staticfiles/
+node_modules/
+*.pyc
+__pycache__/
+db.sqlite3
+
+!backendApp/static/vue/
