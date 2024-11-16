@@ -151,6 +151,12 @@ urlpatterns = [
         views.update_author_profile,
         name="update_author_profile",
     ),
+    path(
+        'service/api/authors/<str:author_serial>/inbox/', 
+        views.inbox, 
+        name='inbox'
+    ),
+
     # path(
     #     "stream", TemplateView.as_view(template_name="vue/index.html"), name="stream"
     # ),

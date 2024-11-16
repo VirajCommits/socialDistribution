@@ -4,6 +4,7 @@ from django.db import models
 import uuid
 
 
+
 class Author(AbstractUser):
     type = models.CharField(max_length=6, default="author", editable=False)
     uuid = models.UUIDField(unique=True, editable=False, default=uuid.uuid4)
@@ -138,6 +139,23 @@ class Like(models.Model):
 
     def __str__(self):
         return f"Like by {self.author.displayName} on {self.post.title}"
+
+
+class InboxItem(models.Model):
+    INBOX_ITEM_TYPES = [
+        ('post', 'Post'),
+        ('follow', 'Follow'),
+        ('like', 'Like'),
+        ('comment', 'Comment'),
+    ]
+
+    author = models.ForeignKey(Author, on_delete=models.CASCADE, related_name='inbox_items') # the person who receives the inbox item
+    item_type = models.CharField(max_length=10, choices=INBOX_ITEM_TYPES) # whats the type:post , follow , like , comment
+    item = models.JSONField() # the actual data sent(in json format)
+
+    def __str__(self):
+        return f"InboxItem({self.item_type}) for {self.author}"
+
 
 class AdminSettings(models.Model):
     user_approval_required = models.BooleanField(default=True)
