@@ -41,7 +41,7 @@ class Migration(migrations.Migration):
                 ('type', models.CharField(default='author', editable=False, max_length=6)),
                 ('uuid', models.UUIDField(default=uuid.uuid4, editable=False, unique=True)),
                 ('id', models.URLField(max_length=500, primary_key=True, serialize=False)),
-                ('host', models.URLField(default='https://social-distribution-1-3adb84f120d9.herokuapp.com/')),
+                ('host', models.URLField(default='http://localhost:8000/')),
                 ('displayName', models.CharField(max_length=255)),
                 ('github', models.URLField(blank=True)),
                 ('is_approved', models.BooleanField(default=False)),
