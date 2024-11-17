@@ -41,7 +41,7 @@ USER_APPROVAL_REQUIRED = True
 ALLOWED_HOSTS = [
     "127.0.0.1",
     "localhost",
-    "teal-rakshit-a972530cc317.herokuapp.com",
+    "social-distribution-1-3adb84f120d9.herokuapp.com",
     ".herokuapp.com",
 ]
 
@@ -64,7 +64,6 @@ INSTALLED_APPS = [
 ]
 
 AUTH_USER_MODEL = 'backendApp.Author'
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',  
@@ -90,16 +89,17 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:8000",
     "http://localhost:8080",  # Frontend development server
     "http://localhost:8000",  # Backend development server
-    "https://teal-rakshit-a972530cc317.herokuapp.com",
-# ]
+    "https://social-distribution-1-3adb84f120d9.herokuapp.com",
+]
 CORS_ALLOW_CREDENTIALS = True
 
 CSRF_TRUSTED_ORIGINS = [
     "http://127.0.0.1:8000",
-    "https://teal-rakshit-a972530cc317.herokuapp.com",
+    "https://social-distribution-1-3adb84f120d9.herokuapp.com",
     "http://localhost:8080",
     "http://localhost:8000",
 ]
+
 
 
 ROOT_URLCONF = "tealBackend.urls"
@@ -107,20 +107,13 @@ ROOT_URLCONF = "tealBackend.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        'DIRS': [
-            # Add the directory where your templates are located
-            # os.path.join(BASE_DIR, 'templates'),
-            # os.path.join(BASE_DIR, 'backendApp', 'templates'),
-            # If you're using a frontend framework build
-            os.path.join(BASE_DIR, 'backendApp', 'static', 'vue'),
-        ],
+        "DIRS": [BASE_DIR / "backendApp/static/vue"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
                 "django.template.context_processors.debug",
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
-                 'django.template.context_processors.static',
                 "django.contrib.messages.context_processors.messages",
             ],
         },
@@ -129,7 +122,7 @@ TEMPLATES = [
 
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
-print(os.environ.get("DATABASE_URL") , BASE_DIR)
+
 if os.environ.get("DATABASE_URL") != None:
     # Running on Heroku
     DATABASES = {
@@ -139,7 +132,6 @@ if os.environ.get("DATABASE_URL") != None:
             ssl_require=True
         )
     }
-    DATABASES['default']['OPTIONS'] = {'sslmode': 'require'}
 else:
     # Running locally.
     DATABASES = {
@@ -148,7 +140,6 @@ else:
             "NAME": BASE_DIR / "db.sqlite3",
         }
     }
-    print(DATABASES)
 
 
 # Password validation
@@ -215,7 +206,3 @@ CHANNEL_LAYERS = {
         'BACKEND': 'channels.layers.InMemoryChannelLayer'
     }
 }
-
-
-import django_heroku
-django_heroku.settings(locals())
