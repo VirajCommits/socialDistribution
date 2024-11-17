@@ -153,7 +153,7 @@ urlpatterns = [
     ),
     path(
         'service/api/authors/<str:author_serial>/inbox/', 
-        views.inbox, 
+        views.inbox_handler, 
         name='inbox'
     ),
 
@@ -165,7 +165,6 @@ urlpatterns = [
         TemplateView.as_view(template_name="index.html"),
         name="post_detail",
     ),
-    path('service/api/authors/<path:author_serial>/inbox/', views.inbox_handler, name='inbox_handler'),
     # Catch-all route for Vue frontend
     re_path(r"^(?!service/api|admin|swagger|static|media).*$", 
         TemplateView.as_view(template_name="index.html")),

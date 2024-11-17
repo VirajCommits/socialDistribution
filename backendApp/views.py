@@ -1,4 +1,3 @@
-import base64
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
@@ -7,9 +6,9 @@ from django.utils import timezone
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 
-from .models import AdminSettings, InboxItem
-from .serializers import PostSerializer, CommentSerializer, LikeSerializer
-from .models import Author, Post, Comment, Like, FollowRequest
+from .models import AdminSettings
+from .serializers import PostSerializer, CommentSerializer, LikeSerializer, InboxSerializer
+from .models import Author, Post, Comment, Like, FollowRequest, Inbox
 
 
 from django.shortcuts import get_object_or_404
@@ -29,14 +28,9 @@ from .serializers import FollowRequestSerializer
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 
-import requests
-from uuid import UUID
-from django.views.decorators.csrf import csrf_exempt
-
 
 def defaultPath(request):
     return render(request, "index.html")
-
 
 @swagger_auto_schema(
     method='post',
@@ -130,7 +124,7 @@ def create_post(request, author_serial):
     }
     """
     author_serial = unquote(author_serial)
-    print("<<<<<<<<<<<<<<<<<<<<<<<<<<<" , author_serial , type(author_serial))
+
     data = request.data.copy()
 
     # Fetch the author instance
@@ -161,7 +155,6 @@ def create_post(request, author_serial):
 
     if serializer.is_valid():
         post = serializer.save()
-        send_post_to_followers(post)
         response_serializer = PostSerializer(post)
         return Response(response_serializer.data, status=status.HTTP_201_CREATED)
     else:
@@ -466,7 +459,6 @@ def post_comment(request, post_id):
     },
     tags=["Likes"]
 )
-
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def like_post(request, post_id):
@@ -492,8 +484,7 @@ def like_post(request, post_id):
 
     serializer = LikeSerializer(data=data)
     if serializer.is_valid():
-        like = serializer.save()
-        send_like_to_inbox(like)
+        serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
     else:
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -2070,191 +2061,82 @@ def get_post_by_link(request, post_id):
     return Response({"detail": "You are not authorized to view this post."}, status=403)
 
 
-@csrf_exempt
-@permission_classes([AllowAny])
-@api_view(['POST'])
-def inbox(request, author_serial):
-    print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>." , author_serial , type(author_serial))
+@api_view(['POST', 'GET', 'DELETE'])
+@permission_classes([IsAuthenticated])
+def inbox_handler(request, author_serial):
     author = get_object_or_404(Author, uuid=author_serial)
+    inbox, created = Inbox.objects.get_or_create(author=author)
 
-    data = request.data
-    print("This is the data i got:" , data)
-    item_type = data.get('type')
+    if request.method == 'GET':
+        serializer = InboxSerializer(inbox)
+        return Response(serializer.data)
 
-    if item_type == 'post':
-        # Validate and store the post
-        serializer = PostSerializer(data=data)
-        if serializer.is_valid():
-            post = serializer.save()
-            InboxItem.objects.create(author=author.user, item_type='post', item=serializer.data)
-            return Response({'message': 'Post added to inbox'}, status=status.HTTP_202_ACCEPTED)
-        else:
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    elif item_type == 'comment':
-        # Validate and store the comment
-        serializer = CommentSerializer(data=data)
-        if serializer.is_valid():
-            comment = serializer.save()
-            InboxItem.objects.create(author=author.user, item_type='comment', item=serializer.data)
-            return Response({'message': 'Comment added to inbox'}, status=status.HTTP_202_ACCEPTED)
-        else:
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    elif item_type == 'Like':
-        print("YES INSIDE")
-        try:
-            print("................" , request)
-            author_instance = Author.objects.get(uuid=author_serial)
-        except Like.DoesNotExist:
-            return Response({'error': 'Like not found.'}, status=status.HTTP_404_NOT_FOUND)
-
-        # Serialize the Like instance
-        serialized_author = AuthorSerializer(author_instance).data
-
-        # Create the InboxItem with serialized data
-        InboxItem.objects.create(
-            author=author,
-            item_type='Like',
-            item=serialized_author
-        )
-
-        return Response({'status': 'Like added to inbox.'}, status=status.HTTP_201_CREATED)
-
-@permission_classes([AllowAny])
-@csrf_exempt
-def send_post_to_followers(post):
-    print("SENDING POST TO FOLLOWERS .... ")
-    author = post.author
-
-    # Determine recipients based on visibility
-    if post.visibility == 'PUBLIC':
-        recipients = author.followers.all()
-    elif post.visibility == 'FRIENDS':
-        followers = author.followers.all()
-        following = author.following.all()
-        friends = followers & following  # Mutual followers
-        recipients = friends
-    else:
-        # Do not send for 'UNLISTED' or 'PRIVATE' posts
-        return
-
-    # Serialize the post data
-    serialized_post = PostSerializer(post).data
-    serialized_post['type'] = 'post'  # Ensure 'type' field is present
-
-    # Prepare headers (include authentication if necessary)
-    headers = {
-        'Content-Type': 'application/json',
-        # 'Authorization': f'Basic {settings.REMOTE_NODE_AUTH}',  # Uncomment and set if required
-    }
-
-    # Send the post to each recipient's inbox
-    for recipient in recipients:
-        recipient_inbox_url = f"{recipient.host}/service/api/authors/{recipient.uuid}/inbox"
+    elif request.method == 'POST':
+        data = request.data
+        print("------------------", data)
+        item_type = data.get('type', '').lower()
 
         try:
-            response = requests.post(recipient_inbox_url, json=serialized_post, headers=headers)
+            if item_type == 'post':
+                post_serializer = PostSerializer(data=data)
+                print("Yes we are here!")
+                if post_serializer.is_valid():
+                    post = post_serializer.save()
+                    inbox.posts.add(post)
+                    return Response({'message': 'Post added to inbox'}, status=201)
 
-            if response.status_code not in [200, 201, 202]:
-                # Log or handle error
-                print(f"Error sending post to {recipient_inbox_url}: {response.status_code} {response.content}")
+            elif item_type == 'like':
+                like_serializer = LikeSerializer(data=data)
+                if like_serializer.is_valid():
+                    like = like_serializer.save()
+                    inbox.likes.add(like)
+                    return Response({'message': 'Like added to inbox'}, status=201)
+
+            elif item_type == 'comment':
+                comment_serializer = CommentSerializer(data=data)
+                if comment_serializer.is_valid():
+                    comment = comment_serializer.save()
+                    inbox.comments.add(comment)
+                    return Response({'message': 'Comment added to inbox'}, status=201)
+
+            elif item_type == 'follow':
+                print("11111111111111111111111111111111111111111111")
+            # Get the target author's UUID from the request data
+            target_uuid = data['object']['id']
+
+            django_request = request._request  # Get the underlying Django HttpRequest
+    
+            # Call the existing send_follow_request function
+            response = send_follow_request(django_request, target_uuid)
+    
+            
+            # Call the existing send_follow_request function
+            # response = send_follow_request(request, target_uuid)
+            
+            # If the follow request was created successfully, add it to the inbox
+            if response.status_code == status.HTTP_201_CREATED:
+                print("2222222222222222222222222222222222222222222222")
+                # Get the most recent follow request
+                follow_request = FollowRequest.objects.filter(
+                    actor=request.user,
+                    object=author,
+                    accepted=False
+                ).latest('created_at')
+                
+                print("33333333333333333333333333333333333, follow: ", follow_request)
+                # Add to inbox
+                inbox.follow_requests.add(follow_request)
+                return Response({'message': 'Follow request added to inbox'}, status=201)
+            
+            # If there was an error, return the original response
+            return response
+
         except Exception as e:
-            # Handle exceptions (e.g., connection errors)
-            print(f"Exception sending post to {recipient_inbox_url}: {str(e)}")
+            return Response({'error': str(e)}, status=400)
 
-
-
-# def send_like_to_inbox(like):
-#     post_author = like.post.author
-#     print("(((((((((((((((((((((())))))))))))))))))))))" , like.post.id)
-
-#     # Skip sending if the author likes their own post
-#     if like.author == post_author:
-#         return
-#     print("This is like we got: " , like)
-
-#     recipient_inbox_url = f"{post_author.host}service/api/authors/{post_author.uuid}/inbox/"
-
-#     # Serialize the like data and add the 'type' field
-#     serialized_like = LikeSerializer(like).data
-#     serialized_like['type'] = 'Like'  # Ensures 'type' field is present
-#     serialized_like['author_id'] = str(post_author.uuid)
-#     serialized_like['post_id'] = str(like.post.id)
-
-#     print("this is the serilizable: ------------- " , serialized_like)
-
-#     # Ensure all UUIDs are converted to strings
-#     for key, value in serialized_like.items():
-#         res = isinstance(value, UUID)
-#         if res:
-#             serialized_like[key] = str(value)
-#     # Prepare headers (include authentication if necessary)
-#     headers = {
-#         'Content-Type': 'application/json',
-#     }
-
-#     try:
-#         response = requests.post(recipient_inbox_url, json=serialized_like, headers=headers)
-
-#         if response.status_code not in [200, 201, 202]:
-#             # Log or handle error
-#             print(f"Error sending like to {recipient_inbox_url}: {response.status_code} {response.content}")
-#     except Exception as e:
-#         # Handle exceptions (e.g., connection errors)
-#         print(f"Exception sending like to {recipient_inbox_url}: {str(e)}")
-
-
-def send_like_to_inbox(like):
-    post_author = like.post.author
-    print("Post Author UUID:", post_author.uuid)
-
-    # Skip sending if the author likes their own post
-    if like.author == post_author:
-        print("Author liked their own post. Skipping inbox notification.")
-        return
-
-    print("This is the Like object we got:", like)
-
-    # Ensure the host does not end with a slash to avoid double slashes in the URL
-    host = post_author.host.rstrip('/')
-    recipient_inbox_url = f"{host}/service/api/authors/{post_author.uuid}/inbox/"
-
-    serialized_post = PostSerializer(like.post).data
-
-    auth_id = str(like.author.id)
-    print("THIS IS THE NEW AUTH ID:" , auth_id)
-
-    # Manually construct the payload with required fields
-    payload = {
-        "type": "Like",
-        "author_id": f"{like.author.host}authors/{like.author.uuid}",  # Direct author UUID as 'author_id'
-        "post_id": str(like.post.id),           # Direct post UUID as 'post'
-        "post": str(like.post.id),   
-        "author": {                           # Nested author data
-            "id": str(like.author.uuid),
-            "displayName": like.author.displayName,
-            "host": like.author.host,
-            "profileImage": like.author.profileImage or "",
-        },
-    }
-
-    print("Serialized payload to send:", payload)
-
-    # Prepare headers (include authentication if necessary)
-    headers = {
-        'Content-Type': 'application/json',
-        # 'Authorization': 'Bearer <token>',  # Uncomment and set if authentication is required
-    }
-
-    try:
-        response = requests.post(recipient_inbox_url, json=payload, headers=headers)
-        print(f"POST {recipient_inbox_url} - Status Code: {response.status_code}")
-        if response.status_code in [200, 201, 202]:
-            print(f"Like sent successfully to {recipient_inbox_url}")
-        else:
-            # Log or handle error
-            print(f"Error sending like to {recipient_inbox_url}: {response.status_code} {response.content}")
-    except Exception as e:
-        # Handle exceptions (e.g., connection errors)
-        print(f"Exception sending like to {recipient_inbox_url}: {str(e)}")
+    elif request.method == 'DELETE':
+        inbox.posts.clear()
+        inbox.likes.clear()
+        inbox.comments.clear()
+        inbox.follow_requests.clear()
+        return Response(status=204)

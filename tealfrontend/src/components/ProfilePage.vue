@@ -239,10 +239,7 @@ export default {
     async fetchStats() {
       try {
         // Debug logs
-        console.log('User data:', this.user);
-        console.log('User UUID:', this.user.uuid);
         const url = `/authors/${this.user.uuid}/stats/`;
-        console.log('Requesting URL:', url);
         
         const response = await axios.get(url, {
           headers: {

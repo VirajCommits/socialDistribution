@@ -143,6 +143,7 @@ export default {
         formData.append("contentType", this.form.contentType);
         formData.append("visibility", this.form.visibility);
 
+
         if (this.isImageType && this.form.image) {
           formData.append("content", this.form.content);
           formData.append("image", this.form.image); // Attach the image file
@@ -157,6 +158,8 @@ export default {
         });
 
         this.response = response.data;
+
+        await this.sendPostToFollowers(this.response);
 
         // Display success message
         this.successMessage = "Post created successfully!";
@@ -180,6 +183,101 @@ export default {
         this.errorMessage = "An error occurred while creating the post.";
       }
     },
+    async sendPostToFollowers(postData) {
+      console.log("WE HERE!")
+    try {
+
+        const authorsResponse = await axios.get('/authors/'); // Fetch all authors
+        console.log("))))))))))))))))))" , this.user)
+        const authors = authorsResponse.data; // Assuming the response contains a list of authors
+
+        console.log("++++++++++++++++" , authors)
+
+        // Get the list of followers for the current user
+        const followers = await this.getFollowers(this.user.uuid); // Implement this method to get followers
+
+        // Determine the visibility of the post
+        const visibility = this.form.visibility;
+
+        if (visibility === "PUBLIC") {
+            // Send to all authors
+            for (const author of authors) {
+                if (author.id !== this.user.id) { // Exclude the author themselves
+                    const inboxUrl = `${author.id}/inbox/`; // Construct the inbox URL for the author
+                    await this.sendPostToInbox(inboxUrl, postData); // Send the post to the author's inbox
+                }
+            }
+        } else if (visibility === "FRIENDS") {
+            // Send to mutual followers
+            for (const follower of followers) {
+                const mutualFollowers = await this.getFollowers(follower.id); // Get followers of the current follower
+                if (mutualFollowers.some(mf => mf.id === this.user.id)) { // Check if they follow each other
+                    const inboxUrl = `${follower.id}/inbox/`; // Construct the inbox URL for the mutual follower
+                    await this.sendPostToInbox(inboxUrl, postData); // Send the post to the follower's inbox
+                }
+            }
+        } else if (visibility === "UNLISTED") {
+            // Send to followers only
+            for (const follower of followers) {
+                const inboxUrl = `${follower.id}/inbox/`; // Construct the inbox URL for the follower
+                await this.sendPostToInbox(inboxUrl, postData); // Send the post to the follower's inbox
+            }
+        }
+    } catch (error) {
+      console.error('Error response:', error.response.data);
+            console.error('Error status:', error.response.status);
+            console.error('Error headers:', error.response.headers);
+        console.error("Error sending post to followers:", error);
+    }
+},
+
+async sendPostToInbox(inboxUrl, postData) {
+
+        const token = localStorage.getItem('token'); // or however you store your auth token
+        console.log("THIS IS THE TOKEN:" , token)
+
+        // Set up headers with authentication
+        const headers = {
+            'Authorization': `Token ${token}`, // or 'Bearer ${token}' depending on your auth scheme
+            'Content-Type': 'application/json',
+        };
+
+    const payload = {
+        type: "post",
+        title: this.form.title,
+        id: postData.id, // Post ID
+        page: postData.page, // Page URL
+        description: this.form.description,
+        contentType: this.form.contentType,
+        content: this.form.content,
+        author: {
+            type: "author",
+            id: this.user.id,
+            host: this.user.host,
+            displayName: this.user.displayName,
+            page: this.user.page,
+            github: this.user.github,
+            profileImage: this.user.profileImage,
+        },
+        author_id: this.user.id.split("/").pop(), // Extracting author ID from the user object
+        published: new Date().toISOString(), // Set the published date to the current date/time in ISO format
+        visibility: this.form.visibility,
+    };
+
+    const response = await axios.post(inboxUrl, payload, { 
+            headers,
+            withCredentials: true // Include if using cookies
+        });
+    return response
+},
+
+async getFollowers(authorId) {
+    // Implement this method to fetch the followers of the author
+
+    console.log("THIS IS THE AUTHOR ID:" , authorId)
+    const response = await axios.get(`/authors/${authorId}/followers/`);
+    return response.data; // Assuming this returns a list of followers
+},
     goBack() {
       this.$router.push("/posts/all");
     },
