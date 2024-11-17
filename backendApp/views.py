@@ -1185,71 +1185,6 @@ def get_all_authors(request):
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
 
-
-# @swagger_auto_schema(
-#     method='GET',
-#     operation_summary="Retrieve posts for a specific author",
-#     operation_description="Fetches a list of posts for the author identified by `author_id`. This includes public posts, unlisted posts visible to followers, friends-only posts, and the author's own posts.",
-#     manual_parameters=[
-#         openapi.Parameter('author_id', openapi.IN_PATH, description="The UUID of the author whose posts are being fetched", type=openapi.TYPE_STRING)
-#     ],
-#     responses={
-#         200: openapi.Response(
-#             description="A paginated list of posts for the author",
-#             schema=openapi.Schema(
-#                 type=openapi.TYPE_OBJECT,
-#                 properties={
-#                     'count': openapi.Schema(type=openapi.TYPE_INTEGER, example=10),
-#                     'next': openapi.Schema(type=openapi.TYPE_STRING, example='http://localhost/api/stream/?page=2'),
-#                     'previous': openapi.Schema(type=openapi.TYPE_STRING, example='http://localhost/api/stream/?page=1'),
-#                     'results': openapi.Schema(
-#                         type=openapi.TYPE_ARRAY,
-#                         items=openapi.Schema(
-#                             type=openapi.TYPE_OBJECT,
-#                             properties={
-#                                 'id': openapi.Schema(type=openapi.TYPE_STRING, example='post-id'),
-#                                 'author_id': openapi.Schema(type=openapi.TYPE_STRING, example='author-uuid'),
-#                                 'title': openapi.Schema(type=openapi.TYPE_STRING, example='Post Title'),
-#                                 'content': openapi.Schema(type=openapi.TYPE_STRING, example='Content of the post'),
-#                                 'visibility': openapi.Schema(type=openapi.TYPE_STRING, example='PUBLIC'),
-#                                 'published': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_DATETIME, example='2023-11-02T12:00:00Z')
-#                             }
-#                         )
-#                     )
-#                 }
-#             )
-#         ),
-#         404: openapi.Response(
-#             description="Author not found",
-#             schema=openapi.Schema(
-#                 type=openapi.TYPE_OBJECT,
-#                 properties={
-#                     'detail': openapi.Schema(type=openapi.TYPE_STRING, example='Not found.')
-#                 }
-#             )
-#         )
-#     },
-#     tags=["Posts"]
-# )
-# @api_view(["GET"])
-# @permission_classes([AllowAny])
-# def author_posts(request, author_id):
-#     # Ensure the logged-in author is requesting their own posts
-#     if str(request.user.uuid) != author_id:
-#         return Response(
-#             {"detail": "Unauthorized access"}, status=status.HTTP_403_FORBIDDEN
-#         )
-
-
-#     # Get all posts created by the author
-#     author = get_object_or_404(Author, uuid=author_id)
-#     posts = Post.objects.filter(author=author).order_by("-published")
-
-
-#     serializer = PostSerializer(posts, many=True)
-#     return Response(serializer.data, status=status.HTTP_200_OK)
-
-
 @swagger_auto_schema(
     method="get",
     operation_summary="Fetch the stream of posts for a specific author",
@@ -1390,11 +1325,9 @@ def stream_page(request, author_id):
     personal_posts = Post.objects.filter(author=current_author)
 
     # Combine all posts and avoid duplicates
-    all_posts = (
-        (public_posts | mutual_friends_posts | other_following_posts | personal_posts)
-        .distinct()
-        .order_by("-edited_at")
-    )
+    all_posts = (public_posts |
+                 mutual_friends_posts | other_following_posts | personal_posts
+                 ).distinct().order_by("-edited_at")
 
     # Paginate and return response
     paginator = PageNumberPagination()
@@ -1472,14 +1405,18 @@ def signup(request):
 
         # Notify the user about their approval status
         if user.is_approved:
-            message = "User created and approved."
-        else:
-            message = "User created. Your account is pending admin approval."
-
-        return Response(
-            {"message": message, "user": AuthorSerializer(user).data},
-            status=status.HTTP_201_CREATED,
-        )
+            refresh = RefreshToken.for_user(user)
+            return Response({
+                "message": "User created and approved.",
+                "refresh": str(refresh),
+                "access": str(refresh.access_token),
+                "user": AuthorSerializer(user).data
+            }, status=status.HTTP_201_CREATED)
+        
+        return Response({
+            "message": "User created. Your account is pending admin approval.",
+            "user": AuthorSerializer(user).data
+        }, status=status.HTTP_201_CREATED)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 

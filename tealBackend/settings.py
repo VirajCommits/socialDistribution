@@ -15,6 +15,7 @@ import os
 # from cryptography.fernet import Fernet
 import dj_database_url
 from decouple import config
+import dj_database_url
 
 # Build paths inside the project like this: BASE_DIR / 'subdir' or os.path.join(BASE_DIR, 'subdir')
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -31,12 +32,20 @@ SECRET_KEY = config("SECRET_KEY", default="default-secret-key")
 # SECURITY WARNING: keep the secret key used in production secret!
 # SECRET_KEY = "django-insecure-w)getnsr)9z21am-v4i2%)vz10ji05zcxkoa+xrzx)h7$=zaad"
 
-# SECURITY WARNING: don't run with debug turned on in production!
+# Set Debug to False for production
+# DEBUG = False if os.environ.get("DATABASE_URL") else True
 DEBUG = True
+# Add secure headers
+# SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+# SECURE_SSL_REDIRECT = not DEBUG
+# SESSION_COOKIE_SECURE = not DEBUG
+# CSRF_COOKIE_SECURE = not DEBUG
 
 ALLOWED_HOSTS = [
     "127.0.0.1",
     "localhost",
+    "teal-rakshit-a972530cc317.herokuapp.com",
+    ".herokuapp.com",
 ]
 USER_APPROVAL_REQUIRED = True
 
@@ -77,12 +86,23 @@ REST_FRAMEWORK = {
         "rest_framework_simplejwt.authentication.JWTAuthentication",  # Use JWT authentication
     ],
 }
+# CORS_ALLOW_ALL_ORIGINS = True
 
-CORS_ALLOW_ALL_ORIGINS = False
+# CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOWED_ORIGINS = [
+    "http://localhost:8080",  # Frontend development server
+    "http://localhost:8000",  # Backend development server
+    "https://teal-rakshit-a972530cc317.herokuapp.com",
     "http://127.0.0.1:8000",
 ]
 CORS_ALLOW_CREDENTIALS = True
+
+CSRF_TRUSTED_ORIGINS = [
+    "https://teal-rakshit-a972530cc317.herokuapp.com",
+    "http://localhost:8080",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+]
 
 
 ROOT_URLCONF = "tealBackend.urls"
@@ -103,19 +123,21 @@ TEMPLATES = [
     },
 ]
 
-
-WSGI_APPLICATION = "tealBackend.wsgi.application"
-
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
 
-if os.environ.get("ENV") == "production":
+if os.environ.get("DATABASE_URL") != None:
+    # Running on Heroku
     DATABASES = {
-        "default": dj_database_url.config(conn_max_age=600, ssl_require=True),
+        "default": dj_database_url.config(
+            conn_max_age=600,
+            conn_health_checks=True,
+            ssl_require=True
+        )
     }
 else:
-    # Use SQLite for local development
+    # Running locally.
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
@@ -159,8 +181,13 @@ USE_TZ = True
 
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-STATICFILES_DIRS = [BASE_DIR / "backendApp/static"]
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+STATICFILES_DIRS = [BASE_DIR / "backendApp/static/",]
 
+WHITENOISE_USE_FINDERS = True
+WHITENOISE_MANIFEST_STRICT = False
+WHITENOISE_ALLOW_ALL_ORIGINS = True
+WHITENOISE_INDEX_FILE = True
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
@@ -176,6 +203,7 @@ SIMPLE_JWT = {
 
 # Channels configuration
 ASGI_APPLICATION = 'tealBackend.asgi.application'
+WSGI_APPLICATION = 'tealBackend.wsgi.application'
 CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels.layers.InMemoryChannelLayer'
