@@ -58,7 +58,7 @@ export default {
           return;
         }
 
-        const apiUrl = `http://localhost:8000/service/api/posts/${this.postId}/like/`;
+        const apiUrl = `posts/${this.postId}/like/`;
 
         if (this.liked) {
           // If unliking is needed, implement the logic here
