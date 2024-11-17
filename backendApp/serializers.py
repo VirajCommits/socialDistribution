@@ -77,13 +77,28 @@ class PostSerializer(serializers.ModelSerializer):
 
 
 class FollowRequestSerializer(serializers.ModelSerializer):
+    type = serializers.CharField(default="follow")
+    summary = serializers.CharField()
     actor = AuthorSerializer(read_only=True)
     object = AuthorSerializer(read_only=True)
 
     class Meta:
         model = FollowRequest
-        fields = ['type', 'summary', 'actor', 'object', 'uuid', 'created_at', 'accepted']
-        read_only_fields = ['uuid', 'created_at']
+        fields = ['type', 'summary', 'actor', 'object']
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        # Ensure actor and object have the full structure
+        for field in ['actor', 'object']:
+            if field in data:
+                author_data = data[field]
+                author_data['type'] = 'author'
+                # Ensure all required fields are present
+                if 'page' not in author_data:
+                    author_data['page'] = f"{author_data['host']}authors/{author_data['uuid']}"
+                if 'profileImage' not in author_data:
+                    author_data['profileImage'] = ""
+        return data
 
 
 class CommentSerializer(serializers.ModelSerializer):

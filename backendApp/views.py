@@ -2069,11 +2069,12 @@ def inbox_handler(request, author_serial):
 
     if request.method == 'GET':
         serializer = InboxSerializer(inbox)
-        return Response(serializer.data)
+        data = serializer.data
+        print("Serialized inbox data:", data)  # Debug log
+        return Response(data)
 
     elif request.method == 'POST':
         data = request.data
-        print("------------------", data)
         item_type = data.get('type', '').lower()
 
         try:
@@ -2099,36 +2100,67 @@ def inbox_handler(request, author_serial):
                     return Response({'message': 'Comment added to inbox'}, status=201)
 
             elif item_type == 'follow':
-                print("11111111111111111111111111111111111111111111")
-            # Get the target author's UUID from the request data
-            target_uuid = data['object']['id']
-
-            django_request = request._request  # Get the underlying Django HttpRequest
-    
-    # Call the existing send_follow_request function
-            response = send_follow_request(django_request, target_uuid)
-    
-            
-            # Call the existing send_follow_request function
-            # response = send_follow_request(request, target_uuid)
-            
-            # If the follow request was created successfully, add it to the inbox
-            if response.status_code == status.HTTP_201_CREATED:
-                print("2222222222222222222222222222222222222222222222")
-                # Get the most recent follow request
-                follow_request = FollowRequest.objects.filter(
-                    actor=request.user,
-                    object=author,
-                    accepted=False
-                ).latest('created_at')
+                # Get the target author's UUID from the request data
+                target_uuid = data['object']['id'].split("/").pop();
                 
-                print("33333333333333333333333333333333333, follow: ", follow_request)
-                # Add to inbox
-                inbox.follow_requests.add(follow_request)
-                return Response({'message': 'Follow request added to inbox'}, status=201)
+                django_request = request._request  # Get the underlying Django HttpRequest
+        
+                # Call the existing send_follow_request function
+                response = send_follow_request(django_request, target_uuid)
+                # Call the existing send_follow_request function
+                # response = send_follow_request(request, target_uuid)
+                
+                # If the follow request was created successfully, add it to the inbox
+                if response.status_code == status.HTTP_201_CREATED:
+                    # Get the most recent follow request
+                    follow_request = FollowRequest.objects.filter(
+                        actor=request.user,
+                        object=author,
+                        accepted=False
+                    ).latest('created_at')
+                    # Add to inbox
+                    inbox.follow_requests.add(follow_request)
+                    return Response({'message': 'Follow request added to inbox'}, status=201)
+                
+                # If there was an error, return the original response
+                return response
             
-            # If there was an error, return the original response
-            return response
+            elif item_type == 'unfollow':
+                current_author = request.user
+                target_author = author  # The author whose inbox this is
+
+                # Check if currently following
+                if current_author in target_author.followers.all():
+                    # Remove from followers
+                    target_author.followers.remove(current_author)
+                    target_author.save()
+
+                    # Notify through WebSocket
+                    channel_layer = get_channel_layer()
+                    async_to_sync(channel_layer.group_send)(
+                        f"notifications_{target_author.uuid}",
+                        {
+                            'type': 'follow_request_notification',
+                            'count': FollowRequest.objects.filter(
+                                object=target_author,
+                                accepted=False
+                            ).count(),
+                            'message': f'{current_author.displayName} unfollowed you'
+                        }
+                    )
+
+                    return Response({
+                        'message': f'Successfully unfollowed {target_author.displayName}'
+                    }, status=status.HTTP_200_OK)
+                else:
+                    return Response({
+                        'message': 'You are not following this author'
+                    }, status=status.HTTP_400_BAD_REQUEST)
+            
+            return Response({
+                'message': f'Unsupported item type: {item_type}'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
 
         except Exception as e:
             return Response({'error': str(e)}, status=400)
@@ -2139,3 +2171,7 @@ def inbox_handler(request, author_serial):
         inbox.comments.clear()
         inbox.follow_requests.clear()
         return Response(status=204)
+    
+    return Response({
+        'message': f'Method {request.method} not allowed'
+    }, status=status.HTTP_405_METHOD_NOT_ALLOWED)
