@@ -33,11 +33,11 @@ class AdminSettingsAdmin(admin.ModelAdmin):
 @admin.register(RemoteNode)
 class RemoteNodeAdmin(admin.ModelAdmin):
     list_display = ['url', 'username']
-    list_filter = ['active']
+    list_filter = ['username']
     search_fields = ['url', 'username']
 
 @admin.register(toWhichitsConnected)
 class towhichitsconnected(admin.ModelAdmin):
     list_display = ['url', 'username']
-    list_filter = ['active']
+    list_filter = ['username']
     search_fields = ['url', 'username']
