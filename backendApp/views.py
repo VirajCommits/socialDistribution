@@ -7,8 +7,8 @@ from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 
 from .models import AdminSettings
-from .serializers import PostSerializer, CommentSerializer, LikeSerializer
-from .models import Author, Post, Comment, Like, FollowRequest
+from .serializers import PostSerializer, CommentSerializer, LikeSerializer, InboxSerializer
+from .models import Author, Post, Comment, Like, FollowRequest, Inbox
 
 
 from django.shortcuts import get_object_or_404
@@ -2059,3 +2059,83 @@ def get_post_by_link(request, post_id):
 
     # If the post is private or friends-only, return a 403 Forbidden
     return Response({"detail": "You are not authorized to view this post."}, status=403)
+
+
+@api_view(['POST', 'GET', 'DELETE'])
+@permission_classes([IsAuthenticated])
+def inbox_handler(request, author_serial):
+    author = get_object_or_404(Author, uuid=author_serial)
+    inbox, created = Inbox.objects.get_or_create(author=author)
+
+    if request.method == 'GET':
+        serializer = InboxSerializer(inbox)
+        return Response(serializer.data)
+
+    elif request.method == 'POST':
+        data = request.data
+        print("------------------", data)
+        item_type = data.get('type', '').lower()
+
+        try:
+            if item_type == 'post':
+                post_serializer = PostSerializer(data=data)
+                if post_serializer.is_valid():
+                    post = post_serializer.save()
+                    inbox.posts.add(post)
+                    return Response({'message': 'Post added to inbox'}, status=201)
+
+            elif item_type == 'like':
+                like_serializer = LikeSerializer(data=data)
+                if like_serializer.is_valid():
+                    like = like_serializer.save()
+                    inbox.likes.add(like)
+                    return Response({'message': 'Like added to inbox'}, status=201)
+
+            elif item_type == 'comment':
+                comment_serializer = CommentSerializer(data=data)
+                if comment_serializer.is_valid():
+                    comment = comment_serializer.save()
+                    inbox.comments.add(comment)
+                    return Response({'message': 'Comment added to inbox'}, status=201)
+
+            elif item_type == 'follow':
+                print("11111111111111111111111111111111111111111111")
+            # Get the target author's UUID from the request data
+            target_uuid = data['object']['id']
+
+            django_request = request._request  # Get the underlying Django HttpRequest
+    
+    # Call the existing send_follow_request function
+            response = send_follow_request(django_request, target_uuid)
+    
+            
+            # Call the existing send_follow_request function
+            # response = send_follow_request(request, target_uuid)
+            
+            # If the follow request was created successfully, add it to the inbox
+            if response.status_code == status.HTTP_201_CREATED:
+                print("2222222222222222222222222222222222222222222222")
+                # Get the most recent follow request
+                follow_request = FollowRequest.objects.filter(
+                    actor=request.user,
+                    object=author,
+                    accepted=False
+                ).latest('created_at')
+                
+                print("33333333333333333333333333333333333, follow: ", follow_request)
+                # Add to inbox
+                inbox.follow_requests.add(follow_request)
+                return Response({'message': 'Follow request added to inbox'}, status=201)
+            
+            # If there was an error, return the original response
+            return response
+
+        except Exception as e:
+            return Response({'error': str(e)}, status=400)
+
+    elif request.method == 'DELETE':
+        inbox.posts.clear()
+        inbox.likes.clear()
+        inbox.comments.clear()
+        inbox.follow_requests.clear()
+        return Response(status=204)

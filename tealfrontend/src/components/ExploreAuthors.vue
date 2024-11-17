@@ -125,6 +125,7 @@ export default {
       pendingRequests: [],
       following: [],
       relationships: {},
+      authID: null,
       token: localStorage.getItem("token"),
       showUnfollowModal: false,
       selectedAuthor: null,
@@ -141,6 +142,10 @@ export default {
     if (!this.token) {
       this.$router.push("/login");
       return;
+    }
+    const user = JSON.parse(localStorage.getItem("user"));
+    if (user && user.id) {
+      this.authID = user.id.split("/").pop(); // Extract the UUID from the user ID
     }
   },
   async mounted() {
@@ -201,7 +206,7 @@ export default {
 
       try {
         const response = await axios.get(
-          "/authors/pending_requests/",
+          `/authors/${this.authID}/inbox/`,
           {
             headers: {
               Authorization: `Token ${this.token}`,
@@ -209,7 +214,9 @@ export default {
             },
           }
         );
-        this.pendingRequests = response.data.map((req) => req.object.id);
+        this.pendingRequests = response.data.items
+      .filter(item => item.type === 'follow')
+      .map(req => req.object.id);
       } catch (error) {
         console.error("Error fetching pending requests:", error);
         if (error.response?.status === 401) {
@@ -222,8 +229,8 @@ export default {
       try {
         const targetUuid = authorId.split("/").pop();
         await axios.post(
-          `/authors/${targetUuid}/send_follow_request/`,
-          null,
+          `/authors/${targetUuid}/inbox/`, 
+          { type: 'follow',actor: {id: this.authID }, object: { id: targetUuid } },
           {
             headers: { Authorization: `Token ${this.token}` },
           }

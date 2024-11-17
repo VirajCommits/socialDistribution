@@ -139,22 +139,32 @@ class Like(models.Model):
     def __str__(self):
         return f"Like by {self.author.displayName} on {self.post.title}"
 
-
-# class Inbox(models.Model):
-#     author = models.OneToOneField(
-#         Author, on_delete=models.CASCADE, related_name="inbox"
-#     )
-#     posts = models.ManyToManyField(Post, blank=True)
-#     likes = models.ManyToManyField(Like, blank=True)
-#     comments = models.ManyToManyField(Comment, blank=True)
-#     follow_requests = models.ManyToManyField(Follow, blank=True)
-
-#     def __str__(self):
-#         return f"Inbox of {self.author.displayName}"
-
-
 class AdminSettings(models.Model):
     user_approval_required = models.BooleanField(default=True)
 
     def __str__(self):
         return f"User Approval Required: {self.user_approval_required}"
+
+
+class Inbox(models.Model):
+    author = models.OneToOneField(
+        Author, on_delete=models.CASCADE, related_name="inbox"
+    )
+    posts = models.ManyToManyField(Post, blank=True, related_name="inbox_posts")
+    likes = models.ManyToManyField(Like, blank=True, related_name="inbox_likes")
+    comments = models.ManyToManyField(Comment, blank=True, related_name="inbox_comments")
+    follow_requests = models.ManyToManyField(FollowRequest, blank=True, related_name="inbox_follows")
+
+    def __str__(self):
+        return f"Inbox of {self.author.displayName}"
+
+    def add_item(self, item):
+        """Add an item to the appropriate collection based on its type"""
+        if isinstance(item, Post):
+            self.posts.add(item)
+        elif isinstance(item, Like):
+            self.likes.add(item)
+        elif isinstance(item, Comment):
+            self.comments.add(item)
+        elif isinstance(item, FollowRequest):
+            self.follow_requests.add(item)

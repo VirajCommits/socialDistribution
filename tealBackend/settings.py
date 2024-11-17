@@ -86,6 +86,7 @@ REST_FRAMEWORK = {
 
 # CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOWED_ORIGINS = [
+    "http://127.0.0.1:8000",
     "http://localhost:8080",  # Frontend development server
     "http://localhost:8000",  # Backend development server
     "https://teal-rakshit-a972530cc317.herokuapp.com",
@@ -93,6 +94,7 @@ CORS_ALLOWED_ORIGINS = [
 CORS_ALLOW_CREDENTIALS = True
 
 CSRF_TRUSTED_ORIGINS = [
+    "http://127.0.0.1:8000",
     "https://teal-rakshit-a972530cc317.herokuapp.com",
     "http://localhost:8080",
     "http://localhost:8000",
