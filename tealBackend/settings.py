@@ -42,7 +42,7 @@ ALLOWED_HOSTS = [
     "127.0.0.1",
     "localhost",
     "teal-rakshit-a972530cc317.herokuapp.com",
-    "teal-pranav-0e8aa7849ad7.herokuapp.com"
+    "teal-pranav-0e8aa7849ad7.herokuapp.com",
     ".herokuapp.com",
 ]
 
