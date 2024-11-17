@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
 
-from .models import Post, Author, FollowRequest, Comment, Like, RemoteNode
+from .models import Post, Author, FollowRequest, Comment, Like
 from django.utils import timezone
 from django.shortcuts import get_object_or_404
 
@@ -144,7 +144,7 @@ class LikeSerializer(serializers.ModelSerializer):
         return like
 
 
-class RemoteNodeSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = RemoteNode
-        fields = ["url", "username", "connected"]
+# class RemoteNodeSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = RemoteNode
+#         fields = ["url", "username", "connected"]

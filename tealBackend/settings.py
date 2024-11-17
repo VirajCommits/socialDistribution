@@ -12,7 +12,7 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 
 from pathlib import Path
 import os
-from cryptography.fernet import Fernet
+# from cryptography.fernet import Fernet
 import dj_database_url
 from decouple import config
 
@@ -23,7 +23,7 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 SECRET_KEY = config("SECRET_KEY", default="default-secret-key")
-DEBUG = config("DEBUG", default=False, cast=bool)
+# DEBUG = config("DEBUG", default=False, cast=bool)
 # FERNET_KEY = config("FERNET_KEY", default=None)
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
@@ -32,7 +32,7 @@ DEBUG = config("DEBUG", default=False, cast=bool)
 # SECRET_KEY = "django-insecure-w)getnsr)9z21am-v4i2%)vz10ji05zcxkoa+xrzx)h7$=zaad"
 
 # SECURITY WARNING: don't run with debug turned on in production!
-# DEBUG = True
+DEBUG = True
 
 ALLOWED_HOSTS = [
     "127.0.0.1",
@@ -182,22 +182,22 @@ CHANNEL_LAYERS = {
     }
 }
 
-# Path to store the Fernet key
-FERNET_KEY_PATH = os.path.join(BASE_DIR, "fernet.key")
+# # Path to store the Fernet key
+# FERNET_KEY_PATH = os.path.join(BASE_DIR, "fernet.key")
 
 
-def get_or_create_fernet_key():
-    """Generate a new Fernet key or retrieve the existing one."""
-    if not os.path.exists(FERNET_KEY_PATH):
-        # Generate and save a new key
-        key = Fernet.generate_key()
-        with open(FERNET_KEY_PATH, "wb") as key_file:
-            key_file.write(key)
-    else:
-        # Read the existing key
-        with open(FERNET_KEY_PATH, "rb") as key_file:
-            key = key_file.read()
-    return key
+# def get_or_create_fernet_key():
+#     """Generate a new Fernet key or retrieve the existing one."""
+#     if not os.path.exists(FERNET_KEY_PATH):
+#         # Generate and save a new key
+#         key = Fernet.generate_key()
+#         with open(FERNET_KEY_PATH, "wb") as key_file:
+#             key_file.write(key)
+#     else:
+#         # Read the existing key
+#         with open(FERNET_KEY_PATH, "rb") as key_file:
+#             key = key_file.read()
+#     return key
 
 
-FERNET_KEY = get_or_create_fernet_key()
+# FERNET_KEY = get_or_create_fernet_key()

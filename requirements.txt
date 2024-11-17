@@ -19,6 +19,7 @@ gunicorn==23.0.0
 hyperlink==21.0.0
 idna==3.10
 incremental==24.7.2
+apscheduler==3.10.4
 inflection==0.5.1
 markdown2==2.5.1
 packaging==24.1

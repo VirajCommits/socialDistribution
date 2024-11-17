@@ -6,7 +6,7 @@ from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 from django.views.generic import TemplateView
 from rest_framework import permissions
-from .views import TestRemoteNodeConnectionView
+# from .views import TestRemoteNodeConnectionView
 
 schema_view = get_schema_view(
     openapi.Info(
@@ -152,11 +152,11 @@ urlpatterns = [
         views.update_author_profile,
         name="update_author_profile",
     ),
-    path(
-        "nodes/<int:pk>/test_connection/",
-        TestRemoteNodeConnectionView.as_view(),
-        name="test_connection",
-    ),
+    # path(
+    #     "nodes/<int:pk>/test_connection/",
+    #     TestRemoteNodeConnectionView.as_view(),
+    #     name="test_connection",
+    # ),
     # path(
     #     "stream", TemplateView.as_view(template_name="vue/index.html"), name="stream"
     # ),

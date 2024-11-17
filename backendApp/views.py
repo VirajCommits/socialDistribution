@@ -7,10 +7,10 @@ from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 import requests
 from .models import AdminSettings
-from .serializers import PostSerializer, CommentSerializer, LikeSerializer, FollowRequestSerializer, AuthorSerializer, RemoteNodeSerializer
-from .models import Author, Post, Comment, Like, FollowRequest, RemoteNode, GitHubPost
+from .serializers import PostSerializer, CommentSerializer, LikeSerializer, FollowRequestSerializer, AuthorSerializer
+from .models import Author, Post, Comment, Like, FollowRequest, GitHubPost
 
-from .utils import connect_to_remote_node
+# from .utils import connect_to_remote_node
 from django.shortcuts import get_object_or_404
 from urllib.parse import urlparse
 from django.shortcuts import render
@@ -747,7 +747,7 @@ def get_all_posts(request, author_serial):
 
     # Pagination
     paginator = PageNumberPagination()
-    paginator.page_size = 10  # Adjust as needed
+    paginator.page_size = 100  # Adjust as needed
     result_page = paginator.paginate_queryset(posts, request)
 
     serializer = PostSerializer(result_page, many=True)
@@ -1398,7 +1398,7 @@ def stream_page(request, author_id):
 
     # Paginate and return response
     paginator = PageNumberPagination()
-    paginator.page_size = 10
+    paginator.page_size = 100
     result_page = paginator.paginate_queryset(all_posts, request)
     serializer = PostSerializer(result_page, many=True)
     return paginator.get_paginated_response(serializer.data)
@@ -2566,13 +2566,13 @@ def create_public_post_from_github_activity(author, github_post):
     )
 
 
-class TestRemoteNodeConnectionView(APIView):
-    def post(self, request, pk):
-        try:
-            node = RemoteNode.objects.get(pk=pk)
-            success = connect_to_remote_node(node)
-            return Response({"connected": success}, status=status.HTTP_200_OK)
-        except RemoteNode.DoesNotExist:
-            return Response(
-                {"error": "Node not found"}, status=status.HTTP_404_NOT_FOUND
-            )
+# class TestRemoteNodeConnectionView(APIView):
+#     def post(self, request, pk):
+#         try:
+#             node = RemoteNode.objects.get(pk=pk)
+#             success = connect_to_remote_node(node)
+#             return Response({"connected": success}, status=status.HTTP_200_OK)
+#         except RemoteNode.DoesNotExist:
+#             return Response(
+#                 {"error": "Node not found"}, status=status.HTTP_404_NOT_FOUND
+#             )
