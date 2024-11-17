@@ -2062,7 +2062,7 @@ def get_post_by_link(request, post_id):
 
 
 @api_view(['POST', 'GET', 'DELETE'])
-@permission_classes([IsAuthenticated])
+@csrf_exempt
 def inbox_handler(request, author_serial):
     author = get_object_or_404(Author, uuid=author_serial)
     inbox, created = Inbox.objects.get_or_create(author=author)

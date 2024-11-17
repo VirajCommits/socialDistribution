@@ -189,3 +189,19 @@ class Inbox(models.Model):
             self.comments.add(item)
         elif isinstance(item, FollowRequest):
             self.follow_requests.add(item)
+
+class RemoteNode(models.Model):
+    url = models.URLField(unique=True)  # The base URL of the remote node
+    username = models.CharField(max_length=255)  # Node's username
+    password = models.CharField(max_length=255)  # Node's password (or token)
+
+    def str(self):
+        return self.url
+    
+class toWhichitsConnected(models.Model):
+    url = models.URLField(unique=True)  # The base URL of the remote node
+    username = models.CharField(max_length=255)  # Node's username
+    password = models.CharField(max_length=255)  # Node's password (or token)
+
+    def str(self):
+        return self.url
