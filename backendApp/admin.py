@@ -1,6 +1,14 @@
 from django.contrib import admin
-from .models import Author
-from .models import AdminSettings
+from .models import (
+    Author,
+    AdminSettings,
+    Post,
+    FollowRequest,
+    Comment,
+    Like,
+    GitHubPost,
+)
+
 
 @admin.register(Author)
 class AuthorAdmin(admin.ModelAdmin):
@@ -9,14 +17,10 @@ class AuthorAdmin(admin.ModelAdmin):
         "host",
         "github",
         "is_approved",
-    )  # Added 'is_approved'
+    )
     search_fields = ("displayName", "github")
-    list_filter = ("is_approved",)  # Added filter to easily filter by approval status
-
-    # Read-only fields
+    list_filter = ("is_approved",)
     readonly_fields = ("id", "page")
-
-    # Custom action to approve users
     actions = ["approve_users"]
 
     def approve_users(self, request, queryset):
@@ -29,6 +33,48 @@ class AuthorAdmin(admin.ModelAdmin):
 @admin.register(AdminSettings)
 class AdminSettingsAdmin(admin.ModelAdmin):
     list_display = ("user_approval_required",)
+
+
+@admin.register(Post)
+class PostAdmin(admin.ModelAdmin):
+    list_display = ("title", "author", "visibility", "published", "edited_at")
+    search_fields = ("title", "author__displayName")
+    list_filter = ("visibility", "published")
+    readonly_fields = ("id", "page", "published", "edited_at")
+
+
+@admin.register(FollowRequest)
+class FollowRequestAdmin(admin.ModelAdmin):
+    list_display = ("actor", "object", "accepted", "created_at")
+    search_fields = ("actor__displayName", "object__displayName")
+    list_filter = ("accepted", "created_at")
+
+    # Remove 'id' from readonly_fields
+    readonly_fields = ("created_at",)
+
+
+@admin.register(Comment)
+class CommentAdmin(admin.ModelAdmin):
+    list_display = ("post", "author", "content", "published")
+    search_fields = ("post__title", "author__displayName", "content")
+    list_filter = ("published",)
+    readonly_fields = ("id", "published")
+
+
+@admin.register(Like)
+class LikeAdmin(admin.ModelAdmin):
+    list_display = ("post", "author", "published")
+    search_fields = ("post__title", "author__displayName")
+    list_filter = ("published",)
+    readonly_fields = ("id", "published")
+
+
+@admin.register(GitHubPost)
+class GitHubPostAdmin(admin.ModelAdmin):
+    list_display = ("author", "activity_type", "created_at", "github_event_id")
+    search_fields = ("author__displayName", "activity_type", "github_event_id")
+    list_filter = ("created_at",)
+    readonly_fields = ("created_at",)
 
 
 # class RemoteNodeAdmin(admin.ModelAdmin):
