@@ -12,10 +12,14 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 
 from pathlib import Path
 import os
+
 # from cryptography.fernet import Fernet
 import dj_database_url
 from decouple import config
+
+import django_heroku
 import dj_database_url
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir' or os.path.join(BASE_DIR, 'subdir')
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -35,6 +39,7 @@ SECRET_KEY = config("SECRET_KEY", default="default-secret-key")
 # Set Debug to False for production
 # DEBUG = False if os.environ.get("DATABASE_URL") else True
 DEBUG = True
+
 # Add secure headers
 # SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 # SECURE_SSL_REDIRECT = not DEBUG
@@ -135,6 +140,7 @@ if os.environ.get("DATABASE_URL") != None:
             conn_health_checks=True,
             ssl_require=True
         )
+
     }
 else:
     # Running locally.

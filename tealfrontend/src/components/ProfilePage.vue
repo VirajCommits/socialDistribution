@@ -766,13 +766,18 @@ export default {
   align-items: center;
 }
 
-
 .close-button {
   background: none;
   border: none;
   font-size: 1.5rem;
   cursor: pointer;
   color: #666;
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  color: #374151;
 }
 
 .modal-body {
@@ -1035,5 +1040,40 @@ export default {
 .cancel-button:hover {
   background-color: #d1d5db;
 }
+
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  text-align: center;
+  color: #6b7280;
+}
+
+.empty-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  color: #d1d5db;
+}
+
+.empty-state p {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.modal-body {
+  min-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.loading-spinner {
+  font-size: 2rem;
+  color: #3b82f6;
+}
+
 </style>
 

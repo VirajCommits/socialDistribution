@@ -1325,9 +1325,13 @@ def stream_page(request, author_id):
     personal_posts = Post.objects.filter(author=current_author)
 
     # Combine all posts and avoid duplicates
-    all_posts = (public_posts |
-                 mutual_friends_posts | other_following_posts | personal_posts
-                 ).distinct().order_by("-edited_at")
+
+    all_posts = (
+        (public_posts | mutual_friends_posts | other_following_posts | personal_posts)
+        .distinct()
+        .order_by("-edited_at")
+    )
+
 
     # Paginate and return response
     paginator = PageNumberPagination()
@@ -1406,17 +1410,23 @@ def signup(request):
         # Notify the user about their approval status
         if user.is_approved:
             refresh = RefreshToken.for_user(user)
-            return Response({
-                "message": "User created and approved.",
-                "refresh": str(refresh),
-                "access": str(refresh.access_token),
-                "user": AuthorSerializer(user).data
-            }, status=status.HTTP_201_CREATED)
-        
-        return Response({
-            "message": "User created. Your account is pending admin approval.",
-            "user": AuthorSerializer(user).data
-        }, status=status.HTTP_201_CREATED)
+            return Response(
+                {
+                    "message": "User created and approved.",
+                    "refresh": str(refresh),
+                    "access": str(refresh.access_token),
+                    "user": AuthorSerializer(user).data,
+                },
+                status=status.HTTP_201_CREATED,
+            )
+
+        return Response(
+            {
+                "message": "User created. Your account is pending admin approval.",
+                "user": AuthorSerializer(user).data,
+            },
+            status=status.HTTP_201_CREATED,
+        )
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
