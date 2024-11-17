@@ -91,7 +91,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:8080",  # Frontend development server
     "http://localhost:8000",  # Backend development server
     "https://teal-rakshit-a972530cc317.herokuapp.com",
-]
+# ]
 CORS_ALLOW_CREDENTIALS = True
 
 CSRF_TRUSTED_ORIGINS = [
@@ -129,7 +129,7 @@ TEMPLATES = [
 
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
-
+print(os.environ.get("DATABASE_URL") , BASE_DIR)
 if os.environ.get("DATABASE_URL") != None:
     # Running on Heroku
     DATABASES = {
@@ -148,6 +148,7 @@ else:
             "NAME": BASE_DIR / "db.sqlite3",
         }
     }
+    print(DATABASES)
 
 
 # Password validation
