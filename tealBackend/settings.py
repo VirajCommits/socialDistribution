@@ -100,7 +100,7 @@ CSRF_TRUSTED_ORIGINS = [
     "https://teal-rakshit-a972530cc317.herokuapp.com",
     "https://teal-pranav-0e8aa7849ad7.herokuapp.com",
     "http://localhost:8080",
-    "http://localhost:8000zjysc",
+    "http://localhost:8000",
 ]
 
 
