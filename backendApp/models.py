@@ -38,6 +38,27 @@ class Author(AbstractUser):
         """Check if this author and other_author are mutual followers (friends)"""
         return (self.followers.filter(id=other_author.id).exists() and 
                 other_author.followers.filter(id=self.id).exists())
+    
+    def get_full_data(self):
+        """Return the author data in the format required by the API"""
+        return {
+            "type": "author",
+            "id": self.id,
+            "host": self.host,
+            "displayName": self.displayName,
+            "github": self.github,
+            "profileImage": self.profileImage,
+            "page": self.page
+        }
+
+    def format_follow_request(self, target_author):
+        """Create a properly formatted follow request object"""
+        return {
+            "type": "follow",
+            "summary": f"{self.displayName} wants to follow {target_author.displayName}",
+            "actor": self.get_full_data(),
+            "object": target_author.get_full_data()
+        }
 
 class Post(models.Model):
     VISIBILITY_CHOICES = [
@@ -139,22 +160,48 @@ class Like(models.Model):
     def __str__(self):
         return f"Like by {self.author.displayName} on {self.post.title}"
 
-
-# class Inbox(models.Model):
-#     author = models.OneToOneField(
-#         Author, on_delete=models.CASCADE, related_name="inbox"
-#     )
-#     posts = models.ManyToManyField(Post, blank=True)
-#     likes = models.ManyToManyField(Like, blank=True)
-#     comments = models.ManyToManyField(Comment, blank=True)
-#     follow_requests = models.ManyToManyField(Follow, blank=True)
-
-#     def __str__(self):
-#         return f"Inbox of {self.author.displayName}"
-
-
 class AdminSettings(models.Model):
     user_approval_required = models.BooleanField(default=True)
 
     def __str__(self):
         return f"User Approval Required: {self.user_approval_required}"
+
+
+class Inbox(models.Model):
+    author = models.OneToOneField(
+        Author, on_delete=models.CASCADE, related_name="inbox"
+    )
+    posts = models.ManyToManyField(Post, blank=True, related_name="inbox_posts")
+    likes = models.ManyToManyField(Like, blank=True, related_name="inbox_likes")
+    comments = models.ManyToManyField(Comment, blank=True, related_name="inbox_comments")
+    follow_requests = models.ManyToManyField(FollowRequest, blank=True, related_name="inbox_follows")
+
+    def __str__(self):
+        return f"Inbox of {self.author.displayName}"
+
+    def add_item(self, item):
+        """Add an item to the appropriate collection based on its type"""
+        if isinstance(item, Post):
+            self.posts.add(item)
+        elif isinstance(item, Like):
+            self.likes.add(item)
+        elif isinstance(item, Comment):
+            self.comments.add(item)
+        elif isinstance(item, FollowRequest):
+            self.follow_requests.add(item)
+
+class RemoteNode(models.Model):
+    url = models.URLField(unique=True)  # The base URL of the remote node
+    username = models.CharField(max_length=255)  # Node's username
+    password = models.CharField(max_length=255)  # Node's password (or token)
+
+    def str(self):
+        return self.url
+    
+class toWhichitsConnected(models.Model):
+    url = models.URLField(unique=True)  # The base URL of the remote node
+    username = models.CharField(max_length=255)  # Node's username
+    password = models.CharField(max_length=255)  # Node's password (or token)
+
+    def str(self):
+        return self.url

@@ -3,7 +3,7 @@ from django.contrib.auth.password_validation import validate_password
 
 from .models import Post, Author, FollowRequest
 
-from .models import Post, Author,Comment,Like
+from .models import Post, Author,Comment,Like, Inbox
 from django.utils import timezone
 from django.shortcuts import get_object_or_404
 
@@ -77,13 +77,28 @@ class PostSerializer(serializers.ModelSerializer):
 
 
 class FollowRequestSerializer(serializers.ModelSerializer):
+    type = serializers.CharField(default="follow")
+    summary = serializers.CharField()
     actor = AuthorSerializer(read_only=True)
     object = AuthorSerializer(read_only=True)
 
     class Meta:
         model = FollowRequest
-        fields = ['type', 'summary', 'actor', 'object', 'uuid', 'created_at', 'accepted']
-        read_only_fields = ['uuid', 'created_at']
+        fields = ['type', 'summary', 'actor', 'object']
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        # Ensure actor and object have the full structure
+        for field in ['actor', 'object']:
+            if field in data:
+                author_data = data[field]
+                author_data['type'] = 'author'
+                # Ensure all required fields are present
+                if 'page' not in author_data:
+                    author_data['page'] = f"{author_data['host']}authors/{author_data['uuid']}"
+                if 'profileImage' not in author_data:
+                    author_data['profileImage'] = ""
+        return data
 
 
 class CommentSerializer(serializers.ModelSerializer):
@@ -145,3 +160,36 @@ class LikeSerializer(serializers.ModelSerializer):
         # Create the Like instance with author and post
         like = Like.objects.create(author=author, post=post, **validated_data)
         return like
+
+
+class InboxSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Inbox
+        fields = ['author', 'posts', 'likes', 'comments', 'follow_requests']
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        representation['type'] = 'inbox'
+        representation['items'] = []
+
+        for post in instance.posts.all():
+            post_data = PostSerializer(post).data
+            post_data['type'] = 'post'
+            representation['items'].append(post_data)
+
+        for like in instance.likes.all():
+            like_data = LikeSerializer(like).data
+            like_data['type'] = 'Like'
+            representation['items'].append(like_data)
+
+        for comment in instance.comments.all():
+            comment_data = CommentSerializer(comment).data
+            comment_data['type'] = 'comment'
+            representation['items'].append(comment_data)
+
+        for follow in instance.follow_requests.all():
+            follow_data = FollowRequestSerializer(follow).data
+            follow_data['type'] = 'follow'
+            representation['items'].append(follow_data)
+
+        return representation
