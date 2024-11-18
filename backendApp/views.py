@@ -2193,8 +2193,9 @@ def test_node_connection(request):
         for node in remote_nodes:
             try:
                  # Test outgoing connection (us -> them)
-                outgoing_url = f"{node.url}service/api/authors/"
-                outgoing_response = make_node_request(outgoing_url)
+                outgoing_url = f"{node.url}"
+                endpoint = 'service/api/verify-connection/'
+                outgoing_response = make_node_request(base_url=outgoing_url, endpoint=endpoint)
                 
                 results.append({
                     "node_url": node.url,
