@@ -2050,95 +2050,31 @@ def inbox_handler(request, author_serial):
 
         try:
             if item_type == 'post':
-                # Handle Post Activity
-                post_id = data.get('id')
-                if not post_id:
-                    return Response({'error': 'Post ID is missing.'}, status=status.HTTP_400_BAD_REQUEST)
+                # to create a post, basically call this url: service/api/authors/<path:author_serial>/posts/
+                # i need the author_serial from data
+                auth_serial = data.get("author_id")
+                hostname = data["author"]["host"]
 
-                # Extract author data from incoming post data
-                author_data = data.get('author')
-                print("THE AUTHOR DATA:" , author_data)
-                if not author_data:
-                    return Response({'error': 'Author data is missing in post activity.'}, status=status.HTTP_400_BAD_REQUEST)
+                api_url = f"{hostname}/service/api/authors/{auth_serial}/posts/"
+                print(api_url)
 
-                # Extract author ID
-                author_id = author_data.get('id').split("/")[-1]
-                if not author_id:
-                    return Response({'error': 'Author ID is missing in post activity.'}, status=status.HTTP_400_BAD_REQUEST)
+                # Prepare the body for creating a post
+                post_data = {
+                    'title': data.get('title'),
+                    'description': data.get('description', ''),
+                    'contentType': data.get('contentType', 'text/plain'),
+                    'visibility': data.get('visibility', 'PUBLIC'),
+                    'content': data.get('content', ''),
+                }
 
-                    # Check if the author exists or create a new one
-                author, created = Author.objects.get_or_create(
-                    uuid=author_id,
-                    defaults={
-                        'host': author_data.get('host'),
-                        'displayName': author_data.get('displayName'),
-                        'page': author_data.get('page'),
-                        'github': author_data.get('github'),
-                        'profileImage': author_data.get('profileImage'),
-                    }
-                )
-                print("&&&&&&" , post_id)
-                post, created_post = Post.objects.get_or_create(id=post_id, defaults=data)
-                print("POST:" , post , created_post)
-                if created_post:
-                    # Proceed to add the post to the inbox
-                    print("Yes")
-                    if not inbox.posts.filter(id=post.id).exists():
-                        inbox.posts.add(post)
-                        print(f"Post {post.id} added to inbox of author {author_serial}.")
-                    else:
-                        print(f"Post {post.id} already in inbox of author {author_serial}.")
-                
+                # Check if there is an image to upload
+                if 'image' in data:
+                    post_data['image'] = data['image']  # Assuming the image is included in the data
 
-                print("THE AUTHOR ID:" , author_id)
-
-                # Get or create the Author in the local database
-                local_author, created_author = Author.objects.get_or_create(uuid=author_id, defaults=author_data)
-                print("AUTHOR:" , local_author , created_author)
-                if not created_author:
-                    # If Author exists, update any necessary fields
-                    author_serializer = AuthorSerializer(local_author, data=author_data, partial=True)
-                    if author_serializer.is_valid():
-                        local_author = author_serializer.save()
-                    else:
-                        return Response({'error': 'Invalid author data.', 'details': author_serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
-                print("1" , post_id)
-                # Check if the Post already exists
-                post, created_post = Post.objects.get_or_create(id=post_id)
-
-                print("***" , local_author.uuid)
-
-                # Prepare data for PostSerializer by removing the nested author data
- # Get or create the Post
-                post_data = data.copy()
-                # post_data.pop('author', None)  # Remove nested author to prevent serializer issues
-                # post_data['author'] = local_author  # Assign the author's UUID
-
-                print("2" , post_data , post.content)
-
-                # Serialize and validate the Post
-                post_serializer = PostSerializer(post, data=post_data, partial=not created_post)
-                print("3")
-
-                if post_serializer.is_valid():
-                    print("4")
-                    post = post_serializer.save()
-                    print("5")
-                    action = "created" if created_post else "updated"
-                    print(f"Post {post_id} {action} and added to inbox of author {author_serial}.")
-                else:
-                    # If serializer is not valid, delete the created post (if it was newly created) and return errors
-                    if created_post:
-                        post.delete()
-                        print("Post serializer errors:", post_serializer.errors)
-                    return Response(post_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-                # Add the post to the inbox if not already added
-                if not inbox.posts.filter(id=post.id).exists():
-                    inbox.posts.add(post)
-                    print(f"Post {post.id} added to inbox of author {author_serial}.")
-                else:
-                    print(f"Post {post.id} already in inbox of author {author_serial}.")
+                response = requests.post(api_url, json=post_data, headers={
+                    'Authorization': f"Token {data.get('token')}",  # Ensure this line is correctly indented
+                    'Content-Type': 'application/json'
+                })
 
                 return Response({'message': 'Post added to inbox and created locally.'}, status=status.HTTP_201_CREATED)
 
