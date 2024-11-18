@@ -766,18 +766,52 @@ export default {
   align-items: center;
 }
 
-.close-button {
-  background: none;
-  border: none;
-  font-size: 1.5rem;
-  cursor: pointer;
-  color: #666;
+.modal-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  color: #374151;
 }
 
 .modal-header h3 {
   margin: 0;
   font-size: 1.25rem;
   color: #374151;
+}
+
+.modal-body {
+  padding: 3rem 1.5rem;
+  min-height: 300px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  text-align: center;
+}
+
+.empty-icon {
+  font-size: 4rem;
+  color: #d1d5db;
+}
+
+.empty-state p {
+  margin: 0;
+  font-size: 1.1rem;
+  color: #6b7280;
+}
+
+.close-button {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: #666;
 }
 
 .modal-body {
@@ -1041,7 +1075,6 @@ export default {
   background-color: #d1d5db;
 }
 
-
 .empty-state {
   display: flex;
   flex-direction: column;
@@ -1074,6 +1107,4 @@ export default {
   font-size: 2rem;
   color: #3b82f6;
 }
-
 </style>
-

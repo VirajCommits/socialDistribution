@@ -2523,3 +2523,31 @@ def create_public_post_from_github_activity(author, github_post):
 #             return Response(
 #                 {"error": "Node not found"}, status=status.HTTP_404_NOT_FOUND
 #             )
+
+
+# @api_view(["GET"])
+# def get_author_profile(request, author_id):
+#     try:
+#         author = Author.objects.get(uuid=author_id)
+#         posts = Post.objects.filter(author=author, visibility="PUBLIC")
+#         author_data = AuthorSerializer(author).data
+#         posts_data = PostSerializer(posts, many=True).data
+#         return Response(
+#             {"author": author_data, "posts": posts_data}, status=status.HTTP_200_OK
+#         )
+#     except Author.DoesNotExist:
+#         return Response({"error": "Author not found"}, status=status.HTTP_404_NOT_FOUND)
+
+
+# @api_view(["GET"])
+# def get_public_posts(request, author_id):
+#     try:
+#         # Filter posts for the specific author with visibility as 'PUBLIC'
+#         posts = Post.objects.filter(author_id=author_id, visibility="PUBLIC")
+#         serialized_posts = PostSerializer(posts, many=True)
+#         return Response({"results": serialized_posts.data}, status=status.HTTP_200_OK)
+#     except Post.DoesNotExist:
+#         return Response(
+#             {"error": "Author not found or no public posts available."},
+#             status=status.HTTP_404_NOT_FOUND,
+#         )

@@ -153,6 +153,16 @@ urlpatterns = [
         name="update_author_profile",
     ),
     # path(
+    #     "service/api/authors/<uuid:author_id>/profile/",
+    #     views.get_author_profile,
+    #     name="get_author_profile",
+    # ),
+    # path(
+    #     "service/api/authors/<uuid:author_id>/posts/public/",
+    #     views.get_public_posts,
+    #     name="get_public_posts",
+    # ),
+    # path(
     #     "nodes/<int:pk>/test_connection/",
     #     TestRemoteNodeConnectionView.as_view(),
     #     name="test_connection",
@@ -166,6 +176,8 @@ urlpatterns = [
         name="post_detail",
     ),
     # Catch-all route for Vue frontend
-    re_path(r"^(?!service/api|admin|swagger|static|media).*$", 
-        TemplateView.as_view(template_name="index.html")),
+    re_path(
+        r"^(?!service/api|admin|swagger|static|media).*$",
+        TemplateView.as_view(template_name="index.html"),
+    ),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
