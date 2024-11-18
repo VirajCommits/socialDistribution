@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Author
+from .models import Author, RemoteNode, ToWhichItsConnected
 from .models import AdminSettings
 
 @admin.register(Author)
@@ -29,3 +29,15 @@ class AuthorAdmin(admin.ModelAdmin):
 @admin.register(AdminSettings)
 class AdminSettingsAdmin(admin.ModelAdmin):
     list_display = ("user_approval_required",)
+
+@admin.register(RemoteNode)
+class RemoteNodeAdmin(admin.ModelAdmin):
+    list_display = ['url', 'username']
+    list_filter = ['active']
+    search_fields = ['url', 'username']
+
+@admin.register(ToWhichItsConnected)
+class ToWhichItsConnected(admin.ModelAdmin):
+    list_display = ['url', 'username']
+    list_filter = ['active']
+    search_fields = ['url', 'username']
