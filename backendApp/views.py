@@ -30,6 +30,9 @@ from asgiref.sync import async_to_sync
 import requests
 from datetime import datetime
 
+from rest_framework.test import APIRequestFactory
+from django.urls import reverse
+
 
 def defaultPath(request):
     return render(request, "index.html")
@@ -2032,6 +2035,7 @@ def inbox_handler(request, author_serial):
     author = get_object_or_404(Author, uuid=author_serial)
     # Get or create the inbox for the author
     inbox, created = Inbox.objects.get_or_create(author=author)
+    
 
     if request.method == 'GET':
         # Serialize and return the inbox data
@@ -2041,7 +2045,7 @@ def inbox_handler(request, author_serial):
     elif request.method == 'POST':
         data = request.data
         print("------------------ Incoming Data ------------------")
-        print(data)
+        print(data , "\n\n\n")
         item_type = data.get('type', '').lower()
 
         try:
@@ -2051,21 +2055,83 @@ def inbox_handler(request, author_serial):
                 if not post_id:
                     return Response({'error': 'Post ID is missing.'}, status=status.HTTP_400_BAD_REQUEST)
 
-                # Check if the Post already exists
+                # Extract author data from incoming post data
+                author_data = data.get('author')
+                print("THE AUTHOR DATA:" , author_data)
+                if not author_data:
+                    return Response({'error': 'Author data is missing in post activity.'}, status=status.HTTP_400_BAD_REQUEST)
+
+                # Extract author ID
+                author_id = author_data.get('id').split("/")[-1]
+                if not author_id:
+                    return Response({'error': 'Author ID is missing in post activity.'}, status=status.HTTP_400_BAD_REQUEST)
+
+                    # Check if the author exists or create a new one
+                author, created = Author.objects.get_or_create(
+                    uuid=author_id,
+                    defaults={
+                        'host': author_data.get('host'),
+                        'displayName': author_data.get('displayName'),
+                        'page': author_data.get('page'),
+                        'github': author_data.get('github'),
+                        'profileImage': author_data.get('profileImage'),
+                    }
+                )
+                print("&&&&&&" , post_id)
                 post, created_post = Post.objects.get_or_create(id=post_id, defaults=data)
+                print("POST:" , post , created_post)
                 if created_post:
-                    # If the post was created, serialize additional fields if necessary
-                    post_serializer = PostSerializer(post, data=data, partial=True)
-                    if post_serializer.is_valid():
-                        post = post_serializer.save()
-                        print(f"Post {post_id} created and added to inbox of author {author_serial}.")
+                    # Proceed to add the post to the inbox
+                    print("Yes")
+                    if not inbox.posts.filter(id=post.id).exists():
+                        inbox.posts.add(post)
+                        print(f"Post {post.id} added to inbox of author {author_serial}.")
                     else:
-                        # If serializer is not valid, delete the created post and return errors
+                        print(f"Post {post.id} already in inbox of author {author_serial}.")
+                
+
+                print("THE AUTHOR ID:" , author_id)
+
+                # Get or create the Author in the local database
+                local_author, created_author = Author.objects.get_or_create(uuid=author_id, defaults=author_data)
+                print("AUTHOR:" , local_author , created_author)
+                if not created_author:
+                    # If Author exists, update any necessary fields
+                    author_serializer = AuthorSerializer(local_author, data=author_data, partial=True)
+                    if author_serializer.is_valid():
+                        local_author = author_serializer.save()
+                    else:
+                        return Response({'error': 'Invalid author data.', 'details': author_serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+                print("1" , post_id)
+                # Check if the Post already exists
+                post, created_post = Post.objects.get_or_create(id=post_id)
+
+                print("***" , local_author.uuid)
+
+                # Prepare data for PostSerializer by removing the nested author data
+ # Get or create the Post
+                post_data = data.copy()
+                # post_data.pop('author', None)  # Remove nested author to prevent serializer issues
+                # post_data['author'] = local_author  # Assign the author's UUID
+
+                print("2" , post_data , post.content)
+
+                # Serialize and validate the Post
+                post_serializer = PostSerializer(post, data=post_data, partial=not created_post)
+                print("3")
+
+                if post_serializer.is_valid():
+                    print("4")
+                    post = post_serializer.save()
+                    print("5")
+                    action = "created" if created_post else "updated"
+                    print(f"Post {post_id} {action} and added to inbox of author {author_serial}.")
+                else:
+                    # If serializer is not valid, delete the created post (if it was newly created) and return errors
+                    if created_post:
                         post.delete()
                         print("Post serializer errors:", post_serializer.errors)
-                        return Response(post_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-                else:
-                    print(f"Post {post_id} already exists.")
+                    return Response(post_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
                 # Add the post to the inbox if not already added
                 if not inbox.posts.filter(id=post.id).exists():
@@ -2074,7 +2140,7 @@ def inbox_handler(request, author_serial):
                 else:
                     print(f"Post {post.id} already in inbox of author {author_serial}.")
 
-                return Response({'message': 'Post added to inbox'}, status=status.HTTP_201_CREATED)
+                return Response({'message': 'Post added to inbox and created locally.'}, status=status.HTTP_201_CREATED)
 
             elif item_type == 'like':
                 # Handle Like Activity
@@ -2103,7 +2169,12 @@ def inbox_handler(request, author_serial):
                 else:
                     print(f"Like {like.id} already in inbox of author {author_serial}.")
 
-                return Response({'message': 'Like added to inbox'}, status=status.HTTP_201_CREATED)
+                # **Process the like by calling the local API endpoint**
+                response = create_local_like(request, like)
+                if response.status_code != status.HTTP_201_CREATED:
+                    return Response({'error': 'Failed to create local like.'}, status=status.HTTP_400_BAD_REQUEST)
+
+                return Response({'message': 'Like added to inbox and created locally.'}, status=status.HTTP_201_CREATED)
 
             elif item_type == 'comment':
                 print(" ============================== ")
@@ -2133,7 +2204,12 @@ def inbox_handler(request, author_serial):
                 else:
                     print(f"Comment {comment.id} already in inbox of author {author_serial}.")
 
-                return Response({'message': 'Comment added to inbox'}, status=status.HTTP_201_CREATED)
+                # **Process the comment by calling the local API endpoint**
+                response = create_local_comment(request, comment)
+                if response.status_code != status.HTTP_201_CREATED:
+                    return Response({'error': 'Failed to create local comment.'}, status=status.HTTP_400_BAD_REQUEST)
+
+                return Response({'message': 'Comment added to inbox and created locally.'}, status=status.HTTP_201_CREATED)
 
             elif item_type == 'follow':
                 # Handle Follow Activity
@@ -2167,7 +2243,12 @@ def inbox_handler(request, author_serial):
                     else:
                         print(f"Follow request {follow_request.id} already in inbox of author {author_serial}.")
 
-                    return Response({'message': 'Follow request added to inbox'}, status=status.HTTP_201_CREATED)
+                    # **Process the follow request by calling the local API endpoint**
+                    response = process_follow_request(request, follow_request)
+                    if response.status_code != status.HTTP_200_OK:
+                        return Response({'error': 'Failed to process follow request locally.'}, status=status.HTTP_400_BAD_REQUEST)
+
+                    return Response({'message': 'Follow request added to inbox and processed locally.'}, status=status.HTTP_201_CREATED)
 
                 # If there was an error, return the original response
                 print(f"send_follow_request response status: {response.status_code}")
@@ -2190,3 +2271,99 @@ def inbox_handler(request, author_serial):
         inbox.follow_requests.clear()
         print(f"Inbox for author {author_serial} has been cleared.")
         return Response({'message': 'Inbox cleared.'}, status=status.HTTP_204_NO_CONTENT)
+def create_local_post(request, post):
+    """
+    Processes a post activity by creating a local post via the API.
+    """
+    try:
+        factory = APIRequestFactory()
+        api_request = factory.post(
+            reverse('post-list'),  # Ensure this URL name matches your URL configuration
+            data={
+                'type': post.type,
+                'title': post.title,
+                'id': post.id,
+                'page': post.page,
+                'description': post.description,
+                'contentType': post.contentType,
+                'content': post.content,
+                'published': post.published,
+                'visibility': post.visibility,
+                'author': post.author.id,  # Assuming author is referenced by ID
+            },
+            format='json'
+        )
+        api_request.user = request.user
+        response = create_post(api_request)  # Call your post creation view
+        return response
+    except Exception as e:
+        print(f"Error creating local post: {e}")
+        return Response({'error': 'Failed to create local post.'}, status=status.HTTP_400_BAD_REQUEST)
+
+def create_local_like(request, like):
+    """
+    Processes a like activity by creating a local like via the API.
+    """
+    try:
+        factory = APIRequestFactory()
+        api_request = factory.post(
+            reverse('like-list'),  # Ensure this URL name matches your URL configuration
+            data={
+                'type': like.type,
+                'id': like.id,
+                'author': like.author.id,
+                'object': like.object,
+                'published': like.published,
+            },
+            format='json'
+        )
+        api_request.user = request.user
+        response = create_like(api_request)  # Call your like creation view
+        return response
+    except Exception as e:
+        print(f"Error creating local like: {e}")
+        return Response({'error': 'Failed to create local like.'}, status=status.HTTP_400_BAD_REQUEST)
+
+def create_local_comment(request, comment):
+    """
+    Processes a comment activity by creating a local comment via the API.
+    """
+    try:
+        factory = APIRequestFactory()
+        api_request = factory.post(
+            reverse('comment-list'),  # Ensure this URL name matches your URL configuration
+            data={
+                'type': comment.type,
+                'id': comment.id,
+                'author': comment.author.id,
+                'post': comment.post,
+                'comment': comment.comment,
+                'contentType': comment.contentType,
+                'published': comment.published,
+            },
+            format='json'
+        )
+        api_request.user = request.user
+        response = post_comment(api_request)  # Call your comment creation view
+        return response
+    except Exception as e:
+        print(f"Error creating local comment: {e}")
+        return Response({'error': 'Failed to create local comment.'}, status=status.HTTP_400_BAD_REQUEST)
+
+def process_follow_request(request, follow_request):
+    """
+    Processes a follow request by accepting it via the API.
+    """
+    try:
+        factory = APIRequestFactory()
+        api_request = factory.post(
+            reverse('follow-request-accept', args=[follow_request.id]),  # Ensure this URL name matches your URL configuration
+            data={},  # If your accept_follow_request view requires additional data, include it here
+            format='json'
+        )
+        api_request.user = request.user
+        response = accept_follow_request(api_request, follow_request.id)  # Call your follow request acceptance view
+        return response
+    except Exception as e:
+        print(f"Error processing follow request: {e}")
+        return Response({'error': 'Failed to process follow request.'}, status=status.HTTP_400_BAD_REQUEST)

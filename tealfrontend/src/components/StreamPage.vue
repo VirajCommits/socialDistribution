@@ -1,3 +1,4 @@
+<!-- src/pages/StreamPage.vue -->
 <template>
   <div class="stream-container">
     <!-- Navigation Bar -->
@@ -111,20 +112,20 @@
             </div>
             <div v-else class="post-text" v-html="post.content"></div>
             <button @click="copyToClipboard(post)" class="copy-url-button">
-            <i class="fas fa-copy"></i> Copy URL
-          </button> <!-- New Button -->
+              <i class="fas fa-copy"></i> Copy URL
+            </button>
           </div>
 
           <div class="post-actions">
-            <LikeButton :postId="post.id" :authorId="authID" />
-            <CommentSection :postId="post.id" :authorId="authID" />
+            <LikeButton :postId="post.id" />
+            <CommentSection :postId="post.id" />
             <button
-            v-if="post.visibility === 'PUBLIC'"
-            class="repost-button"
-            @click="repostPost(post.id)"
+              v-if="post.visibility === 'PUBLIC'"
+              class="repost-button"
+              @click="repostPost(post.id)"
             >
-            <i class="fas fa-retweet"></i>
-            <span>Repost</span>
+              <i class="fas fa-retweet"></i>
+              <span>Repost</span>
             </button>
 
             <!-- Display repost count -->
@@ -172,6 +173,7 @@ export default {
       followRequests: [],
       followRequestCount: 0,
       socket: null,
+      inboxActivities: [], // New data property if needed in future
     };
   },
   computed: {
@@ -180,7 +182,7 @@ export default {
     },
   },
   async mounted() {
-    // Initialize both functionalities
+    // Initialize user and fetch posts
     await this.initializeUser();
     await this.fetchStreamPosts();
 
@@ -198,11 +200,10 @@ export default {
     }
   },
   methods: {
-  copyToClipboard(post) {
-      // Construct a simpler URL for the post
+    copyToClipboard(post) {
+      // Existing method
       const postUrl = `${window.location.origin}/posts/${post.id}`;
 
-      // Copy the URL to the clipboard
       navigator.clipboard
         .writeText(postUrl)
         .then(() => {
@@ -273,7 +274,9 @@ export default {
       }
     },
 
-    // Stream posts related methods
+    /**
+     * Initializes user information from localStorage.
+     */
     async initializeUser() {
       try {
         this.user = JSON.parse(localStorage.getItem("user"));
@@ -288,6 +291,9 @@ export default {
       }
     },
 
+    /**
+     * Fetches the main stream posts.
+     */
     async fetchStreamPosts() {
       try {
         const apiUrl = `/authors/${encodeURIComponent(
@@ -307,6 +313,10 @@ export default {
         this.loading = false;
       }
     },
+
+    /**
+     * Fetches the initial count of follow requests.
+     */
     async fetchInitialCount() {
       try {
         const response = await axios.get(
@@ -430,6 +440,7 @@ export default {
       // Remove all HTML tags
       return content.replace(/<\/?[^>]+(>|$)/g, "").trim();
     },
+
     async repostPost(postId) {
       try {
         // Retrieve the author ID of the logged-in user from local storage
@@ -454,7 +465,7 @@ export default {
         console.error("Error reposting post:", error.response || error);
         alert(error.response?.data?.error || 'An error occurred while reposting.');
       }
-    }
+    },
   },
 };
 </script>
@@ -705,7 +716,6 @@ export default {
   border-radius: 12px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
   margin-bottom: 1.5rem;
-
 }
 
 .post-header {
