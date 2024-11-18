@@ -1,1 +1,1 @@
-web: gunicorn backendApp.wsgi
+web: gunicorn tealBackend.wsgi
