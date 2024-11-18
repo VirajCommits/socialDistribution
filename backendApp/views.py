@@ -8,7 +8,7 @@ from drf_yasg import openapi
 
 from .models import AdminSettings
 from .serializers import PostSerializer, CommentSerializer, LikeSerializer, InboxSerializer
-from .models import Author, Post, Comment, Like, FollowRequest, Inbox
+from .models import Author, Post, Comment, Like, FollowRequest, Inbox , InboxItem
 
 
 from django.shortcuts import get_object_or_404
@@ -27,6 +27,8 @@ import markdown2
 from .serializers import FollowRequestSerializer
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
+import requests
+from datetime import datetime
 
 
 def defaultPath(request):
@@ -232,8 +234,9 @@ def vueTest(request):
 )
 @api_view(["GET", "DELETE", "PUT", "POST"])
 def post_detail(request, author_serial, post_serial):
+    print("=================================================================")
     segments = post_serial.split("/")
-    post_id = segments[0]  # This should be the UUID part
+    post_id = segments[0]
     action = segments[1] if len(segments) > 1 else None
     parsed_author_id = urlparse(author_serial).path.split("/")[-1]
 
@@ -241,53 +244,41 @@ def post_detail(request, author_serial, post_serial):
     author = get_object_or_404(Author, uuid=parsed_author_id)
     post = get_object_or_404(Post, author=author, id=post_id)
 
-    # If the request is a GET and no action is specified, return the post details
+    # Check visibility permissions first
+    if post.visibility == "FRIENDS":
+        # Get the requesting user's author object
+        try:
+            current_user_author = request.user.author
+        except AttributeError:
+            return Response(
+                {"detail": "Authentication required"}, 
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+
+        # Check if they follow each other (are friends)
+        is_friend = (
+            author.followers.filter(uuid=current_user_author.uuid).exists() and
+            current_user_author.followers.filter(uuid=author.uuid).exists()
+        )
+        
+        print(f"Current user: {current_user_author.uuid}")
+        print(f"Post author: {author.uuid}")
+        print(f"Is friend: {is_friend}")
+
+        if not (is_friend or current_user_author.uuid == author.uuid):
+            return Response(
+                {"detail": "You must be friends with the author to access this content"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+    # Handle GET request for post details
     if request.method == "GET" and not action:
         serializer = PostSerializer(post)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-    # Handle "like" action for POST request
-    if action == "like":
-        if request.method == "POST":
-            data = request.data.copy()
-            data["author_id"] = str(author.id)
-            data["post_id"] = str(post.id)
-            data["post"] = post.id
-
-            serializer = LikeSerializer(data=data)
-            if serializer.is_valid():
-                serializer.save()
-                return Response(serializer.data, status=status.HTTP_201_CREATED)
-            else:
-                print("Serializer errors:", serializer.errors)
-                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    # Handle fetching likes
-    if action == "likes":
-        if request.method == "GET":
-            likes = Like.objects.filter(post=post).order_by("-published")
-            serializer = LikeSerializer(likes, many=True)
-            return Response(serializer.data, status=status.HTTP_200_OK)
-
-    # Handle comments if specified in the URL
+    # Handle comments
     elif action == "comments":
         if request.method == "GET":
-            # Filter comments based on visibility rules
-            current_user = request.user
-            if post.visibility == "FRIENDS":
-                # Check if the current user is a friend or the post's author
-                is_friend = (
-                    current_user in author.followers.all()
-                    and current_user in author.following.all()
-                )
-                if not (is_friend or current_user == author):
-                    # If the current user is not a friend or the post's author, filter out comments
-                    return Response(
-                        {"detail": "You are not authorized to view these comments."},
-                        status=status.HTTP_403_FORBIDDEN,
-                    )
-
-            # Return all comments, as visibility rules are satisfied
             comments = Comment.objects.filter(post=post).order_by("-published")
             serializer = CommentSerializer(
                 comments, many=True, context={"request": request}
@@ -295,50 +286,17 @@ def post_detail(request, author_serial, post_serial):
             return Response(serializer.data, status=status.HTTP_200_OK)
 
         elif request.method == "POST":
-            # Handle comment creation directly here
             data = request.data.copy()
-            data["author_id"] = str(author.id)
+            data["author_id"] = str(author.uuid)
             data["post_id"] = str(post.id)
 
             serializer = CommentSerializer(data=data)
             if serializer.is_valid():
                 serializer.save()
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
-            else:
-                print("Serializer errors:", serializer.errors)
-                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        # Handle DELETE request to delete the post
-        elif request.method == "DELETE" and not action:
-            post.delete()  # Now delete the original post or repost
-            return Response(status=status.HTTP_204_NO_CONTENT)
-
-            
-        # Handle DELETE request to delete the post
-        elif request.method == "DELETE" and not action:
-            post.delete()  # Now delete the original post or repost
-            return Response(status=status.HTTP_204_NO_CONTENT)
-
-            
-    # Handle PUT request to update the post
-    elif request.method == "PUT" and not action:
-        data = request.data
-        if "content" in data:
-            markdown_content = data["content"]
-            html_content = markdown2.markdown(
-                markdown_content, extras=["fenced-code-blocks", "tables"]
-            )
-            # Replace Markdown with HTML for saving
-            data["content"] = html_content
-
-        serializer = PostSerializer(post, data=data, partial=True)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    # If the action doesn't match any known value, return an error
-    return Response({"detail": "Invalid request"}, status=status.HTTP_400_BAD_REQUEST)
+    # Rest of your existing code...
 
 @swagger_auto_schema(
     method='post',
@@ -2043,6 +2001,8 @@ def update_author_profile(request, author_uuid):
     },
     tags=["Posts"]
 )
+
+
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def get_post_by_link(request, post_id):
@@ -2060,83 +2020,173 @@ def get_post_by_link(request, post_id):
     # If the post is private or friends-only, return a 403 Forbidden
     return Response({"detail": "You are not authorized to view this post."}, status=403)
 
-
+@csrf_exempt
 @api_view(['POST', 'GET', 'DELETE'])
 @permission_classes([IsAuthenticated])
 def inbox_handler(request, author_serial):
+    """
+    Handles inbox activities for a given author. Supports POST (to add activities),
+    GET (to retrieve inbox contents), and DELETE (to clear the inbox).
+    """
+    # Retrieve the author based on UUID
     author = get_object_or_404(Author, uuid=author_serial)
+    # Get or create the inbox for the author
     inbox, created = Inbox.objects.get_or_create(author=author)
 
     if request.method == 'GET':
+        # Serialize and return the inbox data
         serializer = InboxSerializer(inbox)
-        return Response(serializer.data)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     elif request.method == 'POST':
         data = request.data
-        print("------------------", data)
+        print("------------------ Incoming Data ------------------")
+        print(data)
         item_type = data.get('type', '').lower()
 
         try:
             if item_type == 'post':
-                post_serializer = PostSerializer(data=data)
-                print("Yes we are here!")
-                if post_serializer.is_valid():
-                    post = post_serializer.save()
+                # Handle Post Activity
+                post_id = data.get('id')
+                if not post_id:
+                    return Response({'error': 'Post ID is missing.'}, status=status.HTTP_400_BAD_REQUEST)
+
+                # Check if the Post already exists
+                post, created_post = Post.objects.get_or_create(id=post_id, defaults=data)
+                if created_post:
+                    # If the post was created, serialize additional fields if necessary
+                    post_serializer = PostSerializer(post, data=data, partial=True)
+                    if post_serializer.is_valid():
+                        post = post_serializer.save()
+                        print(f"Post {post_id} created and added to inbox of author {author_serial}.")
+                    else:
+                        # If serializer is not valid, delete the created post and return errors
+                        post.delete()
+                        print("Post serializer errors:", post_serializer.errors)
+                        return Response(post_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                else:
+                    print(f"Post {post_id} already exists.")
+
+                # Add the post to the inbox if not already added
+                if not inbox.posts.filter(id=post.id).exists():
                     inbox.posts.add(post)
-                    return Response({'message': 'Post added to inbox'}, status=201)
+                    print(f"Post {post.id} added to inbox of author {author_serial}.")
+                else:
+                    print(f"Post {post.id} already in inbox of author {author_serial}.")
+
+                return Response({'message': 'Post added to inbox'}, status=status.HTTP_201_CREATED)
 
             elif item_type == 'like':
-                like_serializer = LikeSerializer(data=data)
-                if like_serializer.is_valid():
-                    like = like_serializer.save()
+                # Handle Like Activity
+                like_id = data.get('id')
+                if not like_id:
+                    return Response({'error': 'Like ID is missing.'}, status=status.HTTP_400_BAD_REQUEST)
+
+                # Check if the Like already exists
+                like, created_like = Like.objects.get_or_create(id=like_id, defaults=data)
+                if created_like:
+                    like_serializer = LikeSerializer(like, data=data, partial=True)
+                    if like_serializer.is_valid():
+                        like = like_serializer.save()
+                        print(f"Like {like_id} created and added to inbox of author {author_serial}.")
+                    else:
+                        like.delete()
+                        print("Like serializer errors:", like_serializer.errors)
+                        return Response(like_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                else:
+                    print(f"Like {like_id} already exists.")
+
+                # Add the like to the inbox if not already added
+                if not inbox.likes.filter(id=like.id).exists():
                     inbox.likes.add(like)
-                    return Response({'message': 'Like added to inbox'}, status=201)
+                    print(f"Like {like.id} added to inbox of author {author_serial}.")
+                else:
+                    print(f"Like {like.id} already in inbox of author {author_serial}.")
+
+                return Response({'message': 'Like added to inbox'}, status=status.HTTP_201_CREATED)
 
             elif item_type == 'comment':
-                comment_serializer = CommentSerializer(data=data)
-                if comment_serializer.is_valid():
-                    comment = comment_serializer.save()
+                print(" ============================== ")
+                # Handle Comment Activity
+                comment_id = data.get('id')
+                if not comment_id:
+                    return Response({'error': 'Comment ID is missing.'}, status=status.HTTP_400_BAD_REQUEST)
+
+                # Check if the Comment already exists
+                comment, created_comment = Comment.objects.get_or_create(id=comment_id, defaults=data)
+                if created_comment:
+                    comment_serializer = CommentSerializer(comment, data=data, partial=True)
+                    if comment_serializer.is_valid():
+                        comment = comment_serializer.save()
+                        print(f"Comment {comment_id} created and added to inbox of author {author_serial}.")
+                    else:
+                        comment.delete()
+                        print("Comment serializer errors:", comment_serializer.errors)
+                        return Response(comment_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                else:
+                    print(f"Comment {comment_id} already exists.")
+
+                # Add the comment to the inbox if not already added
+                if not inbox.comments.filter(id=comment.id).exists():
                     inbox.comments.add(comment)
-                    return Response({'message': 'Comment added to inbox'}, status=201)
+                    print(f"Comment {comment.id} added to inbox of author {author_serial}.")
+                else:
+                    print(f"Comment {comment.id} already in inbox of author {author_serial}.")
+
+                return Response({'message': 'Comment added to inbox'}, status=status.HTTP_201_CREATED)
 
             elif item_type == 'follow':
-                print("11111111111111111111111111111111111111111111")
-            # Get the target author's UUID from the request data
-            target_uuid = data['object']['id']
+                # Handle Follow Activity
+                print("Handling follow request.")
 
-            django_request = request._request  # Get the underlying Django HttpRequest
-    
-            # Call the existing send_follow_request function
-            response = send_follow_request(django_request, target_uuid)
-    
-            
-            # Call the existing send_follow_request function
-            # response = send_follow_request(request, target_uuid)
-            
-            # If the follow request was created successfully, add it to the inbox
-            if response.status_code == status.HTTP_201_CREATED:
-                print("2222222222222222222222222222222222222222222222")
-                # Get the most recent follow request
-                follow_request = FollowRequest.objects.filter(
-                    actor=request.user,
-                    object=author,
-                    accepted=False
-                ).latest('created_at')
-                
-                print("33333333333333333333333333333333333, follow: ", follow_request)
-                # Add to inbox
-                inbox.follow_requests.add(follow_request)
-                return Response({'message': 'Follow request added to inbox'}, status=201)
-            
-            # If there was an error, return the original response
-            return response
+                # Get the target author's UUID from the request data
+                target_uuid = data.get('object', {}).get('id')
+                if not target_uuid:
+                    return Response({'error': 'Target UUID for follow is missing.'}, status=status.HTTP_400_BAD_REQUEST)
+
+                django_request = request._request  # Get the underlying Django HttpRequest
+
+                # Call the existing send_follow_request function
+                response = send_follow_request(django_request, target_uuid)
+
+                if response.status_code == status.HTTP_201_CREATED:
+                    print("Follow request created successfully.")
+
+                    # Get the most recent follow request
+                    follow_request = FollowRequest.objects.filter(
+                        actor=request.user,
+                        object=author,
+                        accepted=False
+                    ).latest('created_at')
+
+                    print(f"Adding follow request {follow_request.id} to inbox.")
+                    # Add to inbox if not already added
+                    if not inbox.follow_requests.filter(id=follow_request.id).exists():
+                        inbox.follow_requests.add(follow_request)
+                        print(f"Follow request {follow_request.id} added to inbox of author {author_serial}.")
+                    else:
+                        print(f"Follow request {follow_request.id} already in inbox of author {author_serial}.")
+
+                    return Response({'message': 'Follow request added to inbox'}, status=status.HTTP_201_CREATED)
+
+                # If there was an error, return the original response
+                print(f"send_follow_request response status: {response.status_code}")
+                return response
+
+            else:
+                # Unsupported activity type
+                print(f"Unsupported activity type: {item_type}")
+                return Response({'error': f"Unsupported activity type: {item_type}"}, status=status.HTTP_400_BAD_REQUEST)
 
         except Exception as e:
-            return Response({'error': str(e)}, status=400)
+            print(f"Error in inbox_handler: {e}")
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     elif request.method == 'DELETE':
+        # Clear all activities from the inbox
         inbox.posts.clear()
         inbox.likes.clear()
         inbox.comments.clear()
         inbox.follow_requests.clear()
-        return Response(status=204)
+        print(f"Inbox for author {author_serial} has been cleared.")
+        return Response({'message': 'Inbox cleared.'}, status=status.HTTP_204_NO_CONTENT)

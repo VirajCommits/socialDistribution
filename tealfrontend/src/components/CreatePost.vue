@@ -104,6 +104,8 @@ export default {
       response: null,
       successMessage: "",
       errorMessage: "",
+      user: null,
+      authID: "",
     };
   },
   methods: {
@@ -130,9 +132,10 @@ export default {
       this.errorMessage = "";
 
       try {
+        // Retrieve user information
         this.user = JSON.parse(localStorage.getItem("user"));
-        this.authID = this.user.id.split("/").pop(-1);
-        // Use the actual author ID
+        this.authID = this.user.id.split("/").pop();
+
         const authorId = this.authID;
         const apiUrl = `/authors/${authorId}/posts/`;
 
@@ -143,23 +146,27 @@ export default {
         formData.append("contentType", this.form.contentType);
         formData.append("visibility", this.form.visibility);
 
-
         if (this.isImageType && this.form.image) {
           formData.append("content", this.form.content);
-          formData.append("image", this.form.image); // Attach the image file
+          formData.append("image", this.form.image);
         } else {
-          formData.append("content", this.form.content); // Attach text content
+          formData.append("content", this.form.content);
         }
 
+        // Create the post only once
         const response = await axios.post(apiUrl, formData, {
           headers: {
-            "Content-Type": "multipart/form-data", // Ensure proper handling of the file
+            "Content-Type": "multipart/form-data",
+            Authorization: `Token ${localStorage.getItem("token")}`,
           },
         });
 
         this.response = response.data;
 
-        await this.sendPostToFollowers(this.response);
+        // Only send notifications to other authors' inboxes
+        if (this.form.visibility !== "PRIVATE") {
+          await this.sendPostToFollowers(this.response);
+        }
 
         // Display success message
         this.successMessage = "Post created successfully!";
@@ -174,7 +181,7 @@ export default {
           image: null,
           visibility: "PUBLIC",
         };
-        this.isImageType = false; // Reset image type flag
+        this.isImageType = false;
 
         // Redirect to posts list
         this.$router.push("/posts/all");
@@ -184,73 +191,75 @@ export default {
       }
     },
     async sendPostToFollowers(postData) {
-      console.log("WE HERE!")
-    try {
+      try {
+        const authorsResponse = await axios.get("/authors/", {
+          headers: {
+            Authorization: `Token ${localStorage.getItem("token")}`,
+          },
+        });
+        const authors = authorsResponse.data;
+        const currentAuthorId = this.user.id.split("/").pop();
 
-        const authorsResponse = await axios.get('/authors/'); // Fetch all authors
-        console.log("))))))))))))))))))" , this.user)
-        const authors = authorsResponse.data; // Assuming the response contains a list of authors
+        // Track which authors have received the notification
+        const processedAuthors = new Set([currentAuthorId]); // Initialize with current author
 
-        console.log("++++++++++++++++" , authors)
-
-        // Get the list of followers for the current user
-        const followers = await this.getFollowers(this.user.uuid); // Implement this method to get followers
-
-        // Determine the visibility of the post
-        const visibility = this.form.visibility;
-
-        if (visibility === "PUBLIC") {
-            // Send to all authors
+        switch (this.form.visibility) {
+          case "PUBLIC": {
+            // Only send notifications to other authors' inboxes
             for (const author of authors) {
-                if (author.id !== this.user.id) { // Exclude the author themselves
-                    const inboxUrl = `${author.id}/inbox/`; // Construct the inbox URL for the author
-                    await this.sendPostToInbox(inboxUrl, postData); // Send the post to the author's inbox
-                }
+              const authorId = author.id.split("/").pop();
+              if (
+                authorId !== currentAuthorId &&
+                !processedAuthors.has(authorId)
+              ) {
+                await this.sendNotificationToInbox(authorId, postData);
+                processedAuthors.add(authorId);
+              }
             }
-        } else if (visibility === "FRIENDS") {
-            // Send to mutual followers
-            for (const follower of followers) {
-                const mutualFollowers = await this.getFollowers(follower.id); // Get followers of the current follower
-                if (mutualFollowers.some(mf => mf.id === this.user.id)) { // Check if they follow each other
-                    const inboxUrl = `${follower.id}/inbox/`; // Construct the inbox URL for the mutual follower
-                    await this.sendPostToInbox(inboxUrl, postData); // Send the post to the follower's inbox
+            break;
+          }
+          case "FRIENDS": {
+                const followers = await this.getFollowers(currentAuthorId);
+                for (const follower of followers) {
+                    if (!processedAuthors.has(follower.uuid)) {
+                        const mutualFollowers = await this.getFollowers(follower.uuid);
+                        if (mutualFollowers.some(mf => mf.uuid === currentAuthorId)) {
+                            await this.sendNotificationToInbox(follower.uuid, postData);
+                            processedAuthors.add(follower.uuid);
+                        }
+                    }
                 }
+                break;
             }
-        } else if (visibility === "UNLISTED") {
-            // Send to followers only
-            for (const follower of followers) {
-                const inboxUrl = `${follower.id}/inbox/`; // Construct the inbox URL for the follower
-                await this.sendPostToInbox(inboxUrl, postData); // Send the post to the follower's inbox
+            case "UNLISTED": {
+                const myFollowers = await this.getFollowers(currentAuthorId);
+                for (const follower of myFollowers) {
+                    if (!processedAuthors.has(follower.uuid)) {
+                        await this.sendNotificationToInbox(follower.uuid, postData);
+                        processedAuthors.add(follower.uuid);
+                    }
+                }
+                break;
             }
         }
-    } catch (error) {
-      console.error('Error response:', error.response.data);
-            console.error('Error status:', error.response.status);
-            console.error('Error headers:', error.response.headers);
-        console.error("Error sending post to followers:", error);
-    }
-},
+      } catch (error) {
+        console.error("Error distributing post:", error);
+      }
+    },
+    async sendNotificationToInbox(authorId, postData) {
+      try {
+        const inboxUrl = `/authors/${authorId}/inbox/`;
+        const token = localStorage.getItem("token");
 
-async sendPostToInbox(inboxUrl, postData) {
-
-        const token = localStorage.getItem('token'); // or however you store your auth token
-        console.log("THIS IS THE TOKEN:" , token)
-
-        // Set up headers with authentication
-        const headers = {
-            'Authorization': `Token ${token}`, // or 'Bearer ${token}' depending on your auth scheme
-            'Content-Type': 'application/json',
-        };
-
-    const payload = {
-        type: "post",
-        title: this.form.title,
-        id: postData.id, // Post ID
-        page: postData.page, // Page URL
-        description: this.form.description,
-        contentType: this.form.contentType,
-        content: this.form.content,
-        author: {
+        const payload = {
+          type: "post",
+          title: this.form.title,
+          id: postData.id,
+          page: postData.page,
+          description: this.form.description,
+          contentType: this.form.contentType,
+          content: this.form.content,
+          author: {
             type: "author",
             id: this.user.id,
             host: this.user.host,
@@ -258,25 +267,32 @@ async sendPostToInbox(inboxUrl, postData) {
             page: this.user.page,
             github: this.user.github,
             profileImage: this.user.profileImage,
-        },
-        author_id: this.user.id.split("/").pop(), // Extracting author ID from the user object
-        published: new Date().toISOString(), // Set the published date to the current date/time in ISO format
-        visibility: this.form.visibility,
-    };
+          },
+          author_id: this.authID,
+          published: new Date().toISOString(),
+          visibility: this.form.visibility,
+        };
 
-    const response = await axios.post(inboxUrl, payload, { 
-            headers,
-            withCredentials: true // Include if using cookies
+        await axios.post(inboxUrl, payload, {
+          headers: {
+            Authorization: `Token ${token}`,
+            "Content-Type": "application/json",
+          },
+          withCredentials: true,
         });
-    return response
-},
-
-async getFollowers(authorId) {
-    // Implement this method to fetch the followers of the author
-
-    console.log("THIS IS THE AUTHOR ID:" , authorId)
-    const response = await axios.get(`/authors/${authorId}/followers/`);
-    return response.data; // Assuming this returns a list of followers
+      } catch (error) {
+        console.error(`Error sending notification to author ${authorId}:`, error);
+        throw error;
+      }
+    },
+    async getFollowers(authorId) {
+    try {
+        const response = await axios.get(`/authors/${authorId}/followers/`);
+        return response.data;
+    } catch (error) {
+        console.error(`Error getting followers for author ${authorId}:`, error);
+        return [];
+    }
 },
     goBack() {
       this.$router.push("/posts/all");
