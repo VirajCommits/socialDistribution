@@ -16,6 +16,7 @@ class NodeBasicAuthentication(authentication.BaseAuthentication):
             auth_decoded = base64.b64decode(auth_header[6:]).decode('utf-8')
             username, password = auth_decoded.split(':')
             print("username is: ", username)
+            print("password is: ", password)
         except:
             raise exceptions.AuthenticationFailed('Invalid basic auth credentials')
 
@@ -24,7 +25,7 @@ class NodeBasicAuthentication(authentication.BaseAuthentication):
             # Check if node exists and credentials match
             all_nodes = RemoteNode.objects.all()
             for node in all_nodes:
-                print("ALLL NODES:", node)
+                print("ALLL NODES:", f"ID: {node.id}, Username: {node.username}, URL: {node.url}, Active: {node.active}, Password: {node.password}")
             node = RemoteNode.objects.get(username=username, password=password, active=True)
             print("Node: ", node)
         except RemoteNode.DoesNotExist:
