@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Author, RemoteNode, toWhichitsConnected
+from .models import Author, RemoteNode, ToWhichItsConnected
 from .models import AdminSettings
 
 @admin.register(Author)
@@ -36,8 +36,8 @@ class RemoteNodeAdmin(admin.ModelAdmin):
     list_filter = ['username']
     search_fields = ['url', 'username']
 
-@admin.register(toWhichitsConnected)
-class towhichitsconnected(admin.ModelAdmin):
+@admin.register(ToWhichItsConnected)
+class ToWhichItsConnected(admin.ModelAdmin):
     list_display = ['url', 'username']
     list_filter = ['username']
     search_fields = ['url', 'username']

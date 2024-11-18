@@ -8,7 +8,7 @@ class Author(AbstractUser):
     type = models.CharField(max_length=6, default="author", editable=False)
     uuid = models.UUIDField(unique=True, editable=False, default=uuid.uuid4)
     id = models.URLField(primary_key=True, max_length=500)
-    host = models.URLField(default="http://localhost:8000/")
+    host = models.URLField(default="https://teal-rakshit-a972530cc317.herokuapp.com/")
     displayName = models.CharField(max_length=255)
     github = models.URLField(blank=True)
     is_approved = models.BooleanField(default=False)
@@ -194,14 +194,16 @@ class RemoteNode(models.Model):
     url = models.URLField(unique=True)  # The base URL of the remote node
     username = models.CharField(max_length=255)  # Node's username
     password = models.CharField(max_length=255)  # Node's password (or token)
-
+    active = models.BooleanField(default=True)
+    
     def str(self):
         return self.url
     
-class toWhichitsConnected(models.Model):
+class ToWhichItsConnected(models.Model):
     url = models.URLField(unique=True)  # The base URL of the remote node
     username = models.CharField(max_length=255)  # Node's username
     password = models.CharField(max_length=255)  # Node's password (or token)
-
+    active = models.BooleanField(default=True)
+    
     def str(self):
         return self.url
