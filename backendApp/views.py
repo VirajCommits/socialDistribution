@@ -8,7 +8,7 @@ from drf_yasg import openapi
 
 from .models import AdminSettings
 from .serializers import PostSerializer, CommentSerializer, LikeSerializer, InboxSerializer
-from .models import Author, Post, Comment, Like, FollowRequest, Inbox, RemoteNode
+from .models import Author, Post, Comment, Like, FollowRequest, Inbox, RemoteNode, ToWhichItsConnected
 import base64
 import requests
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
@@ -2168,8 +2168,9 @@ def node_protected_endpoint(request):
 @permission_classes([AllowAny])
 def test_node_connection(request):
     try:
+
         # Get all remote nodes
-        remote_nodes = RemoteNode.objects.filter(active=True)
+        remote_nodes = ToWhichItsConnected.objects.filter(active=True)
         if not remote_nodes:
             return Response({
                 "status": "error",
