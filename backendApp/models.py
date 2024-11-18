@@ -154,31 +154,3 @@ class Like(models.Model):
 #     def __str__(self):
 #         return f"Inbox of {self.author.displayName}"
 
-
-class AdminSettings(models.Model):
-    user_approval_required = models.BooleanField(default=True)
-
-    def __str__(self):
-        return f"User Approval Required: {self.user_approval_required}"
-
-class RemoteNode(models.Model):
-    url = models.URLField(unique=True)
-    username = models.CharField(max_length=255)
-    _password = models.TextField()  # Encrypted password
-    connected = models.BooleanField(default=False)
-
-    def set_password(self, raw_password):
-        cipher = Fernet(settings.FERNET_KEY)
-        self._password = cipher.encrypt(raw_password.encode()).decode()
-
-    def get_password(self):
-        cipher = Fernet(settings.FERNET_KEY)
-        return cipher.decrypt(self._password.encode()).decode()
-
-    def save(self, *args, **kwargs):
-        if not self._password.startswith("gAAAA"):
-            raise ValueError("Password must be encrypted using set_password().")
-        super().save(*args, **kwargs)
-
-    def __str__(self):
-        return f"Node: {self.url} (Connected: {self.connected})"
