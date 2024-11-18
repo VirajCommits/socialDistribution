@@ -28,10 +28,13 @@
             <span class="comment-author">{{ comment.author.displayName }}</span>
           </div>
 
-          <!-- Comment Text and Time -->
+          <!-- Comment Text -->
           <div class="comment-details">
             <p class="comment-text">{{ comment.content }}</p>
           </div>
+
+          <!-- Like Button for Each Comment -->
+          <LikeButton :commentId="comment.id" />
         </li>
       </ul>
     </div>
@@ -59,6 +62,7 @@
 
 <script>
 import axios from "axios";
+import LikeButton from "./LikeButton.vue";
 
 export default {
   name: "CommentSection",
@@ -67,6 +71,9 @@ export default {
       type: String,
       required: true,
     },
+  },
+  components: {
+    LikeButton,
   },
   data() {
     return {
@@ -83,6 +90,7 @@ export default {
     this.fetchComments();
   },
   methods: {
+    // Fetch comments for the given post ID
     async fetchComments() {
       try {
         const apiUrl = `/posts/${this.postId}/comments/`;
@@ -95,6 +103,7 @@ export default {
         this.loading = false;
       }
     },
+    // Submit a new comment
     async submitComment() {
       if (!this.newComment.trim()) return;
 
@@ -130,11 +139,6 @@ export default {
         this.errorMessage = "An error occurred while submitting the comment.";
       }
     },
-    /**
-     * Formats the timestamp to a more readable format.
-     * @param {String} timestamp - The original timestamp.
-     * @returns {String} - The formatted timestamp.
-     */
   },
 };
 </script>
