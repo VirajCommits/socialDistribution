@@ -320,6 +320,12 @@ def post_detail(request, author_serial, post_serial):
             return Response(status=status.HTTP_204_NO_CONTENT)
 
             
+        # Handle DELETE request to delete the post
+        elif request.method == "DELETE" and not action:
+            post.delete()  # Now delete the original post or repost
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+            
     # Handle PUT request to update the post
     elif request.method == "PUT" and not action:
         data = request.data

@@ -94,7 +94,6 @@ REST_FRAMEWORK = {
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:8080",  # Frontend development server
     "http://localhost:8000",  # Backend development server
-    "http://127.0.0.1:8000",
     "https://*.herokuapp.com",
 ]
 CORS_ALLOW_CREDENTIALS = True
