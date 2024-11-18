@@ -22,8 +22,9 @@ class NodeBasicAuthentication(authentication.BaseAuthentication):
         try:
             print("going inside try:, username: ", username)
             # Check if node exists and credentials match
-            for object in RemoteNode.objects:
-                print("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA ", object)
+            all_nodes = RemoteNode.objects.all()
+            for node in all_nodes:
+                print("ALLL NODES:", node)
             node = RemoteNode.objects.get(username=username, password=password, active=True)
             print("Node: ", node)
         except RemoteNode.DoesNotExist:
