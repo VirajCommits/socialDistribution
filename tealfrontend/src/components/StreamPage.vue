@@ -227,7 +227,7 @@ export default {
         // Use environment variable or fallback for WebSocket URL
         const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const wsBaseUrl = process.env.NODE_ENV === 'production'
-          ? 'social-sanket-bea0b4df5488.herokuapp.com'
+          ? 'socialdistribution-sanket-04615a454751.herokuapp.com'
           : 'localhost:8000';
         
         this.socket = new WebSocket(
