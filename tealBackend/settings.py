@@ -33,7 +33,7 @@ DEBUG = True
 ALLOWED_HOSTS = [
     "127.0.0.1",
     "localhost",
-    "darrenkrz-project-app-e7d3d8a0b6f5.herokuapp.com/",
+    "darrenkrz-project-app-e7d3d8a0b6f5.herokuapp.com",
 ]
 
 
