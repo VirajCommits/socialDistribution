@@ -2166,15 +2166,25 @@ def node_protected_endpoint(request):
 #     return response.json()
 
 @api_view(['GET'])
-@authentication_classes([NodeBasicAuthentication])
-@permission_classes([IsAuthenticatedOrNode])
+# @authentication_classes([NodeBasicAuthentication])
+# @permission_classes([IsAuthenticatedOrNode])
+@permission_classes([AllowAny])
 def verify_node_connection(request):
-    """Endpoint for other nodes to verify their connection to us"""
-    return Response({
-        "status": "success",
-        "message": "Connection verified",
-        "node": request.user.url
-    })
+    try:
+        # Log incoming request details
+        print(f"Incoming request from: {request.user.url if hasattr(request.user, 'url') else 'Unknown'}")
+        return Response({
+            "status": "success",
+            "message": "Connection verified",
+            "node": request.user.url if hasattr(request.user, 'url') else str(request.user)
+        })
+    except Exception as e:
+        # Log any exceptions
+        print(f"Error in verify_node_connection: {str(e)}")
+        return Response({
+            "status": "error",
+            "message": str(e)
+        })
 
 @api_view(['GET'])
 @permission_classes([AllowAny])

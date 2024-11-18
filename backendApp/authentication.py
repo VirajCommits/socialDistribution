@@ -26,9 +26,8 @@ class NodeBasicAuthentication(authentication.BaseAuthentication):
             all_nodes = RemoteNode.objects.all()
             for node in all_nodes:
                 print("ALLL NODES:", f"ID: {node.id}, Username: {node.username}, URL: {node.url}, Active: {node.active}, Password: {node.password}")
-            node = RemoteNode.objects.get(username=username, password=password, active=True)
-            print("Node: ", node)
+            remotenode = RemoteNode.objects.get(username=username, password=password, active=True)
         except RemoteNode.DoesNotExist:
             raise exceptions.AuthenticationFailed('No such node exists')
 
-        return (node, None)
+        return (remotenode, None)

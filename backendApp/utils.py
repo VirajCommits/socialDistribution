@@ -14,8 +14,8 @@ def make_node_request(base_url, endpoint, method='GET', data=None):
         
         # Print all objects in ToWhichItsConnected
         all_nodes = ToWhichItsConnected.objects.all()
-        for node in all_nodes:
-            print(f"Node URL: {node.url}, Username: {node.username}, Active: {node.active}")
+        for eachnode in all_nodes:
+            print(f"Node URL: {eachnode.url}, Username: {eachnode.username}, Active: {eachnode.active}")
 
         # Get the node we're connecting to
         node = ToWhichItsConnected.objects.get(url=base_url, active=True)
@@ -47,10 +47,9 @@ def make_node_request(base_url, endpoint, method='GET', data=None):
             print(f"HTTP method {method} not implemented")
             response = None
             
-        print(f"Response received: {response.status_code} - {response.text}")
+        print(f"Response received: {response.status_code}")
         return response
         
     except ToWhichItsConnected.DoesNotExist:
         error_message = f"No connection configuration found for {base_url}"
-        print(error_message)
         raise Exception(error_message)
