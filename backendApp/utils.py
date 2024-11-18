@@ -9,6 +9,10 @@ def make_node_request(target_url, method='GET', data=None):
     try:
         print(f"Attempting to connect to node with URL: {target_url}")
         
+        # Print all objects in ToWhichItsConnected
+        all_nodes = ToWhichItsConnected.objects.all()
+        print(f"All nodes: {all_nodes}")
+
         # Get the node we're connecting to
         node = ToWhichItsConnected.objects.get(url=target_url, active=True)
         print(f"Node found: {node.url}, Username: {node.username}")
