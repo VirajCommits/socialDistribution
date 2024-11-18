@@ -1008,7 +1008,8 @@ def get_follow_requests(request):
     tags=["Authors"],
 )
 @api_view(["GET"])
-@permission_classes([IsAuthenticated])
+@authentication_classes([NodeBasicAuthentication]) 
+@permission_classes([IsAuthenticatedOrNode])
 def get_all_authors(request):
     try:
         current_author = request.user
@@ -2188,18 +2189,25 @@ def test_node_connection(request):
                     'Content-Type': 'application/json'
                 }
                 
-                # Use the actual remote node URL
-                test_url = f"{node.url}/service/api/authors/"
+                outgoing_url = f"{node.url}/service/api/authors/"
+                outgoing_response = requests.get(outgoing_url, headers=headers, timeout=5)
                 
-                print(f"Testing connection to {node.url} with headers: {headers}")
-                
-                response = requests.get(test_url, headers=headers, timeout=5)
+                # Test incoming connection (them -> us)
+                incoming_url = f"{node.url}/test-node-connection/"
+                incoming_response = requests.get(incoming_url, timeout=5)
                 
                 results.append({
                     "node_url": node.url,
-                    "status": "success",
-                    "status_code": response.status_code,
-                    "response": response.text[:200] + "..." if len(response.text) > 200 else response.text
+                    "outgoing_test": {
+                        "status": "success",
+                        "status_code": outgoing_response.status_code,
+                        "response": outgoing_response.text[:200]
+                    },
+                    "incoming_test": {
+                        "status": "success",
+                        "status_code": incoming_response.status_code,
+                        "response": incoming_response.text[:200]
+                    }
                 })
                 
             except requests.RequestException as e:
