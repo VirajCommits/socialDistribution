@@ -41,8 +41,8 @@ USER_APPROVAL_REQUIRED = True
 ALLOWED_HOSTS = [
     "127.0.0.1",
     "localhost",
-    "darrenkrz-project-app-e7d3d8a0b6f5.herokuapp.com",
     "teal-rakshit-a972530cc317.herokuapp.com",
+    "teal-darrenkrz-c0d7276a7808.herokuapp.com",
     ".herokuapp.com",
 ]
 
@@ -90,11 +90,13 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:8080",  # Frontend development server
     "http://localhost:8000",  # Backend development server
     "https://teal-rakshit-a972530cc317.herokuapp.com",
+    "https://teal-darrenkrz-c0d7276a7808.herokuapp.com/login",
 ]
 CORS_ALLOW_CREDENTIALS = True
 
 CSRF_TRUSTED_ORIGINS = [
     "https://teal-rakshit-a972530cc317.herokuapp.com",
+    "teal-darrenkrz-c0d7276a7808.herokuapp.com",
     "http://localhost:8080",
     "http://localhost:8000",
 ]
