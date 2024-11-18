@@ -41,7 +41,6 @@ USER_APPROVAL_REQUIRED = True
 ALLOWED_HOSTS = [
     "127.0.0.1",
     "localhost",
-    "teal-darrenkrz-c0d7276a7808.herokuapp.com",
     ".herokuapp.com",
 ]
 
@@ -88,15 +87,13 @@ REST_FRAMEWORK = {
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:8080",  # Frontend development server
     "http://localhost:8000",  # Backend development server
-    "https://teal-darrenkrz-c0d7276a7808.herokuapp.com",
+    "https://*.herokuapp.com",
 ]
 CORS_ALLOW_CREDENTIALS = True
 
-CSRF_TRUSTED_ORIGINS = [
-    "https://*.herokuapp.com",
-    "https://teal-darrenkrz-c0d7276a7808.herokuapp.com",
-    "http://localhost:8080",
+CSRF_TRUSTED_ORIGINS = [ 
     "http://localhost:8000",
+    "https://*.herokuapp.com",
 ]
 
 

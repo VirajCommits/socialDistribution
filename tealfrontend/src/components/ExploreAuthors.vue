@@ -327,7 +327,7 @@ export default {
       // Set up the WebSocket URL based on environment
       const wsProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
       const wsHost = isProduction 
-        ? 'teal-darrenkrz-c0d7276a7808.herokuapp.com'  // Production host
+        ? window.location.hostname                   // Production host
         : 'localhost:8000';                          // Development host
       
       const wsUrl = `${wsProtocol}://${wsHost}/ws/notifications/${uuid}/`;
