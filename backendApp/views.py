@@ -2189,11 +2189,11 @@ def test_node_connection(request):
                     'Content-Type': 'application/json'
                 }
                 
-                outgoing_url = f"{node.url}/service/api/authors/"
+                outgoing_url = f"{node.url}service/api/authors/"
                 outgoing_response = requests.get(outgoing_url, headers=headers, timeout=5)
                 
                 # Test incoming connection (them -> us)
-                incoming_url = f"{node.url}/test-node-connection/"
+                incoming_url = f"{node.url}test-node-connection/"
                 incoming_response = requests.get(incoming_url, timeout=5)
                 
                 results.append({
@@ -2201,12 +2201,12 @@ def test_node_connection(request):
                     "outgoing_test": {
                         "status": "success",
                         "status_code": outgoing_response.status_code,
-                        "response": outgoing_response.text[:200]
+                        "response": outgoing_response.text
                     },
                     "incoming_test": {
                         "status": "success",
                         "status_code": incoming_response.status_code,
-                        "response": incoming_response.text[:200]
+                        "response": incoming_response.text
                     }
                 })
                 
