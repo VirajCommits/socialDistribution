@@ -5,7 +5,7 @@ from rest_framework import status
 from django.utils import timezone
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
-
+from .utils import make_node_request
 from .models import AdminSettings
 from .serializers import PostSerializer, CommentSerializer, LikeSerializer, InboxSerializer
 from .models import Author, Post, Comment, Like, FollowRequest, Inbox, RemoteNode, ToWhichItsConnected
@@ -2164,6 +2164,18 @@ def node_protected_endpoint(request):
     
 #     response = requests.get(url, headers=headers)
 #     return response.json()
+
+@api_view(['GET'])
+@authentication_classes([NodeBasicAuthentication])
+@permission_classes([IsAuthenticatedOrNode])
+def verify_node_connection(request):
+    """Endpoint for other nodes to verify their connection to us"""
+    return Response({
+        "status": "success",
+        "message": "Connection verified",
+        "node": request.user.url
+    })
+
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def test_node_connection(request):
@@ -2180,34 +2192,16 @@ def test_node_connection(request):
         results = []
         for node in remote_nodes:
             try:
-                # Create basic auth header for this node
-                credentials = base64.b64encode(
-                    f"{node.username}:{node.password}".encode()
-                ).decode()
-                
-                headers = {
-                    'Authorization': f'Basic {credentials}',
-                    'Content-Type': 'application/json'
-                }
-                
+                 # Test outgoing connection (us -> them)
                 outgoing_url = f"{node.url}service/api/authors/"
-                outgoing_response = requests.get(outgoing_url, headers=headers, timeout=5)
-                
-                # Test incoming connection (them -> us)
-                incoming_url = f"{node.url}test-node-connection/"
-                incoming_response = requests.get(incoming_url, timeout=5)
+                outgoing_response = make_node_request(outgoing_url)
                 
                 results.append({
                     "node_url": node.url,
                     "outgoing_test": {
                         "status": "success",
                         "status_code": outgoing_response.status_code,
-                        "response": outgoing_response.text
-                    },
-                    "incoming_test": {
-                        "status": "success",
-                        "status_code": incoming_response.status_code,
-                        "response": incoming_response.text
+                        "response": outgoing_response.json() if outgoing_response.status_code == 200 else outgoing_response.text
                     }
                 })
                 
