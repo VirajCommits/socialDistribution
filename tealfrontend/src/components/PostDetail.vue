@@ -30,14 +30,17 @@
         <p><strong>Visibility:</strong> {{ post.visibility }}</p>
 
         <!-- Like Button Component -->
-        <LikeButton :postId="post.id" :authorId="authID" :isUserLoggedIn="!!user" />
+        <LikeButton :postId="post.id" />
 
         <!-- Comment Section Component -->
-        <CommentSection :postId="post.id" :authorId="authID" :isUserLoggedIn="!!user" />
+        <CommentSection :postId="post.id" />
 
         <!-- Login Message for Guest Users -->
         <div v-if="!user" class="login-message">
-          <p>Please <router-link to="/login">log in</router-link> or <router-link to="/signup">sign up</router-link> to like and comment on this post.</p>
+          <p>
+            Please <router-link to="/login">log in</router-link> or
+            <router-link to="/signup">sign up</router-link> to like and comment on this post.
+          </p>
         </div>
       </div>
     </div>
@@ -72,7 +75,6 @@ export default {
       loading: true,
       errorMessage: "",
       user: null,
-      authID: "",
     };
   },
   mounted() {
@@ -85,7 +87,6 @@ export default {
       try {
         console.log("fetching post");
         const apiUrl = `/posts/${this.postId}/`;
-        
         const response = await axios.get(apiUrl);
         this.post = response.data;
         this.loading = false;
@@ -112,11 +113,6 @@ export default {
     initializeUser() {
       try {
         this.user = JSON.parse(localStorage.getItem("user"));
-        if (this.user && this.user.id) {
-          this.authID = this.user.id.split("/").pop();
-        } else {
-          this.user = null;
-        }
       } catch (error) {
         console.error("Error initializing user:", error);
         this.user = null;

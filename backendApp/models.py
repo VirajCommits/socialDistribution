@@ -6,6 +6,7 @@ from urllib.parse import urlparse
 from cryptography.fernet import Fernet
 from django.conf import settings
 
+
 class Author(AbstractUser):
     type = models.CharField(max_length=6, default="author", editable=False)
     uuid = models.UUIDField(unique=True, editable=False, default=uuid.uuid4)
@@ -17,7 +18,8 @@ class Author(AbstractUser):
     profileImage = models.URLField(blank=True, max_length=500)
     page = models.URLField(max_length=500)
     followers = models.ManyToManyField(
-        'self', symmetrical=False, related_name='following', blank=True)
+        "self", symmetrical=False, related_name="following", blank=True
+    )
 
     def __str__(self):
         return self.displayName or self.username
@@ -38,8 +40,10 @@ class Author(AbstractUser):
 
     def is_friend_with(self, other_author):
         """Check if this author and other_author are mutual followers (friends)"""
-        return (self.followers.filter(id=other_author.id).exists() and 
-                other_author.followers.filter(id=self.id).exists())
+        return (
+            self.followers.filter(id=other_author.id).exists()
+            and other_author.followers.filter(id=self.id).exists()
+        )
 
     @property
     def github_username(self):
@@ -74,17 +78,17 @@ class Post(models.Model):
     contentType = models.CharField(max_length=50, choices=CONTENT_TYPE_CHOICES)
     content = models.TextField(blank=True, null=True)
     image = models.ImageField(upload_to="post_images/", blank=True, null=True)
-    author = models.ForeignKey(
-        Author, on_delete=models.CASCADE, related_name="posts")
+    author = models.ForeignKey(Author, on_delete=models.CASCADE, related_name="posts")
     published = models.DateTimeField()
     visibility = models.CharField(max_length=10, choices=VISIBILITY_CHOICES)
     edited_at = models.DateTimeField(auto_now=True)
     reposted_by = models.ManyToManyField(
-        Author, related_name='reposted_posts', blank=True)
+        Author, related_name="reposted_posts", blank=True
+    )
     repost_count = models.PositiveIntegerField(default=0)
     is_repost = models.BooleanField(default=False)
     original_post = models.ForeignKey(
-        'self', null=True, blank=True, related_name='reposts', on_delete=models.CASCADE
+        "self", null=True, blank=True, related_name="reposts", on_delete=models.CASCADE
     )
     # is_github_post = models.BooleanField(default=False)
 
@@ -113,14 +117,15 @@ class Post(models.Model):
 
 
 class FollowRequest(models.Model):
-    uuid = models.UUIDField(
-        primary_key=True, default=uuid.uuid4, editable=False)
-    type = models.CharField(max_length=10, default='follow')
+    uuid = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    type = models.CharField(max_length=10, default="follow")
     summary = models.CharField(max_length=256, blank=True)
     actor = models.ForeignKey(
-        Author, related_name='sent_follow_requests', on_delete=models.CASCADE)
+        Author, related_name="sent_follow_requests", on_delete=models.CASCADE
+    )
     object = models.ForeignKey(
-        Author, related_name='received_follow_requests', on_delete=models.CASCADE)
+        Author, related_name="received_follow_requests", on_delete=models.CASCADE
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     accepted = models.BooleanField(default=False)
 
@@ -130,12 +135,10 @@ class FollowRequest(models.Model):
 
 class Comment(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    post = models.ForeignKey(
-        Post, on_delete=models.CASCADE, related_name="comments")
+    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name="comments")
     author = models.ForeignKey(Author, on_delete=models.CASCADE)
     content = models.TextField()
-    contentType = models.CharField(
-        max_length=50, choices=Post.CONTENT_TYPE_CHOICES)
+    contentType = models.CharField(max_length=50, choices=Post.CONTENT_TYPE_CHOICES)
     published = models.DateTimeField(default=timezone.now)
 
     def __str__(self):
@@ -146,11 +149,15 @@ class Like(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     author = models.ForeignKey(Author, on_delete=models.CASCADE)
     post = models.ForeignKey(
-        Post, on_delete=models.CASCADE, related_name="likes")
+        Post, on_delete=models.CASCADE, related_name="likes", null=True, blank=True
+    )
+    comment = models.ForeignKey(
+        Comment, on_delete=models.CASCADE, related_name="likes", null=True, blank=True
+    )
     published = models.DateTimeField(default=timezone.now)
 
     def __str__(self):
-        return f"Like by {self.author.displayName} on {self.post.title}"
+        return f"Like by {self.author.displayName} on {self.post.title if self.post else self.comment.id}"
 
 
 class AdminSettings(models.Model):

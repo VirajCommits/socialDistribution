@@ -8,10 +8,22 @@ from django.shortcuts import get_object_or_404
 
 class AuthorSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=False)
+    # is_approved = serializers.BooleanField(read_only=True)
 
     class Meta:
         model = Author
-        fields = ['id', 'uuid', 'host', 'displayName', 'github', 'profileImage', 'page', 'username', 'email', 'password']
+        fields = [
+            "id",
+            "uuid",
+            "host",
+            "displayName",
+            "github",
+            "profileImage",
+            "page",
+            "username",
+            "email",
+            "password",
+        ]
 
         extra_kwargs = {
             "id": {"read_only": True},
@@ -79,8 +91,16 @@ class FollowRequestSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = FollowRequest
-        fields = ['type', 'summary', 'actor', 'object', 'uuid', 'created_at', 'accepted']
-        read_only_fields = ['uuid', 'created_at']
+        fields = [
+            "type",
+            "summary",
+            "actor",
+            "object",
+            "uuid",
+            "created_at",
+            "accepted",
+        ]
+        read_only_fields = ["uuid", "created_at"]
 
 
 class CommentSerializer(serializers.ModelSerializer):
@@ -89,6 +109,9 @@ class CommentSerializer(serializers.ModelSerializer):
     # Use CharField for author_id and post_id as they are 32-character strings
     author_id = serializers.CharField(write_only=True)
     post_id = serializers.CharField(write_only=True)
+
+    # Add likes as a SerializerMethodField to include the `likes` sub-object
+    likes = serializers.SerializerMethodField()
 
     id = serializers.CharField(read_only=True)
     published = serializers.DateTimeField(read_only=True)
@@ -103,10 +126,25 @@ class CommentSerializer(serializers.ModelSerializer):
             "content",
             "contentType",
             "published",
+            "likes",  # Include the likes field
         ]
         read_only_fields = ["id", "published"]
 
+    def get_likes(self, obj):
+        """Fetch likes for the comment and return the `likes` object structure."""
+        likes = Like.objects.filter(comment=obj).order_by("-published")[:5]
+        return {
+            "type": "likes",
+            "page": f"http://{obj.post.author.host}/comments/{obj.id}/likes",
+            "id": f"http://{obj.post.author.host}/comments/{obj.id}/likes",
+            "page_number": 1,
+            "size": len(likes),
+            "count": Like.objects.filter(comment=obj).count(),
+            "src": LikeSerializer(likes, many=True).data,
+        }
+
     def create(self, validated_data):
+        """Create a comment by linking it with the author and post."""
         author_id = validated_data.pop("author_id")
         post_id = validated_data.pop("post_id")
         author = get_object_or_404(Author, id=author_id)
@@ -116,31 +154,55 @@ class CommentSerializer(serializers.ModelSerializer):
 
 
 class LikeSerializer(serializers.ModelSerializer):
-    # Use AuthorSerializer for nested author details
+    # Author details (nested)
     author = AuthorSerializer(read_only=True)
-    # Use CharField for author_id and post_id as they are 32-character strings
-    author_id = serializers.CharField(write_only=True)
-    post_id = serializers.CharField(write_only=True)
 
+    # Write-only fields for input
+    author_id = serializers.CharField(write_only=True)
+    post_id = serializers.CharField(write_only=True, required=False)
+    comment_id = serializers.CharField(write_only=True, required=False)
+
+    # Read-only fields
     id = serializers.CharField(read_only=True)
     published = serializers.DateTimeField(read_only=True)
+    object = serializers.SerializerMethodField()  # Field to reference the liked object
 
     class Meta:
         model = Like
-        fields = ["id", "author", "author_id", "post", "post_id", "published"]
-        read_only_fields = ["id", "published"]
+        fields = [
+            "id",
+            "author",
+            "author_id",
+            "post_id",
+            "comment_id",
+            "object",  # Include object reference
+            "published",
+        ]
+        read_only_fields = ["id", "published", "object"]
+
+    def get_object(self, obj):
+        """Return the reference to the object being liked (post or comment)."""
+        if obj.post:
+            return f"http://{obj.post.author.host}/posts/{obj.post.id}"
+        if obj.comment:
+            return f"http://{obj.comment.author.host}/comments/{obj.comment.id}"
+        return None
 
     def create(self, validated_data):
+        """Create a like for a post or a comment."""
         author_id = validated_data.pop("author_id")
-        post_id = validated_data.pop("post_id")
+        post_id = validated_data.pop("post_id", None)
+        comment_id = validated_data.pop("comment_id", None)
+
         author = get_object_or_404(Author, id=author_id)
-        post = get_object_or_404(Post, id=post_id)
+        if post_id:
+            post = get_object_or_404(Post, id=post_id)
+            validated_data["post"] = post
+        if comment_id:
+            comment = get_object_or_404(Comment, id=comment_id)
+            validated_data["comment"] = comment
 
-        # Remove 'post' from validated_data to prevent conflict
-        validated_data.pop("post", None)
-
-        # Create the Like instance with author and post
-        like = Like.objects.create(author=author, post=post, **validated_data)
+        like = Like.objects.create(author=author, **validated_data)
         return like
 
 

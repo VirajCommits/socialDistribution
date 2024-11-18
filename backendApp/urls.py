@@ -6,6 +6,7 @@ from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 from django.views.generic import TemplateView
 from rest_framework import permissions
+
 # from .views import TestRemoteNodeConnectionView
 
 schema_view = get_schema_view(
@@ -148,20 +149,20 @@ urlpatterns = [
         name="get-author-friends",
     ),
     path(
+        "service/api/comments/<uuid:comment_id>/like/",
+        views.like_comment,
+        name="like_comment",
+    ),
+    path(
+        "service/api/comments/<uuid:comment_id>/likes/",
+        views.comment_likes,
+        name="comment_likes",
+    ),
+    path(
         "service/api/authors/<uuid:author_uuid>/",
         views.update_author_profile,
         name="update_author_profile",
     ),
-    # path(
-    #     "service/api/authors/<uuid:author_id>/profile/",
-    #     views.get_author_profile,
-    #     name="get_author_profile",
-    # ),
-    # path(
-    #     "service/api/authors/<uuid:author_id>/posts/public/",
-    #     views.get_public_posts,
-    #     name="get_public_posts",
-    # ),
     # path(
     #     "nodes/<int:pk>/test_connection/",
     #     TestRemoteNodeConnectionView.as_view(),

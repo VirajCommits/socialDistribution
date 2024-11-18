@@ -7,7 +7,13 @@ from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 import requests
 from .models import AdminSettings
-from .serializers import PostSerializer, CommentSerializer, LikeSerializer, FollowRequestSerializer, AuthorSerializer
+from .serializers import (
+    PostSerializer,
+    CommentSerializer,
+    LikeSerializer,
+    FollowRequestSerializer,
+    AuthorSerializer,
+)
 from .models import Author, Post, Comment, Like, FollowRequest, GitHubPost
 
 # from .utils import connect_to_remote_node
@@ -262,6 +268,7 @@ def vueTest(request):
     },
     tags=["Posts"],
 )
+
 @api_view(["GET", "DELETE", "PUT", "POST"])
 def post_detail(request, author_serial, post_serial):
     segments = post_serial.split("/")
@@ -273,85 +280,69 @@ def post_detail(request, author_serial, post_serial):
     author = get_object_or_404(Author, uuid=parsed_author_id)
     post = get_object_or_404(Post, author=author, id=post_id)
 
-    # If the request is a GET and no action is specified, return the post details
+    # Handle GET request for post details
     if request.method == "GET" and not action:
-        serializer = PostSerializer(post)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        comments = Comment.objects.filter(post=post).order_by("-published")
+        comment_serializer = CommentSerializer(comments, many=True)
 
-    # Handle "like" action for POST request
-    if action == "like":
-        if request.method == "POST":
-            data = request.data.copy()
-            data["author_id"] = str(author.id)
-            data["post_id"] = str(post.id)
-            data["post"] = post.id
+        post_serializer = PostSerializer(post)
+        return Response({
+            "type": "post_detail",
+            "post": post_serializer.data,
+            "comments": {
+                "type": "comments",
+                "page": f"http://{request.get_host()}/posts/{post_id}/comments/",
+                "id": f"http://{request.get_host()}/posts/{post_id}/comments/",
+                "page_number": 1,
+                "size": len(comments),
+                "count": comments.count(),
+                "src": comment_serializer.data,
+            },
+            "likes": {
+                "type": "likes",
+                "page": f"http://{request.get_host()}/posts/{post_id}/likes/",
+                "id": f"http://{request.get_host()}/posts/{post_id}/likes/",
+                "page_number": 1,
+                "size": Like.objects.filter(post=post).count(),
+                "count": Like.objects.filter(post=post).count(),
+                "src": LikeSerializer(
+                    Like.objects.filter(post=post).order_by("-published")[:5], many=True
+                ).data,
+            }
+        }, status=status.HTTP_200_OK)
 
-            serializer = LikeSerializer(data=data)
-            if serializer.is_valid():
-                serializer.save()
-                return Response(serializer.data, status=status.HTTP_201_CREATED)
-            else:
-                print("Serializer errors:", serializer.errors)
-                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    # Handle POST request for adding comments or likes
+    if action == "comments" and request.method == "POST":
+        data = request.data.copy()
+        data["author_id"] = str(request.user.id)
+        data["post_id"] = str(post.id)
 
-    # Handle fetching likes
-    if action == "likes":
-        if request.method == "GET":
-            likes = Like.objects.filter(post=post).order_by("-published")
-            serializer = LikeSerializer(likes, many=True)
-            return Response(serializer.data, status=status.HTTP_200_OK)
+        serializer = CommentSerializer(data=data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    # Handle comments if specified in the URL
-    elif action == "comments":
-        if request.method == "GET":
-            # Filter comments based on visibility rules
-            current_user = request.user
-            if post.visibility == "FRIENDS":
-                # Check if the current user is a friend or the post's author
-                is_friend = (
-                    current_user in author.followers.all()
-                    and current_user in author.following.all()
-                )
-                if not (is_friend or current_user == author):
-                    # If the current user is not a friend or the post's author, filter out comments
-                    return Response(
-                        {"detail": "You are not authorized to view these comments."},
-                        status=status.HTTP_403_FORBIDDEN,
-                    )
+    elif action == "like" and request.method == "POST":
+        data = request.data.copy()
+        data["author_id"] = str(request.user.id)
+        data["post_id"] = str(post.id)
 
-            # Return all comments, as visibility rules are satisfied
-            comments = Comment.objects.filter(post=post).order_by("-published")
-            serializer = CommentSerializer(
-                comments, many=True, context={"request": request}
-            )
-            return Response(serializer.data, status=status.HTTP_200_OK)
+        serializer = LikeSerializer(data=data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        elif request.method == "POST":
-            # Handle comment creation directly here
-            data = request.data.copy()
-            data["author_id"] = str(author.id)
-            data["post_id"] = str(post.id)
+    # Handle DELETE request for deleting the post
+    if request.method == "DELETE" and not action:
+        post.delete()
+        return Response({"detail": "Post deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
 
-            serializer = CommentSerializer(data=data)
-            if serializer.is_valid():
-                serializer.save()
-                return Response(serializer.data, status=status.HTTP_201_CREATED)
-            else:
-                print("Serializer errors:", serializer.errors)
-                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-        # Handle DELETE request to delete the post
-        elif request.method == "DELETE" and not action:
-            post.delete()  # Now delete the original post or repost
-            return Response(status=status.HTTP_204_NO_CONTENT)
-
-        # Handle DELETE request to delete the post
-        elif request.method == "DELETE" and not action:
-            post.delete()  # Now delete the original post or repost
-            return Response(status=status.HTTP_204_NO_CONTENT)
-
-    # Handle PUT request to update the post
-    elif request.method == "PUT" and not action:
+    # Handle PUT request for updating the post
+    if request.method == "PUT" and not action:
         data = request.data
         if "content" in data:
             markdown_content = data["content"]
@@ -367,7 +358,7 @@ def post_detail(request, author_serial, post_serial):
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    # If the action doesn't match any known value, return an error
+    # If the action is unrecognized
     return Response({"detail": "Invalid request"}, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -451,6 +442,55 @@ def post_comment(request, post_id):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
     else:
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def like_comment(request, comment_id):
+    """
+    API to handle liking a specific comment by comment_id.
+    """
+    comment = get_object_or_404(Comment, id=comment_id)
+    author = request.user
+
+    # Check if the user has already liked the comment
+    if Like.objects.filter(comment=comment, author=author).exists():
+        return Response(
+            {"detail": "You have already liked this comment."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    data = {
+        "author_id": str(author.id),
+        "comment_id": str(comment.id),
+    }
+
+    serializer = LikeSerializer(data=data)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    else:
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def comment_likes(request, comment_id):
+    """
+    API to fetch likes for a specific comment by comment_id.
+    """
+    comment = get_object_or_404(Comment, id=comment_id)
+    likes = Like.objects.filter(comment=comment).order_by("-published")
+    serializer = LikeSerializer(likes, many=True)
+    return Response({
+        "type": "likes",
+        "page": f"http://{request.get_host()}/comments/{comment_id}/likes",
+        "id": f"http://{request.get_host()}/comments/{comment_id}/likes",
+        "page_number": 1,
+        "size": len(likes),
+        "count": likes.count(),
+        "src": serializer.data,
+    })
 
 
 @swagger_auto_schema(
@@ -1185,6 +1225,7 @@ def get_all_authors(request):
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
 
+
 @swagger_auto_schema(
     method="get",
     operation_summary="Fetch the stream of posts for a specific author",
@@ -1331,7 +1372,6 @@ def stream_page(request, author_id):
         .distinct()
         .order_by("-edited_at")
     )
-
 
     # Paginate and return response
     paginator = PageNumberPagination()
@@ -2523,31 +2563,3 @@ def create_public_post_from_github_activity(author, github_post):
 #             return Response(
 #                 {"error": "Node not found"}, status=status.HTTP_404_NOT_FOUND
 #             )
-
-
-# @api_view(["GET"])
-# def get_author_profile(request, author_id):
-#     try:
-#         author = Author.objects.get(uuid=author_id)
-#         posts = Post.objects.filter(author=author, visibility="PUBLIC")
-#         author_data = AuthorSerializer(author).data
-#         posts_data = PostSerializer(posts, many=True).data
-#         return Response(
-#             {"author": author_data, "posts": posts_data}, status=status.HTTP_200_OK
-#         )
-#     except Author.DoesNotExist:
-#         return Response({"error": "Author not found"}, status=status.HTTP_404_NOT_FOUND)
-
-
-# @api_view(["GET"])
-# def get_public_posts(request, author_id):
-#     try:
-#         # Filter posts for the specific author with visibility as 'PUBLIC'
-#         posts = Post.objects.filter(author_id=author_id, visibility="PUBLIC")
-#         serialized_posts = PostSerializer(posts, many=True)
-#         return Response({"results": serialized_posts.data}, status=status.HTTP_200_OK)
-#     except Post.DoesNotExist:
-#         return Response(
-#             {"error": "Author not found or no public posts available."},
-#             status=status.HTTP_404_NOT_FOUND,
-#         )
