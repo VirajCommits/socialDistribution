@@ -5,6 +5,7 @@ from django.conf.urls.static import static
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 from django.views.generic import TemplateView
+from rest_framework import permissions
 
 schema_view = get_schema_view(
     openapi.Info(
@@ -16,10 +17,11 @@ schema_view = get_schema_view(
         license=openapi.License(name="BSD License"),
     ),
     public=True,
+    permission_classes=(permissions.AllowAny,),
 )
 
 urlpatterns = [
-    path("", views.defaultPath, name="defaultPath"),
+    # path("", views.defaultPath, name="defaultPath"),
     path("service/api/signup/", views.signup, name="signup"),
     path("service/api/login/", views.login, name="login"),
     # Swagger paths
@@ -60,7 +62,12 @@ urlpatterns = [
         views.post_comment,
         name="post_comment",
     ),
-    path("service/api/posts/<uuid:post_id>/like/", views.like_post, name="like_post"),
+    path("service/api/posts/<uuid:post_id>/like/",
+         views.like_post, name="like_post"
+    ),
+    path("service/api/posts/<uuid:post_id>/repost/",
+         views.repost_post, name="repost_post"),
+
     # Follow request paths
     path(
         "service/api/authors/<uuid:author_uuid>/send_follow_request/",
@@ -147,11 +154,12 @@ urlpatterns = [
     # path(
     #     "stream", TemplateView.as_view(template_name="vue/index.html"), name="stream"
     # ),
-    # Catch-all route for Vue frontend
-    re_path(r"^.*$", TemplateView.as_view(template_name="index.html")),
     path(
         "posts/<uuid:post_id>/",
         TemplateView.as_view(template_name="index.html"),
         name="post_detail",
     ),
+    # Catch-all route for Vue frontend
+    re_path(r"^(?!service/api|admin|swagger|static|media).*$", 
+        TemplateView.as_view(template_name="index.html")),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

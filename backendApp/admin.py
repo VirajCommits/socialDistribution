@@ -1,6 +1,6 @@
 from django.contrib import admin
 from .models import Author
-
+from .models import AdminSettings
 
 @admin.register(Author)
 class AuthorAdmin(admin.ModelAdmin):
@@ -24,3 +24,8 @@ class AuthorAdmin(admin.ModelAdmin):
         self.message_user(request, "Selected users have been approved.")
 
     approve_users.short_description = "Approve selected users"
+
+
+@admin.register(AdminSettings)
+class AdminSettingsAdmin(admin.ModelAdmin):
+    list_display = ("user_approval_required",)
