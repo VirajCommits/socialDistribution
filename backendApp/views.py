@@ -2045,19 +2045,17 @@ def inbox_handler(request, author_serial):
     elif request.method == 'POST':
         data = request.data
         print("------------------ Incoming Data ------------------")
-        print(data , "\n\n\n" , request.user)
+        print(data , "\n\n\n" , request.user.uuid)
         item_type = data.get('type', '').lower()
 
         try:
             if item_type == 'post':
                 # to create a post, basically call this url: service/api/authors/<path:author_serial>/posts/
-                # i need the author_serial of the current author and then call the /authors/<path:author_serial>/posts/ endpoint
-                # extract the current author 
+                # i need the author_serial from data
                 auth_serial = data.get("author_id")
                 hostname = data["author"]["host"]
 
-                api_url = f"{hostname}/service/api/authors/{auth_serial}/posts/"
-                print(api_url)
+                api_url = f"{hostname}service/api/authors/{auth_serial}/posts/"
 
                 # Prepare the body for creating a post
                 post_data = {
@@ -2114,10 +2112,82 @@ def inbox_handler(request, author_serial):
                 return Response({'message': 'Like added to inbox and created locally.'}, status=status.HTTP_201_CREATED)
 
             elif item_type == 'comment':
-                pass
+                print(" ============================== ")
+                # Handle Comment Activity
+                comment_id = data.get('id')
+                if not comment_id:
+                    return Response({'error': 'Comment ID is missing.'}, status=status.HTTP_400_BAD_REQUEST)
+
+                # Check if the Comment already exists
+                comment, created_comment = Comment.objects.get_or_create(id=comment_id, defaults=data)
+                if created_comment:
+                    comment_serializer = CommentSerializer(comment, data=data, partial=True)
+                    if comment_serializer.is_valid():
+                        comment = comment_serializer.save()
+                        print(f"Comment {comment_id} created and added to inbox of author {author_serial}.")
+                    else:
+                        comment.delete()
+                        print("Comment serializer errors:", comment_serializer.errors)
+                        return Response(comment_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                else:
+                    print(f"Comment {comment_id} already exists.")
+
+                # Add the comment to the inbox if not already added
+                if not inbox.comments.filter(id=comment.id).exists():
+                    inbox.comments.add(comment)
+                    print(f"Comment {comment.id} added to inbox of author {author_serial}.")
+                else:
+                    print(f"Comment {comment.id} already in inbox of author {author_serial}.")
+
+                # **Process the comment by calling the local API endpoint**
+                response = create_local_comment(request, comment)
+                if response.status_code != status.HTTP_201_CREATED:
+                    return Response({'error': 'Failed to create local comment.'}, status=status.HTTP_400_BAD_REQUEST)
+
+                return Response({'message': 'Comment added to inbox and created locally.'}, status=status.HTTP_201_CREATED)
 
             elif item_type == 'follow':
-                pass
+                # Handle Follow Activity
+                print("Handling follow request.")
+
+                # Get the target author's UUID from the request data
+                target_uuid = data.get('object', {}).get('id')
+                if not target_uuid:
+                    return Response({'error': 'Target UUID for follow is missing.'}, status=status.HTTP_400_BAD_REQUEST)
+
+                django_request = request._request  # Get the underlying Django HttpRequest
+
+                # Call the existing send_follow_request function
+                response = send_follow_request(django_request, target_uuid)
+
+                if response.status_code == status.HTTP_201_CREATED:
+                    print("Follow request created successfully.")
+
+                    # Get the most recent follow request
+                    follow_request = FollowRequest.objects.filter(
+                        actor=request.user,
+                        object=author,
+                        accepted=False
+                    ).latest('created_at')
+
+                    print(f"Adding follow request {follow_request.id} to inbox.")
+                    # Add to inbox if not already added
+                    if not inbox.follow_requests.filter(id=follow_request.id).exists():
+                        inbox.follow_requests.add(follow_request)
+                        print(f"Follow request {follow_request.id} added to inbox of author {author_serial}.")
+                    else:
+                        print(f"Follow request {follow_request.id} already in inbox of author {author_serial}.")
+
+                    # **Process the follow request by calling the local API endpoint**
+                    response = process_follow_request(request, follow_request)
+                    if response.status_code != status.HTTP_200_OK:
+                        return Response({'error': 'Failed to process follow request locally.'}, status=status.HTTP_400_BAD_REQUEST)
+
+                    return Response({'message': 'Follow request added to inbox and processed locally.'}, status=status.HTTP_201_CREATED)
+
+                # If there was an error, return the original response
+                print(f"send_follow_request response status: {response.status_code}")
+                return response
 
             else:
                 # Unsupported activity type
@@ -2136,145 +2206,99 @@ def inbox_handler(request, author_serial):
         inbox.follow_requests.clear()
         print(f"Inbox for author {author_serial} has been cleared.")
         return Response({'message': 'Inbox cleared.'}, status=status.HTTP_204_NO_CONTENT)
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def followers_handler(request, author_serial):
-    """Get a list of authors who are followers"""
+def create_local_post(request, post):
+    """
+    Processes a post activity by creating a local post via the API.
+    """
     try:
-        author = get_object_or_404(Author, uuid=author_serial)
-        followers = author.followers.all()
-        serializer = AuthorSerializer(followers, many=True)
-        
-        response_data = {
-            "type": "followers",
-            "followers": serializer.data
-        }
-        return Response(response_data)
-    except Exception as e:
-        return Response(
-            {'error': str(e)}, 
-            status=status.HTTP_400_BAD_REQUEST
+        factory = APIRequestFactory()
+        api_request = factory.post(
+            reverse('post-list'),  # Ensure this URL name matches your URL configuration
+            data={
+                'type': post.type,
+                'title': post.title,
+                'id': post.id,
+                'page': post.page,
+                'description': post.description,
+                'contentType': post.contentType,
+                'content': post.content,
+                'published': post.published,
+                'visibility': post.visibility,
+                'author': post.author.id,  # Assuming author is referenced by ID
+            },
+            format='json'
         )
-@api_view(['GET', 'PUT', 'DELETE'])
-@permission_classes([IsAuthenticated])
-def specific_follower_handler(request, author_serial, foreign_author_fqid):
-    """Handle specific follower operations"""
-    try:
-        author = get_object_or_404(Author, uuid=author_serial)
-        # Decode the URL-encoded foreign author ID
-        decoded_fqid = unquote(foreign_author_fqid)
-        foreign_author = get_object_or_404(Author, id=decoded_fqid)
-
-        if request.method == 'GET':
-            # Check if foreign_author is a follower
-            if not author.followers.filter(id=foreign_author.id).exists():
-                return Response(status=status.HTTP_404_NOT_FOUND)
-            serializer = AuthorSerializer(foreign_author)
-            return Response(serializer.data)
-
-        elif request.method == 'PUT':
-            # Add as follower (accept follow request)
-            author.followers.add(foreign_author)
-            
-            # Notify through WebSocket
-            channel_layer = get_channel_layer()
-            async_to_sync(channel_layer.group_send)(
-                f"notifications_{author.uuid}",
-                {
-                    'type': 'follow_request_notification',
-                    'message': f'{foreign_author.displayName} is now following you'
-                }
-            )
-            
-            return Response(status=status.HTTP_201_CREATED)
-
-        elif request.method == 'DELETE':
-            # Remove follower
-            author.followers.remove(foreign_author)
-            
-            # Notify through WebSocket
-            channel_layer = get_channel_layer()
-            async_to_sync(channel_layer.group_send)(
-                f"notifications_{author.uuid}",
-                {
-                    'type': 'follow_request_notification',
-                    'message': f'{foreign_author.displayName} has unfollowed you'
-                }
-            )
-            
-            return Response(status=status.HTTP_204_NO_CONTENT)
-
+        api_request.user = request.user
+        response = create_post(api_request)  # Call your post creation view
+        return response
     except Exception as e:
-        return Response(
-            {'error': str(e)}, 
-            status=status.HTTP_400_BAD_REQUEST
+        print(f"Error creating local post: {e}")
+        return Response({'error': 'Failed to create local post.'}, status=status.HTTP_400_BAD_REQUEST)
+
+def create_local_like(request, like):
+    """
+    Processes a like activity by creating a local like via the API.
+    """
+    try:
+        factory = APIRequestFactory()
+        api_request = factory.post(
+            reverse('like-list'),  # Ensure this URL name matches your URL configuration
+            data={
+                'type': like.type,
+                'id': like.id,
+                'author': like.author.id,
+                'object': like.object,
+                'published': like.published,
+            },
+            format='json'
         )
-@api_view(['GET'])
-@permission_classes([AllowAny])
-def test_node_connection(request):
-    try:
-
-        # Get all remote nodes
-        remote_nodes = ToWhichItsConnected.objects.filter(active=True)
-        if not remote_nodes:
-            return Response({
-                "status": "error",
-                "message": "No remote nodes found in database. Please create one in the admin panel."
-            }, status=status.HTTP_404_NOT_FOUND)
-
-        results = []
-        for node in remote_nodes:
-            try:
-                 # Test outgoing connection (us -> them)
-                outgoing_url = f"{node.url}"
-                endpoint = 'service/api/verify-connection/'
-                outgoing_response = make_node_request(base_url=outgoing_url, endpoint=endpoint)
-                
-                results.append({
-                    "node_url": node.url,
-                    "outgoing_test": {
-                        "status": "success",
-                        "status_code": outgoing_response.status_code,
-                        "response": outgoing_response.json() if outgoing_response.status_code == 200 else outgoing_response.text
-                    }
-                })
-                
-            except requests.RequestException as e:
-                results.append({
-                    "node_url": node.url,
-                    "status": "error",
-                    "error_type": str(type(e).__name__),
-                    "error_message": str(e)
-                })
-        
-        return Response({
-            "status": "completed",
-            "test_results": results
-        })
-        
+        api_request.user = request.user
+        response = create_like(api_request)  # Call your like creation view
+        return response
     except Exception as e:
-        return Response({
-            "status": "error",
-            "message": str(e),
-            "type": str(type(e))
-        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-@api_view(['GET'])
-# @authentication_classes([NodeBasicAuthentication])
-# @permission_classes([IsAuthenticatedOrNode])
-@permission_classes([AllowAny])
-def verify_node_connection(request):
+        print(f"Error creating local like: {e}")
+        return Response({'error': 'Failed to create local like.'}, status=status.HTTP_400_BAD_REQUEST)
+
+def create_local_comment(request, comment):
+    """
+    Processes a comment activity by creating a local comment via the API.
+    """
     try:
-        # Log incoming request details
-        print(f"Incoming request from: {request.user.url if hasattr(request.user, 'url') else 'Unknown'}")
-        return Response({
-            "status": "success",
-            "message": "Connection verified",
-            "node": request.user.url if hasattr(request.user, 'url') else str(request.user)
-        })
+        factory = APIRequestFactory()
+        api_request = factory.post(
+            reverse('comment-list'),  # Ensure this URL name matches your URL configuration
+            data={
+                'type': comment.type,
+                'id': comment.id,
+                'author': comment.author.id,
+                'post': comment.post,
+                'comment': comment.comment,
+                'contentType': comment.contentType,
+                'published': comment.published,
+            },
+            format='json'
+        )
+        api_request.user = request.user
+        response = post_comment(api_request)  # Call your comment creation view
+        return response
     except Exception as e:
-        # Log any exceptions
-        print(f"Error in verify_node_connection: {str(e)}")
-        return Response({
-            "status": "error",
-            "message": str(e)
-        })
+        print(f"Error creating local comment: {e}")
+        return Response({'error': 'Failed to create local comment.'}, status=status.HTTP_400_BAD_REQUEST)
+
+def process_follow_request(request, follow_request):
+    """
+    Processes a follow request by accepting it via the API.
+    """
+    try:
+        factory = APIRequestFactory()
+        api_request = factory.post(
+            reverse('follow-request-accept', args=[follow_request.id]),  # Ensure this URL name matches your URL configuration
+            data={},  # If your accept_follow_request view requires additional data, include it here
+            format='json'
+        )
+        api_request.user = request.user
+        response = accept_follow_request(api_request, follow_request.id)  # Call your follow request acceptance view
+        return response
+    except Exception as e:
+        print(f"Error processing follow request: {e}")
+        return Response({'error': 'Failed to process follow request.'}, status=status.HTTP_400_BAD_REQUEST)

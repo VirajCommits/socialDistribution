@@ -157,21 +157,21 @@ urlpatterns = [
         name='inbox'
     ),
 
-    path(
-    "service/api/authors/<path:author_serial>/followers/",
-    views.followers_handler,
-    name="followers_handler"
-    ),
-    path(
-        "service/api/authors/<path:author_serial>/followers/<path:foreign_author_fqid>/",
-        views.specific_follower_handler,
-        name="specific_follower_handler"
-    ),
+    # path(
+    # "service/api/authors/<path:author_serial>/followers/",
+    # views.followers_handler,
+    # name="followers_handler"
+    # ),
+    # path(
+    #     "service/api/authors/<path:author_serial>/followers/<path:foreign_author_fqid>/",
+    #     views.specific_follower_handler,
+    #     name="specific_follower_handler"
+    # ),
     # path(
     #     "stream", TemplateView.as_view(template_name="vue/index.html"), name="stream"
     # ),
-    path('test-node-connection/', views.test_node_connection, name='test-node-connection'),
-    path('service/api/verify-connection/', views.verify_node_connection, name='verify_node_connection'),
+    # path('test-node-connection/', views.test_node_connection, name='test-node-connection'),
+    # path('service/api/verify-connection/', views.verify_node_connection, name='verify_node_connection'),
     path(
         "posts/<uuid:post_id>/",
         TemplateView.as_view(template_name="index.html"),
