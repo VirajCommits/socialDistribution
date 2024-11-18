@@ -12,14 +12,9 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 
 from pathlib import Path
 import os
-
-# from cryptography.fernet import Fernet
-import dj_database_url
-from decouple import config
-
+import environ
 import django_heroku
 import dj_database_url
-
 
 # Build paths inside the project like this: BASE_DIR / 'subdir' or os.path.join(BASE_DIR, 'subdir')
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -27,33 +22,35 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
-SECRET_KEY = config("SECRET_KEY", default="default-secret-key")
-# DEBUG = config("DEBUG", default=False, cast=bool)
-# FERNET_KEY = config("FERNET_KEY", default=None)
+# Initialize environment variables
+env = environ.Env()
+
+# Reading the env file (env.production for production, .env for local development)
+environ.Env.read_env(os.path.join(BASE_DIR, 'env.production'))  # Or 'read_env()' without specifying for .env
+
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-# SECRET_KEY = "django-insecure-w)getnsr)9z21am-v4i2%)vz10ji05zcxkoa+xrzx)h7$=zaad"
+SECRET_KEY = "django-insecure-w)getnsr)9z21am-v4i2%)vz10ji05zcxkoa+xrzx)h7$=zaad"
 
 # Set Debug to False for production
 # DEBUG = False if os.environ.get("DATABASE_URL") else True
 DEBUG = True
-
 # Add secure headers
 # SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 # SECURE_SSL_REDIRECT = not DEBUG
 # SESSION_COOKIE_SECURE = not DEBUG
 # CSRF_COOKIE_SECURE = not DEBUG
+USER_APPROVAL_REQUIRED = True
 
 ALLOWED_HOSTS = [
     "127.0.0.1",
     "localhost",
-    "teal-rakshit-a972530cc317.herokuapp.com",
     ".herokuapp.com",
-    "social-sanket-603a86c4b610.herokuapp.com",
 ]
-USER_APPROVAL_REQUIRED = True
+
 
 # Application definition
 
@@ -92,24 +89,20 @@ REST_FRAMEWORK = {
         "rest_framework_simplejwt.authentication.JWTAuthentication",  # Use JWT authentication
     ],
 }
-# CORS_ALLOW_ALL_ORIGINS = True
 
 # CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:8080",  # Frontend development server
     "http://localhost:8000",  # Backend development server
-    "https://teal-rakshit-a972530cc317.herokuapp.com",
-    "http://127.0.0.1:8000",
-    "https://social-sanket-603a86c4b610.herokuapp.com",
+    "https://*.herokuapp.com",
 ]
 CORS_ALLOW_CREDENTIALS = True
 
 CSRF_TRUSTED_ORIGINS = [
-    "https://teal-rakshit-a972530cc317.herokuapp.com",
+    "https://*.herokuapp.com",
     "http://localhost:8080",
     "http://localhost:8000",
     "http://127.0.0.1:8000",
-    "https://social-sanket-603a86c4b610.herokuapp.com",
 ]
 
 
@@ -134,25 +127,11 @@ TEMPLATES = [
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
+DATABASES = {
+    'default': env.db(),  # This automatically reads DATABASE_URL
+}
 
-if os.environ.get("DATABASE_URL") != None:
-    # Running on Heroku
-    DATABASES = {
-        "default": dj_database_url.config(
-            conn_max_age=600,
-            conn_health_checks=True,
-            ssl_require=True
-        )
 
-    }
-else:
-    # Running locally.
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.sqlite3",
-            "NAME": BASE_DIR / "db.sqlite3",
-        }
-    }
 
 # Password validation
 # https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators
@@ -218,23 +197,3 @@ CHANNEL_LAYERS = {
         'BACKEND': 'channels.layers.InMemoryChannelLayer'
     }
 }
-
-# # Path to store the Fernet key
-# FERNET_KEY_PATH = os.path.join(BASE_DIR, "fernet.key")
-
-
-# def get_or_create_fernet_key():
-#     """Generate a new Fernet key or retrieve the existing one."""
-#     if not os.path.exists(FERNET_KEY_PATH):
-#         # Generate and save a new key
-#         key = Fernet.generate_key()
-#         with open(FERNET_KEY_PATH, "wb") as key_file:
-#             key_file.write(key)
-#     else:
-#         # Read the existing key
-#         with open(FERNET_KEY_PATH, "rb") as key_file:
-#             key = key_file.read()
-#     return key
-
-
-# FERNET_KEY = get_or_create_fernet_key()
