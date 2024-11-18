@@ -154,3 +154,9 @@ class Like(models.Model):
 #     def __str__(self):
 #         return f"Inbox of {self.author.displayName}"
 
+
+class AdminSettings(models.Model):
+    user_approval_required = models.BooleanField(default=True)
+
+    def __str__(self):
+        return f"User Approval Required: {self.user_approval_required}"
