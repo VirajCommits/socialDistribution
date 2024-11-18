@@ -95,6 +95,7 @@ CORS_ALLOWED_ORIGINS = [
 CORS_ALLOW_CREDENTIALS = True
 
 CSRF_TRUSTED_ORIGINS = [
+    "https://*.herokuapp.com",
     "https://teal-rakshit-a972530cc317.herokuapp.com",
     "https://teal-darrenkrz-c0d7276a7808.herokuapp.com",
     "http://localhost:8080",
