@@ -26,9 +26,9 @@ axios.interceptors.request.use(
     const token = localStorage.getItem('token'); // Get the token from localStorage
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`; // Set the Authorization header
-      console.log('Token found and added to request');
+      // console.log('Token found and added to request');
     } else {
-      console.log('No token found in localStorage');
+      // console.log('No token found in localStorage');
     }
     return config;
   },

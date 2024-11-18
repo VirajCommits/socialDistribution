@@ -9,8 +9,11 @@ from drf_yasg import openapi
 from .models import AdminSettings
 from .serializers import PostSerializer, CommentSerializer, LikeSerializer, InboxSerializer
 from .models import Author, Post, Comment, Like, FollowRequest, Inbox
-
-
+import base64
+import requests
+from rest_framework.decorators import api_view, authentication_classes, permission_classes
+from .authentication import NodeBasicAuthentication
+from .permissions import IsAuthenticatedOrNode
 from django.shortcuts import get_object_or_404
 from urllib.parse import urlparse
 from django.shortcuts import render
@@ -1437,93 +1440,93 @@ def remove_follow_request(request, author_uuid):
 
     return Response({'detail': 'Follow request removed.'}, status=status.HTTP_200_OK)
 
-@swagger_auto_schema(
-    method='delete',
-    operation_summary="Unfollow an Author",
-    operation_description="Unfollow an author.",
-    manual_parameters=[
-        openapi.Parameter(
-            'author_id',
-            openapi.IN_PATH,
-            description="UUID of the author to unfollow",
-            type=openapi.TYPE_STRING,
-            required=True
-        )
-    ],
-    responses={
-        200: openapi.Response(
-            description="Successfully unfollowed the author.",
-            schema=openapi.Schema(
-                type=openapi.TYPE_OBJECT,
-                properties={
-                    'detail': openapi.Schema(type=openapi.TYPE_STRING, description='Success message')
-                }
-            )
-        ),
-        400: openapi.Response(
-            description="You are not following this author.",
-            schema=openapi.Schema(
-                type=openapi.TYPE_OBJECT,
-                properties={
-                    'detail': openapi.Schema(type=openapi.TYPE_STRING, description='Error message')
-                }
-            )
-        ),
-        404: openapi.Response(
-            description="Author not found.",
-            schema=openapi.Schema(
-                type=openapi.TYPE_OBJECT,
-                properties={
-                    'detail': openapi.Schema(type=openapi.TYPE_STRING, description='Error message')
-                }
-            )
-        ),
-        401: "Unauthorized",
-    },
-    tags=["Follow Requests"]
-)
-@api_view(['DELETE'])
-@permission_classes([IsAuthenticated])
-def unfollow_author(request, author_id):
-    try:
-        target_author = get_object_or_404(Author, uuid=author_id)
-        current_author = request.user  # Since your user model is Author
+# @swagger_auto_schema(
+#     method='delete',
+#     operation_summary="Unfollow an Author",
+#     operation_description="Unfollow an author.",
+#     manual_parameters=[
+#         openapi.Parameter(
+#             'author_id',
+#             openapi.IN_PATH,
+#             description="UUID of the author to unfollow",
+#             type=openapi.TYPE_STRING,
+#             required=True
+#         )
+#     ],
+#     responses={
+#         200: openapi.Response(
+#             description="Successfully unfollowed the author.",
+#             schema=openapi.Schema(
+#                 type=openapi.TYPE_OBJECT,
+#                 properties={
+#                     'detail': openapi.Schema(type=openapi.TYPE_STRING, description='Success message')
+#                 }
+#             )
+#         ),
+#         400: openapi.Response(
+#             description="You are not following this author.",
+#             schema=openapi.Schema(
+#                 type=openapi.TYPE_OBJECT,
+#                 properties={
+#                     'detail': openapi.Schema(type=openapi.TYPE_STRING, description='Error message')
+#                 }
+#             )
+#         ),
+#         404: openapi.Response(
+#             description="Author not found.",
+#             schema=openapi.Schema(
+#                 type=openapi.TYPE_OBJECT,
+#                 properties={
+#                     'detail': openapi.Schema(type=openapi.TYPE_STRING, description='Error message')
+#                 }
+#             )
+#         ),
+#         401: "Unauthorized",
+#     },
+#     tags=["Follow Requests"]
+# )
+# @api_view(['DELETE'])
+# @permission_classes([IsAuthenticated])
+# def unfollow_author(request, author_id):
+#     try:
+#         target_author = get_object_or_404(Author, uuid=author_id)
+#         current_author = request.user  # Since your user model is Author
 
-        # Remove from followers
-        if current_author in target_author.followers.all():
-            target_author.followers.remove(current_author)
-            target_author.save()
+#         # Remove from followers
+#         if current_author in target_author.followers.all():
+#             target_author.followers.remove(current_author)
+#             target_author.save()
 
-            # Notify through WebSocket
-            channel_layer = get_channel_layer()
-            async_to_sync(channel_layer.group_send)(
-                f"notifications_{target_author.uuid}",
-                {
-                    'type': 'follow_request_notification',
-                    'count': FollowRequest.objects.filter(
-                        object=target_author,
-                        accepted=False
-                    ).count(),
-                    'message': f'{current_author.displayName} unfollowed you'
-                }
-            )
+#             # Notify through WebSocket
+#             channel_layer = get_channel_layer()
+#             async_to_sync(channel_layer.group_send)(
+#                 f"notifications_{target_author.uuid}",
+#                 {
+#                     'type': 'follow_request_notification',
+#                     'count': FollowRequest.objects.filter(
+#                         object=target_author,
+#                         accepted=False
+#                     ).count(),
+#                     'message': f'{current_author.displayName} unfollowed you'
+#                 }
+#             )
 
-            return Response({
-                "detail": f"Successfully unfollowed {target_author.displayName}"
-            }, status=status.HTTP_200_OK)
-        else:
-            return Response({
-                "detail": "You are not following this author"
-            }, status=status.HTTP_400_BAD_REQUEST)
+#             return Response({
+#                 "detail": f"Successfully unfollowed {target_author.displayName}"
+#             }, status=status.HTTP_200_OK)
+#         else:
+#             return Response({
+#                 "detail": "You are not following this author"
+#             }, status=status.HTTP_400_BAD_REQUEST)
 
-    except Author.DoesNotExist:
-        return Response({
-            "detail": "Author not found"
-        }, status=status.HTTP_404_NOT_FOUND)
-    except Exception as e:
-        return Response({
-            "detail": str(e)
-        }, status=status.HTTP_400_BAD_REQUEST)
+#     except Author.DoesNotExist:
+#         return Response({
+#             "detail": "Author not found"
+#         }, status=status.HTTP_404_NOT_FOUND)
+#     except Exception as e:
+#         return Response({
+#             "detail": str(e)
+#         }, status=status.HTTP_400_BAD_REQUEST)
 
 @swagger_auto_schema(
     method='get',
@@ -1736,63 +1739,144 @@ def repost_post(request, post_id):
         'repost_count': original_post.repost_count
     }, status=200)
 
-@swagger_auto_schema(
-    method='get',
-    operation_summary="Get Author Followers",
-    operation_description="Retrieve the list of followers for a specific author.",
-    manual_parameters=[
-        openapi.Parameter(
-            'author_uuid',
-            openapi.IN_PATH,
-            description="UUID of the author to retrieve followers for",
-            type=openapi.TYPE_STRING,
-            required=True
-        )
-    ],
-    responses={
-        200: openapi.Response(
-            description="Successfully retrieved followers.",
-            schema=openapi.Schema(
-                type=openapi.TYPE_ARRAY,
-                items=openapi.Schema(
-                    type=openapi.TYPE_OBJECT,
-                    properties={
-                        'id': openapi.Schema(type=openapi.TYPE_INTEGER, description='ID of the author'),
-                        'uuid': openapi.Schema(type=openapi.TYPE_STRING, description='UUID of the author'),
-                        'host': openapi.Schema(type=openapi.TYPE_STRING, description='Host of the author'),
-                        'displayName': openapi.Schema(type=openapi.TYPE_STRING, description='Display name of the author'),
-                        'github': openapi.Schema(type=openapi.TYPE_STRING, description='GitHub URL of the author'),
-                        'profileImage': openapi.Schema(type=openapi.TYPE_STRING, description='Profile image URL of the author'),
-                        'page': openapi.Schema(type=openapi.TYPE_STRING, description='Page URL of the author'),
-                        'username': openapi.Schema(type=openapi.TYPE_STRING, description='Username of the author'),
-                        'email': openapi.Schema(type=openapi.TYPE_STRING, description='Email of the author'),
-                    }
-                )
-            )
-        ),
-        404: openapi.Response(
-            description="Author not found.",
-            schema=openapi.Schema(
-                type=openapi.TYPE_OBJECT,
-                properties={
-                    'error': openapi.Schema(type=openapi.TYPE_STRING, description='Error message')
-                }
-            )
-        ),
-        401: "Unauthorized",
-    },
-    tags=["Authors"]
-)
+# @swagger_auto_schema(
+#     method='get',
+#     operation_summary="Get Author Followers",
+#     operation_description="Retrieve the list of followers for a specific author.",
+#     manual_parameters=[
+#         openapi.Parameter(
+#             'author_uuid',
+#             openapi.IN_PATH,
+#             description="UUID of the author to retrieve followers for",
+#             type=openapi.TYPE_STRING,
+#             required=True
+#         )
+#     ],
+#     responses={
+#         200: openapi.Response(
+#             description="Successfully retrieved followers.",
+#             schema=openapi.Schema(
+#                 type=openapi.TYPE_ARRAY,
+#                 items=openapi.Schema(
+#                     type=openapi.TYPE_OBJECT,
+#                     properties={
+#                         'id': openapi.Schema(type=openapi.TYPE_INTEGER, description='ID of the author'),
+#                         'uuid': openapi.Schema(type=openapi.TYPE_STRING, description='UUID of the author'),
+#                         'host': openapi.Schema(type=openapi.TYPE_STRING, description='Host of the author'),
+#                         'displayName': openapi.Schema(type=openapi.TYPE_STRING, description='Display name of the author'),
+#                         'github': openapi.Schema(type=openapi.TYPE_STRING, description='GitHub URL of the author'),
+#                         'profileImage': openapi.Schema(type=openapi.TYPE_STRING, description='Profile image URL of the author'),
+#                         'page': openapi.Schema(type=openapi.TYPE_STRING, description='Page URL of the author'),
+#                         'username': openapi.Schema(type=openapi.TYPE_STRING, description='Username of the author'),
+#                         'email': openapi.Schema(type=openapi.TYPE_STRING, description='Email of the author'),
+#                     }
+#                 )
+#             )
+#         ),
+#         404: openapi.Response(
+#             description="Author not found.",
+#             schema=openapi.Schema(
+#                 type=openapi.TYPE_OBJECT,
+#                 properties={
+#                     'error': openapi.Schema(type=openapi.TYPE_STRING, description='Error message')
+#                 }
+#             )
+#         ),
+#         401: "Unauthorized",
+#     },
+#     tags=["Authors"]
+# )
+# @api_view(['GET'])
+# @permission_classes([IsAuthenticated])
+# def get_author_followers(request, author_uuid):
+#     try:
+#         author = get_object_or_404(Author, uuid=author_uuid)
+#         followers = author.followers.all()
+#         serializer = AuthorSerializer(followers, many=True)
+
+#         response_data = {
+#             "type" : "followers",
+#             "followers" : serializer.data
+#         }
+
+#         return Response(response_data)
+#     except Author.DoesNotExist:
+#         return Response({'error': 'Author not found'}, status=404)
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
-def get_author_followers(request, author_uuid):
+def followers_handler(request, author_serial):
+    """Get a list of authors who are followers"""
     try:
-        author = get_object_or_404(Author, uuid=author_uuid)
+        author = get_object_or_404(Author, uuid=author_serial)
         followers = author.followers.all()
         serializer = AuthorSerializer(followers, many=True)
-        return Response(serializer.data)
-    except Author.DoesNotExist:
-        return Response({'error': 'Author not found'}, status=404)
+        
+        response_data = {
+            "type": "followers",
+            "followers": serializer.data
+        }
+        return Response(response_data)
+    except Exception as e:
+        return Response(
+            {'error': str(e)}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+@api_view(['GET', 'PUT', 'DELETE'])
+@permission_classes([IsAuthenticated])
+def specific_follower_handler(request, author_serial, foreign_author_fqid):
+    """Handle specific follower operations"""
+    try:
+        author = get_object_or_404(Author, uuid=author_serial)
+        # Decode the URL-encoded foreign author ID
+        decoded_fqid = unquote(foreign_author_fqid)
+        foreign_author = get_object_or_404(Author, id=decoded_fqid)
+
+        if request.method == 'GET':
+            # Check if foreign_author is a follower
+            if not author.followers.filter(id=foreign_author.id).exists():
+                return Response(status=status.HTTP_404_NOT_FOUND)
+            serializer = AuthorSerializer(foreign_author)
+            return Response(serializer.data)
+
+        elif request.method == 'PUT':
+            # Add as follower (accept follow request)
+            author.followers.add(foreign_author)
+            
+            # Notify through WebSocket
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                f"notifications_{author.uuid}",
+                {
+                    'type': 'follow_request_notification',
+                    'message': f'{foreign_author.displayName} is now following you'
+                }
+            )
+            
+            return Response(status=status.HTTP_201_CREATED)
+
+        elif request.method == 'DELETE':
+            # Remove follower
+            author.followers.remove(foreign_author)
+            
+            # Notify through WebSocket
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                f"notifications_{author.uuid}",
+                {
+                    'type': 'follow_request_notification',
+                    'message': f'{foreign_author.displayName} has unfollowed you'
+                }
+            )
+            
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+    except Exception as e:
+        return Response(
+            {'error': str(e)}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
 
 @swagger_auto_schema(
     method='get',
@@ -2061,11 +2145,37 @@ def get_post_by_link(request, post_id):
     return Response({"detail": "You are not authorized to view this post."}, status=403)
 
 
+
+@api_view(['GET'])
+@authentication_classes([NodeBasicAuthentication])
+@permission_classes([IsAuthenticatedOrNode])
+def node_protected_endpoint(request):
+    # This endpoint can only be accessed by authenticated nodes or regular authenticated users
+    return Response({"message": "Access granted"})
+
+def call_remote_node(url, username, password):
+    # Create basic auth header
+    credentials = base64.b64encode(f"{username}:{password}".encode()).decode()
+    headers = {
+        'Authorization': f'Basic {credentials}',
+        'Content-Type': 'application/json'
+    }
+    
+    response = requests.get(url, headers=headers)
+    return response.json()
+
+
 @api_view(['POST', 'GET', 'DELETE'])
 @csrf_exempt
 def inbox_handler(request, author_serial):
     author = get_object_or_404(Author, uuid=author_serial)
     inbox, created = Inbox.objects.get_or_create(author=author)
+
+    print("Request method:", request.method)
+    print("User authenticated:", request.user.is_authenticated)
+    print("Authorization header:", request.headers.get('Authorization'))
+    print("Content type:", request.headers.get('Content-Type'))
+    print("Request data:", request.data)
 
     if request.method == 'GET':
         serializer = InboxSerializer(inbox)
@@ -2100,30 +2210,66 @@ def inbox_handler(request, author_serial):
                     return Response({'message': 'Comment added to inbox'}, status=201)
 
             elif item_type == 'follow':
-                # Get the target author's UUID from the request data
-                target_uuid = data['object']['id'].split("/").pop();
-                
-                django_request = request._request  # Get the underlying Django HttpRequest
-        
-                # Call the existing send_follow_request function
-                response = send_follow_request(django_request, target_uuid)
-                # Call the existing send_follow_request function
-                # response = send_follow_request(request, target_uuid)
-                
-                # If the follow request was created successfully, add it to the inbox
-                if response.status_code == status.HTTP_201_CREATED:
-                    # Get the most recent follow request
-                    follow_request = FollowRequest.objects.filter(
-                        actor=request.user,
-                        object=author,
+                try:
+                    print("Processing Follow Request")
+                    # Get the target author's UUID from the request data
+                    target_uuid = data['object']['id'].split("/").pop();
+                    print("Target UUID: ", target_uuid)
+                    target_author = get_object_or_404(Author, uuid=target_uuid)
+                    print("Target author found: ", target_author.displayName)
+                    current_author = request.user
+                    print("Current Author: ", current_author)
+                    
+                    # Check if already following
+                    if current_author in target_author.followers.all():
+                        return Response(
+                            {'detail': 'You are already following this author.'},
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
+
+                    # Check if a pending request exists
+                    existing_request = FollowRequest.objects.filter(
+                        actor=current_author,
+                        object=target_author,
                         accepted=False
-                    ).latest('created_at')
-                    # Add to inbox
+                    ).exists()
+
+                    if existing_request:
+                        return Response(
+                            {'detail': 'A follow request is already pending.'},
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
+                    
+                    # Create a new follow request
+                    follow_request = FollowRequest.objects.create(
+                        actor=current_author,
+                        object=target_author, 
+                        accepted=False
+                    )
+                    
                     inbox.follow_requests.add(follow_request)
+
+                                # Notify through WebSocket
+                    channel_layer = get_channel_layer()
+                    async_to_sync(channel_layer.group_send)(
+                        f"notifications_{target_author.uuid}",
+                        {
+                            'type': 'follow_request_notification',
+                            'count': FollowRequest.objects.filter(
+                                object=target_author,
+                                accepted=False
+                            ).count(),
+                            'message': f'{current_author.displayName} sent you a follow request'
+                        }
+                    )
+
                     return Response({'message': 'Follow request added to inbox'}, status=201)
-                
-                # If there was an error, return the original response
-                return response
+
+                except Author.DoesNotExist:
+                    return Response({'error': 'Author not found'}, status=404)
+                except Exception as e:
+                    return Response({'error': str(e)}, status=400)  # Add this line to complete the except block
+
             
             elif item_type == 'unfollow':
                 current_author = request.user

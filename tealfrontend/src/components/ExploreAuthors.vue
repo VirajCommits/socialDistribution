@@ -56,7 +56,8 @@
               @click="handleUnfollow(author)"
               class="friend-button"
             >
-              <i class="fas fa-user-friends"></i> Friend
+              <i class="fas fa-user-friends"></i>
+              {{ isRemoteAuthor(author) ? 'Remote Friend' : 'Friend' }}
             </button>
             <button
               v-else-if="isFollowing(author)"
@@ -178,7 +179,11 @@ export default {
             },
           }
         );
-        this.authors = response.data;
+        // this.authors = response.data;
+        this.authors = response.data.map(author => ({
+            ...author,
+            host: author.host || window.location.origin + '/'
+        }));
         await this.fetchPendingRequests();
       } catch (error) {
         console.error("Error fetching authors:", error);
@@ -214,7 +219,7 @@ export default {
             },
           }
         );
-        console.log("Inbox response data:", response.data);
+        // console.log("Inbox response data:", response.data);
         this.pendingRequests = response.data.items
             .filter(item => item.type === 'follow')
             .map(req => req.object.id);
@@ -228,11 +233,8 @@ export default {
       }
     },
     async sendFollowRequest(author) {
-      console.log("1. Function called with author: ", author)
     try {
-        console.log('Author object received:', author);
-        console.log('Current user:', JSON.parse(localStorage.getItem("user")));
-
+        
         const user = JSON.parse(localStorage.getItem("user"));
         const followRequest = {
             type: "follow",
@@ -256,14 +258,17 @@ export default {
                 page: author.page || `${author.host}authors/${author.uuid}`
             }
         };
+        console.log("aaaaaaaaaaaaaaaaaaaa: ", author.host)
+        const targetUrl = author.host && author.host !== window.location.origin + '/' ?
+            `${author.host}service/api/authors/${author.id.split('/').pop()}/inbox/` :
+            `/authors/${author.id.split("/").pop()}/inbox/`;
 
-        const targetUuid = author.id.split("/").pop();
         await axios.post(
-            `/authors/${targetUuid}/inbox/`,
+            targetUrl,
             followRequest,
             {
                 headers: { 
-                    Authorization: `Token ${this.token}`,
+                    Authorization: `Bearer ${this.token}`,
                     'Content-Type': 'application/json'
                 }
             }
@@ -274,10 +279,9 @@ export default {
             "success",
             "fas fa-user-plus"
         );
-        console.log("THis is before the psushhhhhhhhh");
         this.pendingRequests.push(author.id);
         console.log("requests: ", this.pendingRequests);
-        this.fetchAuthors();
+        await this.fetchAuthors();
           } catch (error) {
               this.showNotification(
                   "Failed to send follow request",
@@ -330,12 +334,91 @@ export default {
         }
     },
 
+    // async fetchAllRelationships() {
+    //     for (const author of this.authors) {
+    //         await this.fetchRelationshipStatus(author);
+    //     }
+    // },
     async fetchAllRelationships() {
-        for (const author of this.authors) {
-            await this.fetchRelationshipStatus(author);
-        }
-    },
+    try {
+        const user = JSON.parse(localStorage.getItem("user"));
+        this.relationships = {};  // Reset relationships
 
+        // Get followers
+        const followersResponse = await axios.get(
+            `/authors/${user.uuid}/followers/`,
+            { headers: { Authorization: `Token ${this.token}` } }
+        );
+        
+        // Get following
+        const followingResponse = await axios.get(
+            `/authors/${user.uuid}/following/`,
+            { headers: { Authorization: `Token ${this.token}` } }
+        );
+
+        // Add null check and ensure data structure exists
+        const followers = followersResponse.data.followers || [];
+        console.log("this is followers: ", followers)
+        const following = followingResponse.data || [];
+        console.log("this is following: ", following)
+
+        // Process all authors and their relationships
+        this.authors.forEach(author => {
+            const authorId = author.id;  // Full URL for remote authors
+            const isFollower = followers.some(
+                follower => follower.id === authorId
+            );
+            const isFollowing = following.some(
+                following => following.id === authorId
+            );
+
+            this.relationships[authorId] = {
+                is_following: isFollowing,
+                is_follower: isFollower,
+                is_friend: isFollower && isFollowing,
+                host: author.host || window.location.origin + '/',
+                pending: this.pendingRequests.includes(authorId)
+            };
+        });
+    } catch (error) {
+        console.error("Error fetching relationships:", error);
+        this.showNotification(
+            "Failed to fetch relationships",
+            "error",
+            "fas fa-exclamation-circle"
+        );
+    }
+},
+async checkIsFollower(authorId) {
+    try {
+        const user = JSON.parse(localStorage.getItem("user"));
+        const response = await axios.get(
+            `/authors/${user.uuid}/followers/${encodeURIComponent(authorId)}/`,
+            {
+                headers: { Authorization: `Token ${this.token}` }
+            }
+        );
+        return response.status === 200;
+    } catch (error) {
+        if (error.response && error.response.status === 404) {
+            return false;
+        }
+        console.error("Error checking follower status:", error);
+        return false;
+    }
+  },
+
+    isRemoteAuthor(author) {
+        return author.host && author.host !== window.location.origin + '/';
+    },
+    getAuthorId(author) {
+        return this.isRemoteAuthor(author) ? 
+            author.id : 
+            author.id.split('/').pop();
+    },
+    getAuthorHost(author) {
+        return author.host || window.location.origin + '/';
+    },
     isFriend(author) {
         return this.relationships[author.id]?.is_friend || false;
     },

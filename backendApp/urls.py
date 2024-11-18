@@ -111,11 +111,11 @@ urlpatterns = [
         views.stream_page,
         name="stream_page",
     ),
-    path(
-        "service/api/authors/<str:author_id>/unfollow/",
-        views.unfollow_author,
-        name="unfollow_author",
-    ),
+    # path(
+    #     "service/api/authors/<str:author_id>/unfollow/",
+    #     views.unfollow_author,
+    #     name="unfollow_author",
+    # ),
     path(
         "service/api/posts/<uuid:post_id>/",
         views.get_post_by_link,
@@ -131,11 +131,11 @@ urlpatterns = [
         views.get_author_stats,
         name="get-author-stats",
     ),
-    path(
-        "service/api/authors/<uuid:author_uuid>/followers/",
-        views.get_author_followers,
-        name="get-author-followers",
-    ),
+    # path(
+    #     "service/api/authors/<uuid:author_uuid>/followers/",
+    #     views.get_author_followers,
+    #     name="get-author-followers",
+    # ),
     path(
         "service/api/authors/<uuid:author_uuid>/following/",
         views.get_author_following,
@@ -150,6 +150,16 @@ urlpatterns = [
         "service/api/authors/<uuid:author_uuid>/",
         views.update_author_profile,
         name="update_author_profile",
+    ),
+    path(
+    "service/api/authors/<path:author_serial>/followers/",
+    views.followers_handler,
+    name="followers_handler"
+    ),
+    path(
+        "service/api/authors/<path:author_serial>/followers/<path:foreign_author_fqid>/",
+        views.specific_follower_handler,
+        name="specific_follower_handler"
     ),
     # path(
     #     "stream", TemplateView.as_view(template_name="vue/index.html"), name="stream"
