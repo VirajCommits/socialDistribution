@@ -51,7 +51,7 @@ ALLOWED_HOSTS = [
     "localhost",
     "teal-rakshit-a972530cc317.herokuapp.com",
     ".herokuapp.com",
-    "socialdistribution-sanket-04615a454751.herokuapp.com",
+    "social-sanket-603a86c4b610.herokuapp.com",
 ]
 USER_APPROVAL_REQUIRED = True
 
@@ -100,7 +100,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:8000",  # Backend development server
     "https://teal-rakshit-a972530cc317.herokuapp.com",
     "http://127.0.0.1:8000",
-    "https://socialdistribution-sanket-04615a454751.herokuapp.com",
+    "https://social-sanket-603a86c4b610.herokuapp.com",
 ]
 CORS_ALLOW_CREDENTIALS = True
 
@@ -109,7 +109,7 @@ CSRF_TRUSTED_ORIGINS = [
     "http://localhost:8080",
     "http://localhost:8000",
     "http://127.0.0.1:8000",
-    "https://socialdistribution-sanket-04615a454751.herokuapp.com",
+    "https://social-sanket-603a86c4b610.herokuapp.com",
 ]
 
 
