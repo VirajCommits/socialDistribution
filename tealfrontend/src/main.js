@@ -7,7 +7,7 @@ import axios from 'axios';
 // Determine environment using window.location instead of NODE_ENV for consistency
 const isProduction = window.location.hostname.includes('herokuapp.com');
 const baseURL = isProduction
-  ? 'https://social-sanket-bea0b4df5488.herokuapp.com/service/api'
+  ? 'https://social-sanket-603a86c4b610.herokuapp.com/service/api'
   : 'http://localhost:8000/service/api';
 
 // Axios configuration
