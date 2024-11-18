@@ -2423,9 +2423,6 @@ def inbox_handler(request, author_serial):
                         'message': 'You are not following this author'
                     }, status=status.HTTP_400_BAD_REQUEST)
             
-            return Response({
-                'message': f'Unsupported item type: {item_type}'
-            }, status=status.HTTP_400_BAD_REQUEST)
 
 
             else:
