@@ -164,6 +164,7 @@ urlpatterns = [
     # path(
     #     "stream", TemplateView.as_view(template_name="vue/index.html"), name="stream"
     # ),
+    path('test-node-connection/', views.test_node_connection, name='test-node-connection'),
     path(
         "posts/<uuid:post_id>/",
         TemplateView.as_view(template_name="index.html"),

@@ -8,7 +8,7 @@ from drf_yasg import openapi
 
 from .models import AdminSettings
 from .serializers import PostSerializer, CommentSerializer, LikeSerializer, InboxSerializer
-from .models import Author, Post, Comment, Like, FollowRequest, Inbox
+from .models import Author, Post, Comment, Like, FollowRequest, Inbox, RemoteNode
 import base64
 import requests
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
@@ -2153,18 +2153,75 @@ def node_protected_endpoint(request):
     # This endpoint can only be accessed by authenticated nodes or regular authenticated users
     return Response({"message": "Access granted"})
 
-def call_remote_node(url, username, password):
-    # Create basic auth header
-    credentials = base64.b64encode(f"{username}:{password}".encode()).decode()
-    headers = {
-        'Authorization': f'Basic {credentials}',
-        'Content-Type': 'application/json'
-    }
+# def call_remote_node(url, username, password):
+#     # Create basic auth header
+#     credentials = base64.b64encode(f"{username}:{password}".encode()).decode()
+#     headers = {
+#         'Authorization': f'Basic {credentials}',
+#         'Content-Type': 'application/json'
+#     }
     
-    response = requests.get(url, headers=headers)
-    return response.json()
+#     response = requests.get(url, headers=headers)
+#     return response.json()
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def test_node_connection(request):
+    try:
+        # Get all remote nodes
+        remote_nodes = RemoteNode.objects.filter(active=True)
+        if not remote_nodes:
+            return Response({
+                "status": "error",
+                "message": "No remote nodes found in database. Please create one in the admin panel."
+            }, status=status.HTTP_404_NOT_FOUND)
 
-
+        results = []
+        for node in remote_nodes:
+            try:
+                # Create basic auth header for this node
+                credentials = base64.b64encode(
+                    f"{node.username}:{node.password}".encode()
+                ).decode()
+                
+                headers = {
+                    'Authorization': f'Basic {credentials}',
+                    'Content-Type': 'application/json'
+                }
+                
+                # Use the actual remote node URL
+                test_url = f"{node.url}/service/api/authors/"
+                
+                print(f"Testing connection to {node.url} with headers: {headers}")
+                
+                response = requests.get(test_url, headers=headers, timeout=5)
+                
+                results.append({
+                    "node_url": node.url,
+                    "status": "success",
+                    "status_code": response.status_code,
+                    "response": response.text[:200] + "..." if len(response.text) > 200 else response.text
+                })
+                
+            except requests.RequestException as e:
+                results.append({
+                    "node_url": node.url,
+                    "status": "error",
+                    "error_type": str(type(e).__name__),
+                    "error_message": str(e)
+                })
+        
+        return Response({
+            "status": "completed",
+            "test_results": results
+        })
+        
+    except Exception as e:
+        return Response({
+            "status": "error",
+            "message": str(e),
+            "type": str(type(e))
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
 @api_view(['POST', 'GET', 'DELETE'])
 @csrf_exempt
 def inbox_handler(request, author_serial):
