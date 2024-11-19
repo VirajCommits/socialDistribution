@@ -2546,7 +2546,7 @@ def create_public_post_from_github_activity(author, github_post):
         title=title,
         description=f"GitHub activity: {event_type}",
         contentType="text/plain",
-        content=content,
+        content="",
         author=author,
         published=timezone.now(),
         visibility="PUBLIC",
