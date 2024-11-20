@@ -19,7 +19,7 @@ class IsAuthenticatedOrNode(permissions.BasePermission):
     def has_permission(self, request, view):
         # Allow if user is authenticated normally
         print("request...................", request.user)
-        print("request...................is it auth, ", request.user.is_authenticated)
+        # print("request...................is it auth, ", request.user.is_authenticated)
         if isinstance(request.user, RemoteNode):
             return True
         
