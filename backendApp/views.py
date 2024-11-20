@@ -1,4 +1,4 @@
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework import status
@@ -15,7 +15,11 @@ from .serializers import (
     AuthorSerializer,
     InboxSerializer
 )
-from .models import Author, Post, Comment, Like, FollowRequest, Inbox , GitHubPost
+from .models import Author, Post, Comment, Like, FollowRequest, Inbox , GitHubPost , ToWhichItsConnected
+
+from .authentication import NodeBasicAuthentication
+from .permissions import IsAuthenticatedOrNode
+from .utils import make_node_request
 
 # from .utils import connect_to_remote_node
 from django.shortcuts import get_object_or_404
@@ -1197,7 +1201,8 @@ def get_follow_requests(request):
     tags=["Authors"],
 )
 @api_view(["GET"])
-@permission_classes([IsAuthenticated])
+@authentication_classes([NodeBasicAuthentication]) 
+@permission_classes([IsAuthenticatedOrNode])
 def get_all_authors(request):
     try:
         current_author = request.user
@@ -2138,7 +2143,80 @@ def get_author_followers(request, author_uuid):
     except Author.DoesNotExist:
         return Response({"error": "Author not found"}, status=404)
 
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def followers_handler(request, author_serial):
+    """Get a list of authors who are followers"""
+    try:
+        author = get_object_or_404(Author, uuid=author_serial)
+        followers = author.followers.all()
+        serializer = AuthorSerializer(followers, many=True)
+        
+        response_data = {
+            "type": "followers",
+            "followers": serializer.data
+        }
+        return Response(response_data)
+    except Exception as e:
+        return Response(
+            {'error': str(e)}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
 
+@api_view(['GET', 'PUT', 'DELETE'])
+@permission_classes([IsAuthenticated])
+def specific_follower_handler(request, author_serial, foreign_author_fqid):
+    """Handle specific follower operations"""
+    try:
+        author = get_object_or_404(Author, uuid=author_serial)
+        # Decode the URL-encoded foreign author ID
+        decoded_fqid = unquote(foreign_author_fqid)
+        foreign_author = get_object_or_404(Author, id=decoded_fqid)
+
+        if request.method == 'GET':
+            # Check if foreign_author is a follower
+            if not author.followers.filter(id=foreign_author.id).exists():
+                return Response(status=status.HTTP_404_NOT_FOUND)
+            serializer = AuthorSerializer(foreign_author)
+            return Response(serializer.data)
+
+        elif request.method == 'PUT':
+            # Add as follower (accept follow request)
+            author.followers.add(foreign_author)
+            
+            # Notify through WebSocket
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                f"notifications_{author.uuid}",
+                {
+                    'type': 'follow_request_notification',
+                    'message': f'{foreign_author.displayName} is now following you'
+                }
+            )
+            
+            return Response(status=status.HTTP_201_CREATED)
+
+        elif request.method == 'DELETE':
+            # Remove follower
+            author.followers.remove(foreign_author)
+            
+            # Notify through WebSocket
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                f"notifications_{author.uuid}",
+                {
+                    'type': 'follow_request_notification',
+                    'message': f'{foreign_author.displayName} has unfollowed you'
+                }
+            )
+            
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+    except Exception as e:
+        return Response(
+            {'error': str(e)}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
 @swagger_auto_schema(
     method="get",
     operation_summary="Get Authors Following",
@@ -2560,16 +2638,75 @@ def create_public_post_from_github_activity(author, github_post):
     )
 
 
-# class TestRemoteNodeConnectionView(APIView):
-#     def post(self, request, pk):
-#         try:
-#             node = RemoteNode.objects.get(pk=pk)
-#             success = connect_to_remote_node(node)
-#             return Response({"connected": success}, status=status.HTTP_200_OK)
-#         except RemoteNode.DoesNotExist:
-#             return Response(
-#                 {"error": "Node not found"}, status=status.HTTP_404_NOT_FOUND
-#             )
+@api_view(['GET'])
+@authentication_classes([NodeBasicAuthentication])
+@permission_classes([IsAuthenticatedOrNode])
+def verify_node_connection(request):
+    try:
+        # Log incoming request details
+        print(f"Incoming request from: {request.user.url if hasattr(request.user, 'url') else 'Unknown'}")
+        return Response({
+            "status": "success",
+            "message": "Connection verified",
+            "node": request.user.url if hasattr(request.user, 'url') else str(request.user)
+        })
+    except Exception as e:
+        # Log any exceptions
+        print(f"Error in verify_node_connection: {str(e)}")
+        return Response({
+            "status": "error",
+            "message": str(e)
+        })
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def test_node_connection(request):
+    try:
+
+        # Get all remote nodes
+        remote_nodes = ToWhichItsConnected.objects.filter(active=True)
+        if not remote_nodes:
+            return Response({
+                "status": "error",
+                "message": "No remote nodes found in database. Please create one in the admin panel."
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        results = []
+        for node in remote_nodes:
+            try:
+                 # Test outgoing connection (us -> them)
+                outgoing_url = f"{node.url}"
+                endpoint = 'service/api/authors/'
+                outgoing_response = make_node_request(base_url=outgoing_url, endpoint=endpoint)
+                
+                results.append({
+                    "node_url": node.url,
+                    "outgoing_test": {
+                        "status": "success",
+                        "status_code": outgoing_response.status_code,
+                        "response": outgoing_response.json() if outgoing_response.status_code == 200 else outgoing_response.text
+                    }
+                })
+                
+            except requests.RequestException as e:
+                results.append({
+                    "node_url": node.url,
+                    "status": "error",
+                    "error_type": str(type(e).__name__),
+                    "error_message": str(e)
+                })
+        
+        return Response({
+            "status": "completed",
+            "test_results": results
+        })
+        
+    except Exception as e:
+        return Response({
+            "status": "error",
+            "message": str(e),
+            "type": str(type(e))
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @csrf_exempt
 @api_view(['POST', 'GET', 'DELETE'])
