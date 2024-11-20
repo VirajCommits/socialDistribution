@@ -2677,6 +2677,7 @@ def test_node_connection(request):
                  # Test outgoing connection (us -> them)
                 outgoing_url = f"{node.url}"
                 endpoint = 'service/api/authors/'
+                print(outgoing_url , endpoint)
                 outgoing_response = make_node_request(base_url=outgoing_url, endpoint=endpoint)
                 
                 results.append({
