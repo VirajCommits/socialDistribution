@@ -455,7 +455,7 @@ async checkIsFollower(authorId) {
       // Set up the WebSocket URL based on environment
       const wsProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
       const wsHost = isProduction 
-        ? 'social-distribution-1-3adb84f120d9.herokuapp.com'  // Production host
+        ? window.location.hostname                   // Production host
         : 'localhost:8000';                          // Development host
       
       const wsUrl = `${wsProtocol}://${wsHost}/ws/notifications/${uuid}/`;

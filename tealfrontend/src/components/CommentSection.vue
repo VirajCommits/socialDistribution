@@ -33,6 +33,9 @@
           <div class="comment-details">
             <p class="comment-text">{{ comment.content }}</p>
           </div>
+
+          <!-- Like Button for Each Comment -->
+          <LikeButton :commentId="comment.id" />
         </li>
       </ul>
     </div>
@@ -66,6 +69,7 @@
 
 <script>
 import axios from "axios";
+import LikeButton from "./LikeButton.vue";
 
 export default {
   name: "CommentSection",
@@ -74,6 +78,9 @@ export default {
       type: String,
       required: true,
     },
+  },
+  components: {
+    LikeButton,
   },
   data() {
     return {
@@ -116,6 +123,7 @@ export default {
      * Fetches comments associated with the given post ID.
      * Populates the comments array with fetched data.
      */
+    // Fetch comments for the given post ID
     async fetchComments() {
       try {
         const apiUrl = `/posts/${encodeURIComponent(this.postId)}/comments/`;

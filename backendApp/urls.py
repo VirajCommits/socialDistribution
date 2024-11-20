@@ -7,6 +7,8 @@ from drf_yasg import openapi
 from django.views.generic import TemplateView
 from rest_framework import permissions
 
+# from .views import TestRemoteNodeConnectionView
+
 schema_view = get_schema_view(
     openapi.Info(
         title="Your API Title",
@@ -62,12 +64,12 @@ urlpatterns = [
         views.post_comment,
         name="post_comment",
     ),
-    path("service/api/posts/<uuid:post_id>/like/",
-         views.like_post, name="like_post"
+    path("service/api/posts/<uuid:post_id>/like/", views.like_post, name="like_post"),
+    path(
+        "service/api/posts/<uuid:post_id>/repost/",
+        views.repost_post,
+        name="repost_post",
     ),
-    path("service/api/posts/<uuid:post_id>/repost/",
-         views.repost_post, name="repost_post"),
-
     # Follow request paths
     path(
         "service/api/authors/<uuid:author_uuid>/send_follow_request/",
@@ -147,6 +149,16 @@ urlpatterns = [
         name="get-author-friends",
     ),
     path(
+        "service/api/comments/<uuid:comment_id>/like/",
+        views.like_comment,
+        name="like_comment",
+    ),
+    path(
+        "service/api/comments/<uuid:comment_id>/likes/",
+        views.comment_likes,
+        name="comment_likes",
+    ),
+    path(
         "service/api/authors/<uuid:author_uuid>/",
         views.update_author_profile,
         name="update_author_profile",
@@ -168,6 +180,11 @@ urlpatterns = [
     #     name="specific_follower_handler"
     # ),
     # path(
+    #     "nodes/<int:pk>/test_connection/",
+    #     TestRemoteNodeConnectionView.as_view(),
+    #     name="test_connection",
+    # ),
+    # path(
     #     "stream", TemplateView.as_view(template_name="vue/index.html"), name="stream"
     # ),
     # path('test-node-connection/', views.test_node_connection, name='test-node-connection'),
@@ -178,6 +195,8 @@ urlpatterns = [
         name="post_detail",
     ),
     # Catch-all route for Vue frontend
-    re_path(r"^(?!service/api|admin|swagger|static|media).*$", 
-        TemplateView.as_view(template_name="index.html")),
+    re_path(
+        r"^(?!service/api|admin|swagger|static|media).*$",
+        TemplateView.as_view(template_name="index.html"),
+    ),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
