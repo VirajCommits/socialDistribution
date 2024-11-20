@@ -2166,9 +2166,8 @@ def node_protected_endpoint(request):
 #     return response.json()
 
 @api_view(['GET'])
-# @authentication_classes([NodeBasicAuthentication])
-# @permission_classes([IsAuthenticatedOrNode])
-@permission_classes([AllowAny])
+@authentication_classes([NodeBasicAuthentication])
+@permission_classes([IsAuthenticatedOrNode])
 def verify_node_connection(request):
     try:
         # Log incoming request details
