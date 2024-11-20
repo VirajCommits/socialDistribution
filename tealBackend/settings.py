@@ -48,7 +48,7 @@ USER_APPROVAL_REQUIRED = True
 ALLOWED_HOSTS = [
     "127.0.0.1",
     "localhost",
-    "https://social-distribution-1-3adb84f120d9.herokuapp.com"
+    "social-distribution-1"
 ]
 
 
