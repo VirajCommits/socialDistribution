@@ -94,6 +94,8 @@ export default {
         const uuid = userId.split("/").pop();
         localStorage.setItem("uuid", uuid);
 
+        console.log("Reached here!")
+
         // Call the sync posts endpoint
         await this.syncPosts(accessToken);
 
