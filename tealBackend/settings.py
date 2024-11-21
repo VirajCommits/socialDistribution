@@ -1,3 +1,5 @@
+# settings.py
+
 """
 Django settings for tealBackend project.
 
@@ -14,6 +16,7 @@ from pathlib import Path
 import os
 import django_heroku
 import dj_database_url
+from decouple import config  # Ensure python-decouple is installed
 
 # Build paths inside the project like this: BASE_DIR / 'subdir' or os.path.join(BASE_DIR, 'subdir')
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -26,16 +29,16 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-w)getnsr)9z21am-v4i2%)vz10ji05zcxkoa+xrzx)h7$=zaad"
+SECRET_KEY = config('SECRET_KEY', default='your-default-secret-key')  # Use environment variable
 
-# Set Debug to False for production
-# DEBUG = False if os.environ.get("DATABASE_URL") else True
-DEBUG = True
-# Add secure headers
-# SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-# SECURE_SSL_REDIRECT = not DEBUG
-# SESSION_COOKIE_SECURE = not DEBUG
-# CSRF_COOKIE_SECURE = not DEBUG
+# Set Debug based on environment variable
+DEBUG = config('DEBUG', default=False, cast=bool)
+
+# Enforce HTTPS in production
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SECURE_SSL_REDIRECT = not DEBUG
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
 USER_APPROVAL_REQUIRED = True
 
 ALLOWED_HOSTS = [
@@ -66,48 +69,62 @@ INSTALLED_APPS = [
 AUTH_USER_MODEL = 'backendApp.Author'
 
 MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware',  
+    'corsheaders.middleware.CorsMiddleware',  # Must come first
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
-    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",  # After CorsMiddleware
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-
+# REST Framework Configuration
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework_simplejwt.authentication.JWTAuthentication",  # Use JWT authentication
-        'rest_framework.authentication.SessionAuthentication',
         'backendApp.authentication.NodeBasicAuthentication',
     ],
-    'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.IsAuthenticated',
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticated",
     ]
 }
 
-# CORS_ALLOW_ALL_ORIGINS = True
+# CORS Configuration
 CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:8000",
     "http://localhost:8081",  # Frontend development server
     "http://localhost:8000",  # Backend development server
     "https://social-distribution-1-3adb84f120d9.herokuapp.com",
 ]
+
 CORS_ALLOW_CREDENTIALS = True
 
+# CSRF Trusted Origins
 CSRF_TRUSTED_ORIGINS = [
-    "http://127.0.0.1:8000",
     "https://social-distribution-1-3adb84f120d9.herokuapp.com",
+    "http://127.0.0.1:8000",
     "http://localhost:8081",
     "http://localhost:8000",
 ]
 
+# WhiteNoise Configuration
+STATIC_URL = "/static/"
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+STATICFILES_DIRS = [BASE_DIR / "backendApp/static/",]
 
+WHITENOISE_USE_FINDERS = True
+WHITENOISE_MANIFEST_STRICT = False
+# Remove WHITENOISE_ALLOW_ALL_ORIGINS if not necessary
+# WHITENOISE_ALLOW_ALL_ORIGINS = True
+WHITENOISE_INDEX_FILE = True
+
+# Root URL Configuration
 ROOT_URLCONF = "tealBackend.urls"
 
+# Templates Configuration
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
@@ -124,9 +141,7 @@ TEMPLATES = [
     },
 ]
 
-# Database
-# https://docs.djangoproject.com/en/5.0/ref/settings/#databases
-
+# Database Configuration
 if os.environ.get("DATABASE_URL") != None:
     # Running on Heroku
     DATABASES = {
@@ -145,10 +160,7 @@ else:
         }
     }
 
-
-# Password validation
-# https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators
-
+# Password Validation
 AUTH_PASSWORD_VALIDATORS = [
     {
         "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
@@ -164,10 +176,7 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
 # Internationalization
-# https://docs.djangoproject.com/en/5.0/topics/i18n/
-
 LANGUAGE_CODE = "en-us"
 
 TIME_ZONE = "UTC"
@@ -176,33 +185,20 @@ USE_I18N = True
 
 USE_TZ = True
 
+# Static Files Configuration
+# Already defined above
 
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/5.0/howto/static-files/
-
-STATIC_URL = "/static/"
-STATIC_ROOT = BASE_DIR / 'staticfiles'
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
-STATICFILES_DIRS = [BASE_DIR / "backendApp/static/",]
-
-WHITENOISE_USE_FINDERS = True
-WHITENOISE_MANIFEST_STRICT = False
-WHITENOISE_ALLOW_ALL_ORIGINS = True
-WHITENOISE_INDEX_FILE = True
-
-# Default primary key field type
-# https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
-
+# Default Primary Key Field Type
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-
+# JWT Configuration
 from datetime import timedelta
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
 }
 
-# Channels configuration
+# Channels Configuration
 ASGI_APPLICATION = 'tealBackend.asgi.application'
 WSGI_APPLICATION = 'tealBackend.wsgi.application'
 CHANNEL_LAYERS = {
@@ -210,3 +206,6 @@ CHANNEL_LAYERS = {
         'BACKEND': 'channels.layers.InMemoryChannelLayer'
     }
 }
+
+# Activate Django-Heroku.
+django_heroku.settings(locals())
