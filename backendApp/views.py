@@ -17,7 +17,7 @@ from .serializers import (
     AuthorSerializer,
     InboxSerializer
 )
-from .models import Author, Post, Comment, Like, FollowRequest, Inbox , GitHubPost , ToWhichItsConnected
+from .models import Author, Post, Comment, Like, FollowRequest, Inbox , ToWhichItsConnected
 
 from .authentication import NodeBasicAuthentication
 from .permissions import IsAuthenticatedOrNode
@@ -2601,29 +2601,29 @@ def get_post_by_link(request, post_id):
 GITHUB_API_URL = "https://api.github.com/users/{}/events/public"
 
 
-def fetch_and_create_github_posts():
-    authors = Author.objects.filter(github__isnull=False)
-    for author in authors:
-        github_username = author.github.split("/")[-1]
-        if github_username:
-            response = requests.get(GITHUB_API_URL.format(github_username))
-            if response.status_code == 200:
-                events = response.json()
-                for event in events:
-                    if not GitHubPost.objects.filter(
-                        github_event_id=event["id"]
-                    ).exists():
-                        github_post = GitHubPost.objects.create(
-                            author=author,
-                            activity_type=event["type"],
-                            activity_data=event,
-                            github_event_id=event["id"],
-                        )
-                        create_public_post_from_github_activity(author, github_post)
-            else:
-                print(
-                    f"Failed to fetch events for {github_username}: {response.status_code}"
-                )
+# def fetch_and_create_github_posts():
+#     authors = Author.objects.filter(github__isnull=False)
+#     for author in authors:
+#         github_username = author.github.split("/")[-1]
+#         if github_username:
+#             response = requests.get(GITHUB_API_URL.format(github_username))
+#             if response.status_code == 200:
+#                 events = response.json()
+#                 for event in events:
+#                     if not GitHubPost.objects.filter(
+#                         github_event_id=event["id"]
+#                     ).exists():
+#                         github_post = GitHubPost.objects.create(
+#                             author=author,
+#                             activity_type=event["type"],
+#                             activity_data=event,
+#                             github_event_id=event["id"],
+#                         )
+#                         create_public_post_from_github_activity(author, github_post)
+#             else:
+#                 print(
+#                     f"Failed to fetch events for {github_username}: {response.status_code}"
+#                 )
 
 
 def create_public_post_from_github_activity(author, github_post):
