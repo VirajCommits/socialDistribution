@@ -1445,6 +1445,7 @@ def stream_page(request, author_id):
 @csrf_exempt
 @api_view(["POST"])
 @permission_classes([AllowAny])
+@authentication_classes([])
 def signup(request):
     serializer = AuthorSerializer(data=request.data)
     if serializer.is_valid():
@@ -1545,10 +1546,13 @@ def signup(request):
 @csrf_exempt
 @api_view(["POST"])
 @permission_classes([AllowAny])
+@authentication_classes([])
 def login(request):
     username = request.data.get("username")
     password = request.data.get("password")
     user = authenticate(username=username, password=password)
+
+    print("This is the user:" , user)
 
     if user:
         if not user.is_approved:
