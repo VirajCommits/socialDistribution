@@ -30,6 +30,8 @@ import markdown2
 from .serializers import FollowRequestSerializer
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
+from rest_framework_simplejwt.authentication import JWTAuthentication
+
 
 
 def defaultPath(request):
@@ -1008,7 +1010,7 @@ def get_follow_requests(request):
     tags=["Authors"],
 )
 @api_view(["GET"])
-@authentication_classes([NodeBasicAuthentication]) 
+@authentication_classes([JWTAuthentication, NodeBasicAuthentication])
 @permission_classes([IsAuthenticatedOrNode])
 def get_all_authors(request):
     try:

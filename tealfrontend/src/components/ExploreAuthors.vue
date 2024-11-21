@@ -174,7 +174,7 @@ export default {
           "/authors/",
           {
             headers: {
-              Authorization: `Token ${this.token}`,
+              Authorization: `Bearer ${this.token}`,
               "Content-Type": "application/json",
             },
           }
