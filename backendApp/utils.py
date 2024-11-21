@@ -38,7 +38,7 @@ def make_node_request(base_url, endpoint, method='GET', data=None):
         print(f"Full URL: {full_url}")
         
         if method.upper() == 'GET':
-            print(f"Making GET request to {full_url}")
+            print(f"Making GET request to {full_url} , {headers}")
             response = requests.get(full_url, headers=headers)
         elif method.upper() == 'POST':
             print(f"Making POST request to {full_url} with data: {data}")

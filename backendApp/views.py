@@ -1,3 +1,4 @@
+import uuid
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
@@ -792,6 +793,7 @@ def stream_page_likes(request, post_id):
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def get_all_posts(request, author_serial):
+    print("(((((((((((((((((((((((((((((())))))))))))))))))))))))))))))")
     author_serial = unquote(author_serial)
     author = get_object_or_404(Author, uuid=author_serial)
     posts = Post.objects.filter(author=author).order_by("-edited_at")
@@ -2988,3 +2990,150 @@ def process_follow_request(request, follow_request):
     except Exception as e:
         print(f"Error processing follow request: {e}")
         return Response({'error': 'Failed to process follow request.'}, status=status.HTTP_400_BAD_REQUEST)
+    
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def sync_public_posts(request):
+    try:
+        # Get all active remote nodes
+        remote_nodes = ToWhichItsConnected.objects.filter(active=True)
+        if not remote_nodes:
+            return Response({
+                "status": "error",
+                "message": "No remote nodes found in the database. Please create one in the admin panel."
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        results = []
+        for node in remote_nodes:
+            node_result = {
+                "node_url": node.url,
+                "authors_synced": 0,
+                "posts_synced": 0,
+                "errors": []
+            }
+
+            try:
+                # Fetch all authors from the remote node
+                base_url = node.url
+                endpoint = 'service/api/authors/'
+
+                response = make_node_request(
+                    base_url=base_url,
+                    endpoint=endpoint,
+                )
+
+                if response.status_code == 200:
+                    data = response.json()
+                    print(data)
+                    # Adjust based on the remote node's response structure
+                    remote_authors = data
+
+                    # Iterate over authors and save them to the local database
+                    for author_data in remote_authors:
+                        try:
+                            # Get or create the author
+                            author_id = author_data.get('id')
+                            if not author_id:
+                                continue  # Skip if author ID is missing
+
+                            # Ensure unique username by appending host or ID if needed
+                            unique_username = f"{author_data.get('username', '')}@{author_data.get('host', '').replace('https://', '').replace('/', '')}"
+
+                            author_defaults = {
+                                'uuid': author_data.get('uuid'),
+                                'host': author_data.get('host', base_url),
+                                'displayName': author_data.get('displayName', ''),
+                                'github': author_data.get('github', ''),
+                                'profileImage': author_data.get('profileImage', ''),
+                                'username': unique_username,
+                                'email': '',  # Email might not be available
+                                'is_active': False,  # Remote authors are not local users
+                            }
+                            print(author_defaults , author_id)
+
+                            author, created = Author.objects.update_or_create(
+                                id=author_id,
+                                defaults=author_defaults
+                            )
+                            print("1 ................... ")
+                            node_result['authors_synced'] += 1
+
+                            # Now fetch posts for this author
+                            posts_endpoint = f"service/api/authors/{author.uuid}/posts/"
+                            print(" ................. " , posts_endpoint)
+                            posts_response = make_node_request(
+                                base_url=base_url,
+                                endpoint=posts_endpoint
+                            )
+                            print(posts_response)
+
+                            if posts_response.status_code == 200:
+                                posts_data = posts_response.json()
+                                remote_posts = posts_data.get('items', posts_data.get('posts', []))
+
+                                # Iterate over posts and save them to the local database
+                                for post_data in remote_posts:
+                                    # Only process public posts
+                                    if post_data.get('visibility', '').upper() == 'PUBLIC':
+                                        try:
+                                            # Prepare post data
+                                            post_id = post_data.get('id')
+                                            if not post_id:
+                                                continue  # Skip if post ID is missing
+
+                                            post_defaults = {
+                                                'type': post_data.get('type', 'post'),
+                                                'title': post_data.get('title', ''),
+                                                'page': post_data.get('source', post_id),
+                                                'description': post_data.get('description', ''),
+                                                'contentType': post_data.get('contentType', ''),
+                                                'content': post_data.get('content', ''),
+                                                'published': post_data.get('published', timezone.now()),
+                                                'visibility': post_data.get('visibility', 'PUBLIC'),
+                                                'unlisted': post_data.get('unlisted', False),
+                                            }
+
+                                            # Get or create the post
+                                            post, created = Post.objects.update_or_create(
+                                                id=post_id,
+                                                defaults=post_defaults,
+                                                author=author
+                                            )
+                                            node_result['posts_synced'] += 1
+
+                                        except Exception as e:
+                                            error_message = f"Error processing post {post_data.get('id')}: {e}"
+                                            node_result['errors'].append(error_message)
+                                            continue  # Skip to the next post
+                                    else:
+                                        # Skip non-public posts
+                                        continue
+                            else:
+                                error_message = f"Failed to fetch posts for author {author_id}: Status {posts_response.status_code}"
+                                node_result['errors'].append(error_message)
+
+                        except Exception as e:
+                            error_message = f"Error processing author {author_data.get('id')}: {e}"
+                            node_result['errors'].append(error_message)
+                            continue  # Skip to the next author
+                    results.append(node_result)
+                else:
+                    error_message = f"Failed to fetch authors from {node.url}: Status {response.status_code}"
+                    node_result['errors'].append(error_message)
+                    results.append(node_result)
+            except requests.RequestException as e:
+                error_message = f"Connection error with {node.url}: {e}"
+                node_result['errors'].append(error_message)
+                results.append(node_result)
+
+        return Response({
+            "status": "completed",
+            "sync_results": results
+        })
+
+    except Exception as e:
+        return Response({
+            "status": "error",
+            "message": str(e),
+            "type": str(type(e).__name__)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

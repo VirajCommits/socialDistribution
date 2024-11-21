@@ -179,16 +179,16 @@ urlpatterns = [
         views.specific_follower_handler,
         name="specific_follower_handler"
     ),
-    # path(
-    #     "nodes/<int:pk>/test_connection/",
-    #     TestRemoteNodeConnectionView.as_view(),
-    #     name="test_connection",
-    # ),
     path(
         "stream", TemplateView.as_view(template_name="vue/index.html"), name="stream"
     ),
+    path(
+        "sync_public_posts/",
+        views.sync_public_posts,
+        name="sync_public_posts",
+    ),
     path('test-node-connection/', views.test_node_connection, name=' '),
-    path('service/api/verify-connection/', views.verify_node_connection, name='verify_node_connection'),
+    path('verify-connection/', views.verify_node_connection, name='verify_node_connection'),
     path(
         "posts/<uuid:post_id>/",
         TemplateView.as_view(template_name="index.html"),
