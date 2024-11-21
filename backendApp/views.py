@@ -2760,73 +2760,10 @@ def inbox_handler(request, author_serial):
                 return Response({'message': 'Post added to inbox and created locally.'}, status=status.HTTP_201_CREATED)
 
             elif item_type == 'like':
-                # Handle Like Activity
-                like_id = data.get('id')
-                if not like_id:
-                    return Response({'error': 'Like ID is missing.'}, status=status.HTTP_400_BAD_REQUEST)
-
-                # Check if the Like already exists
-                like, created_like = Like.objects.get_or_create(id=like_id, defaults=data)
-                if created_like:
-                    like_serializer = LikeSerializer(like, data=data, partial=True)
-                    if like_serializer.is_valid():
-                        like = like_serializer.save()
-                        print(f"Like {like_id} created and added to inbox of author {author_serial}.")
-                    else:
-                        like.delete()
-                        print("Like serializer errors:", like_serializer.errors)
-                        return Response(like_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-                else:
-                    print(f"Like {like_id} already exists.")
-
-                # Add the like to the inbox if not already added
-                if not inbox.likes.filter(id=like.id).exists():
-                    inbox.likes.add(like)
-                    print(f"Like {like.id} added to inbox of author {author_serial}.")
-                else:
-                    print(f"Like {like.id} already in inbox of author {author_serial}.")
-
-                # **Process the like by calling the local API endpoint**
-                response = create_local_like(request, like)
-                if response.status_code != status.HTTP_201_CREATED:
-                    return Response({'error': 'Failed to create local like.'}, status=status.HTTP_400_BAD_REQUEST)
-
-                return Response({'message': 'Like added to inbox and created locally.'}, status=status.HTTP_201_CREATED)
+                pass
 
             elif item_type == 'comment':
-                print(" ============================== ")
-                # Handle Comment Activity
-                comment_id = data.get('id')
-                if not comment_id:
-                    return Response({'error': 'Comment ID is missing.'}, status=status.HTTP_400_BAD_REQUEST)
-
-                # Check if the Comment already exists
-                comment, created_comment = Comment.objects.get_or_create(id=comment_id, defaults=data)
-                if created_comment:
-                    comment_serializer = CommentSerializer(comment, data=data, partial=True)
-                    if comment_serializer.is_valid():
-                        comment = comment_serializer.save()
-                        print(f"Comment {comment_id} created and added to inbox of author {author_serial}.")
-                    else:
-                        comment.delete()
-                        print("Comment serializer errors:", comment_serializer.errors)
-                        return Response(comment_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-                else:
-                    print(f"Comment {comment_id} already exists.")
-
-                # Add the comment to the inbox if not already added
-                if not inbox.comments.filter(id=comment.id).exists():
-                    inbox.comments.add(comment)
-                    print(f"Comment {comment.id} added to inbox of author {author_serial}.")
-                else:
-                    print(f"Comment {comment.id} already in inbox of author {author_serial}.")
-
-                # **Process the comment by calling the local API endpoint**
-                response = create_local_comment(request, comment)
-                if response.status_code != status.HTTP_201_CREATED:
-                    return Response({'error': 'Failed to create local comment.'}, status=status.HTTP_400_BAD_REQUEST)
-
-                return Response({'message': 'Comment added to inbox and created locally.'}, status=status.HTTP_201_CREATED)
+                pass
 
             elif item_type == 'follow':
                 # Handle Follow Activity
@@ -2916,30 +2853,6 @@ def create_local_post(request, post):
     except Exception as e:
         print(f"Error creating local post: {e}")
         return Response({'error': 'Failed to create local post.'}, status=status.HTTP_400_BAD_REQUEST)
-
-def create_local_like(request, like):
-    """
-    Processes a like activity by creating a local like via the API.
-    """
-    try:
-        factory = APIRequestFactory()
-        api_request = factory.post(
-            reverse('like-list'),  # Ensure this URL name matches your URL configuration
-            data={
-                'type': like.type,
-                'id': like.id,
-                'author': like.author.id,
-                'object': like.object,
-                'published': like.published,
-            },
-            format='json'
-        )
-        api_request.user = request.user
-        response = create_like(api_request)  # Call your like creation view
-        return response
-    except Exception as e:
-        print(f"Error creating local like: {e}")
-        return Response({'error': 'Failed to create local like.'}, status=status.HTTP_400_BAD_REQUEST)
 
 def create_local_comment(request, comment):
     """
