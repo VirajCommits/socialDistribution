@@ -127,7 +127,7 @@ TEMPLATES = [
 DATABASES = {
     'default': env.db('DATABASE_URL', default='sqlite:///' + str(BASE_DIR / 'db.sqlite3')),
 }
-print(DATABASES)
+print("This is database" , DATABASES)
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
