@@ -282,7 +282,6 @@ def vueTest(request):
 
 @api_view(["GET", "DELETE", "PUT", "POST"])
 def post_detail(request, author_serial, post_serial):
-    print("=================================================================")
     segments = post_serial.split("/")
     post_id = segments[0]
     action = segments[1] if len(segments) > 1 else None
@@ -2583,7 +2582,6 @@ def get_post_by_link(request, post_id):
     """
     Fetch a post by ID if it's either public or unlisted.
     """
-    # print("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAa")
     post = get_object_or_404(Post, id=post_id)
 
     # Check if the post is public or unlisted
@@ -2646,7 +2644,6 @@ def create_public_post_from_github_activity(author, github_post):
 def verify_node_connection(request):
     try:
         # Log incoming request details
-        print(f"Incoming request from: {request.user.url if hasattr(request.user, 'url') else 'Unknown'}")
         return Response({
             "status": "success",
             "message": "Connection verified",
@@ -2654,7 +2651,6 @@ def verify_node_connection(request):
         })
     except Exception as e:
         # Log any exceptions
-        print(f"Error in verify_node_connection: {str(e)}")
         return Response({
             "status": "error",
             "message": str(e)
@@ -2679,7 +2675,6 @@ def test_node_connection(request):
                  # Test outgoing connection (us -> them)
                 outgoing_url = f"{node.url}"
                 endpoint = 'service/api/authors/'
-                print(" ------------- " , outgoing_url , endpoint)
                 outgoing_response = make_node_request(base_url=outgoing_url, endpoint=endpoint)
                 
                 results.append({
@@ -2732,8 +2727,6 @@ def inbox_handler(request, author_serial):
 
     elif request.method == 'POST':
         data = request.data
-        print("------------------ Incoming Data ------------------")
-        print(data , "\n\n\n" , request.user.uuid)
         item_type = data.get('type', '').lower()
 
         try:
@@ -3024,7 +3017,6 @@ def sync_public_posts(request):
 
                 if response.status_code == 200:
                     data = response.json()
-                    print(data)
                     # Adjust based on the remote node's response structure
                     remote_authors = data
 
@@ -3049,27 +3041,24 @@ def sync_public_posts(request):
                                 'email': '',  # Email might not be available
                                 'is_active': False,  # Remote authors are not local users
                             }
-                            print(author_defaults , author_id)
 
                             author, created = Author.objects.update_or_create(
                                 id=author_id,
                                 defaults=author_defaults
                             )
-                            print("1 ................... ")
                             node_result['authors_synced'] += 1
 
                             # Now fetch posts for this author
-                            posts_endpoint = f"service/api/authors/{author.uuid}/posts/"
-                            print(" ................. " , posts_endpoint)
+                            posts_endpoint = f"service/api/authors/{author.uuid}/posts/all/"
                             posts_response = make_node_request(
                                 base_url=base_url,
                                 endpoint=posts_endpoint
                             )
-                            print(posts_response)
 
                             if posts_response.status_code == 200:
                                 posts_data = posts_response.json()
-                                remote_posts = posts_data.get('items', posts_data.get('posts', []))
+                                print(posts_data)
+                                remote_posts = posts_data.get('results', {}).get('items', posts_data.get('posts', []))
 
                                 # Iterate over posts and save them to the local database
                                 for post_data in remote_posts:
@@ -3090,14 +3079,12 @@ def sync_public_posts(request):
                                                 'content': post_data.get('content', ''),
                                                 'published': post_data.get('published', timezone.now()),
                                                 'visibility': post_data.get('visibility', 'PUBLIC'),
-                                                'unlisted': post_data.get('unlisted', False),
                                             }
 
                                             # Get or create the post
                                             post, created = Post.objects.update_or_create(
                                                 id=post_id,
-                                                defaults=post_defaults,
-                                                author=author
+                                                defaults={**post_defaults, 'author': author},
                                             )
                                             node_result['posts_synced'] += 1
 

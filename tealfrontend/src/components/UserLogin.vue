@@ -97,6 +97,21 @@ export default {
       } finally {
         this.isLoading = false;
       }
+      
+    },
+    async syncPosts(accessToken) {
+      try {
+        const syncResponse = await axios.get("/service/api/sync_authors_and_posts/", {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+          },
+        });
+        console.log("Sync successful:", syncResponse.data);
+      } catch (syncError) {
+        console.error("Error syncing posts:", syncError);
+        // Optionally display an error message to the user
+        // this.error = "Failed to sync posts. Please try again later.";
+      }
     },
     signupredirect() {
       this.$router.push("/signup");
