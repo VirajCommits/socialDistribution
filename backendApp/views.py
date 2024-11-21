@@ -2904,6 +2904,7 @@ def process_follow_request(request, follow_request):
         print(f"Error processing follow request: {e}")
         return Response({'error': 'Failed to process follow request.'}, status=status.HTTP_400_BAD_REQUEST)
     
+@csrf_exempt
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def sync_public_posts(request):
