@@ -183,7 +183,7 @@ urlpatterns = [
         "stream", TemplateView.as_view(template_name="vue/index.html"), name="stream"
     ),
     path(
-        "sync_public_posts/",
+        "service/api/sync_public_posts/",
         views.sync_public_posts,
         name="sync_public_posts",
     ),

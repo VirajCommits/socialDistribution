@@ -1,5 +1,6 @@
 import uuid
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
+from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework import status
@@ -1202,7 +1203,7 @@ def get_follow_requests(request):
     tags=["Authors"],
 )
 @api_view(["GET"])
-@authentication_classes([NodeBasicAuthentication]) 
+@authentication_classes([JWTAuthentication, NodeBasicAuthentication])
 @permission_classes([IsAuthenticatedOrNode])
 def get_all_authors(request):
     try:

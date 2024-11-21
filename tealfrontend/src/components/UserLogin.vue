@@ -70,38 +70,44 @@ export default {
       password: "",
       error: "",
       isLoading: false,
-      showPassword: false
+      showPassword: false,
     };
   },
   methods: {
     async login() {
       this.error = "";
       this.isLoading = true;
-      
+
       try {
-        const response = await axios.post(
-          "/login/",
-          {
-            username: this.username,
-            password: this.password,
-          }
-        );
-        localStorage.setItem("token", response.data.access);
+        // Attempt to log in the user
+        const response = await axios.post("/login/", {
+          username: this.username,
+          password: this.password,
+        });
+
+        // Store authentication tokens and user data
+        const accessToken = response.data.access;
+        localStorage.setItem("token", accessToken);
         localStorage.setItem("user", JSON.stringify(response.data.user));
+
         const userId = response.data.user.id;
         const uuid = userId.split("/").pop();
         localStorage.setItem("uuid", uuid);
+
+        // Call the sync posts endpoint
+        await this.syncPosts(accessToken);
+
+        // Redirect to the stream page
         this.$router.push("/stream");
       } catch (error) {
         this.error = "Invalid username or password";
       } finally {
         this.isLoading = false;
       }
-      
     },
     async syncPosts(accessToken) {
       try {
-        const syncResponse = await axios.get("/service/api/sync_authors_and_posts/", {
+        const syncResponse = await axios.get("sync_public_posts/", {
           headers: {
             'Authorization': `Bearer ${accessToken}`,
           },
