@@ -4,11 +4,12 @@ from django.db import models
 import uuid
 
 
+
 class Author(AbstractUser):
     type = models.CharField(max_length=6, default="author", editable=False)
     uuid = models.UUIDField(unique=True, editable=False, default=uuid.uuid4)
     id = models.URLField(primary_key=True, max_length=500)
-    host = models.URLField(default="https://teal-rakshit-a972530cc317.herokuapp.com/")
+    host = models.URLField(default="https://social-distribution-1-3adb84f120d9.herokuapp.com/")
     displayName = models.CharField(max_length=255)
     github = models.URLField(blank=True)
     is_approved = models.BooleanField(default=False)
@@ -154,11 +155,32 @@ class Like(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     author = models.ForeignKey(Author, on_delete=models.CASCADE)
     post = models.ForeignKey(
-        Post, on_delete=models.CASCADE, related_name="likes")
+        Post, on_delete=models.CASCADE, related_name="likes", null=True, blank=True
+    )
+    comment = models.ForeignKey(
+        Comment, on_delete=models.CASCADE, related_name="likes", null=True, blank=True
+    )
     published = models.DateTimeField(default=timezone.now)
+    def __str__(self):
+        return f"Like by {self.author.displayName} on {self.post.title if self.post else self.comment.id}"
+
+
+
+class InboxItem(models.Model):
+    INBOX_ITEM_TYPES = [
+        ('post', 'Post'),
+        ('follow', 'Follow'),
+        ('like', 'Like'),
+        ('comment', 'Comment'),
+    ]
+
+    author = models.ForeignKey(Author, on_delete=models.CASCADE, related_name='inbox_items') # the person who receives the inbox item
+    item_type = models.CharField(max_length=10, choices=INBOX_ITEM_TYPES) # whats the type:post , follow , like , comment
+    item = models.JSONField() # the actual data sent(in json format)
 
     def __str__(self):
-        return f"Like by {self.author.displayName} on {self.post.title}"
+        return f"InboxItem({self.item_type}) for {self.author}"
+
 
 class AdminSettings(models.Model):
     user_approval_required = models.BooleanField(default=True)
@@ -189,8 +211,23 @@ class Inbox(models.Model):
             self.comments.add(item)
         elif isinstance(item, FollowRequest):
             self.follow_requests.add(item)
+class GitHubPost(models.Model):
+    author = models.ForeignKey(
+        Author, on_delete=models.CASCADE, related_name="github_posts"
+    )
+    activity_type = models.CharField(
+        max_length=50
+    )  # e.g., 'PushEvent', 'PullRequestEvent'
+    activity_data = models.JSONField()  # Store event data in JSON format
+    created_at = models.DateTimeField(auto_now_add=True)
+    github_event_id = models.CharField(
+        max_length=100, unique=True
+    )  # Ensure we don't repost the same event
+    def __str__(self):
+        return f"{self.author.displayName}'s GitHub {self.activity_type}"
 
 class RemoteNode(models.Model):
+    
     url = models.URLField(unique=True)  # The base URL of the remote node
     username = models.CharField(max_length=255)  # Node's username
     password = models.CharField(max_length=255)  # Node's password (or token)

@@ -4,7 +4,6 @@ from .models import RemoteNode
 
 class NodeBasicAuthentication(authentication.BaseAuthentication):
     def authenticate(self, request):
-        print("Authenticate is called.")
         # Get credentials from header
         auth_header = request.META.get('HTTP_AUTHORIZATION', '')
         if not auth_header.startswith('Basic '):

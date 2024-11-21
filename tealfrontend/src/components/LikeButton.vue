@@ -4,6 +4,9 @@
       <i :class="liked ? 'fas fa-heart' : 'far fa-heart'"></i>
       <span class="like-count">{{ likeCount }}</span>
     </button>
+    <div v-if="loading" class="loading-spinner">
+      <i class="fas fa-spinner fa-spin"></i>
+    </div>
   </div>
 </template>
 
@@ -15,37 +18,70 @@ export default {
   props: {
     postId: {
       type: String,
-      required: true,
+      required: false, // Optional for comments
+    },
+    commentId: {
+      type: String,
+      required: false, // Optional for posts
     },
   },
   data() {
     return {
       liked: false,
-      likeCount: 0,
+      postLikeCount: 0, // Separate counter for post likes
+      commentLikeCount: 0, // Separate counter for comment likes
+      loading: true,
       errorMessage: "",
     };
   },
+  computed: {
+    likeCount() {
+      // Dynamically return the correct like count
+      return this.commentId ? this.commentLikeCount : this.postLikeCount;
+    },
+  },
   mounted() {
-    this.fetchLikes();
+    this.commentId ? this.fetchCommentLikes() : this.fetchPostLikes();
   },
   methods: {
-    async fetchLikes() {
+    async fetchPostLikes() {
       try {
         const apiUrl = `/posts/${this.postId}/likes/`;
         const response = await axios.get(apiUrl);
-        this.likeCount = response.data.length || 0;
+        const likesArray = Array.isArray(response.data) ? response.data : response.data.src || [];
+        this.postLikeCount = likesArray.length;
 
-        // Check if the logged-in author has liked the post
+        // Check if the logged-in user has liked the post
         const currentUser = JSON.parse(localStorage.getItem("user"));
         const currentAuthorId = currentUser ? currentUser.id : null;
         if (currentAuthorId) {
-          this.liked = response.data.some(
-            (like) => like.author.id === currentAuthorId
-          );
+          this.liked = likesArray.some((like) => like.author.id === currentAuthorId);
         }
       } catch (error) {
-        console.error("Error fetching likes:", error.response || error);
-        this.errorMessage = "An error occurred while fetching likes.";
+        console.error("Error fetching post likes:", error.response || error);
+        this.errorMessage = "An error occurred while fetching post likes.";
+      } finally {
+        this.loading = false;
+      }
+    },
+    async fetchCommentLikes() {
+      try {
+        const apiUrl = `/comments/${this.commentId}/likes/`;
+        const response = await axios.get(apiUrl);
+        const likesArray = Array.isArray(response.data) ? response.data : response.data.src || [];
+        this.commentLikeCount = likesArray.length;
+
+        // Check if the logged-in user has liked the comment
+        const currentUser = JSON.parse(localStorage.getItem("user"));
+        const currentAuthorId = currentUser ? currentUser.id : null;
+        if (currentAuthorId) {
+          this.liked = likesArray.some((like) => like.author.id === currentAuthorId);
+        }
+      } catch (error) {
+        console.error("Error fetching comment likes:", error.response || error);
+        this.errorMessage = "An error occurred while fetching comment likes.";
+      } finally {
+        this.loading = false;
       }
     },
     async toggleLike() {
@@ -58,35 +94,29 @@ export default {
           return;
         }
 
-        const apiUrl = `posts/${this.postId}/like/`;
+        const apiUrl = this.commentId
+          ? `/comments/${this.commentId}/like/`
+          : `/posts/${this.postId}/like/`;
 
         if (this.liked) {
-          // If unliking is needed, implement the logic here
-          // Example: Send a DELETE request to remove the like
-          const unlikeUrl = `${apiUrl}/${currentAuthorId}/`; // Adjust the API endpoint as needed
-          await axios.delete(unlikeUrl, {
-            headers: {
-              Authorization: `Token ${localStorage.getItem("token")}`,
-            },
-          });
-          this.liked = false;
-          this.likeCount -= 1;
+          console.warn("Unliking is not implemented.");
+          return;
         } else {
-          // Post a like
-          const payload = {
-            author_id: currentAuthorId, // Include the author ID
-            post_id: this.postId,
-          };
+          const payload = { author_id: currentAuthorId };
 
           await axios.post(apiUrl, payload, {
             headers: {
               "Content-Type": "application/json",
-              Authorization: `Token ${localStorage.getItem("token")}`, // Include the authentication token
+              Authorization: `Token ${localStorage.getItem("token")}`,
             },
           });
 
           this.liked = true;
-          this.likeCount += 1;
+          if (this.commentId) {
+            this.commentLikeCount += 1;
+          } else {
+            this.postLikeCount += 1;
+          }
         }
       } catch (error) {
         console.error("Error toggling like:", error.response || error);
@@ -96,6 +126,7 @@ export default {
   },
 };
 </script>
+
 
 
 
@@ -191,18 +222,5 @@ export default {
   .like-button button i {
     font-size: 1rem;
   }
-}
-
-/* Error Message Styles (Optional Enhancement) */
-.error-message {
-  color: #ff6b6b;
-  margin-top: 0.5rem;
-  font-size: 0.9rem;
-  display: flex;
-  align-items: center;
-}
-
-.error-message i {
-  margin-right: 0.3rem;
 }
 </style>

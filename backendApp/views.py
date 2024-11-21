@@ -1,19 +1,29 @@
-from rest_framework.decorators import api_view, permission_classes
+import uuid
+from rest_framework.decorators import api_view, authentication_classes, permission_classes
+from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework import status
 from django.utils import timezone
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
-from .utils import make_node_request
-from .models import AdminSettings
-from .serializers import PostSerializer, CommentSerializer, LikeSerializer, InboxSerializer
-from .models import Author, Post, Comment, Like, FollowRequest, Inbox, RemoteNode, ToWhichItsConnected
-import base64
 import requests
-from rest_framework.decorators import api_view, authentication_classes, permission_classes
+from .models import AdminSettings
+from .serializers import (
+    PostSerializer,
+    CommentSerializer,
+    LikeSerializer,
+    FollowRequestSerializer,
+    AuthorSerializer,
+    InboxSerializer
+)
+from .models import Author, Post, Comment, Like, FollowRequest, Inbox , GitHubPost , ToWhichItsConnected
+
 from .authentication import NodeBasicAuthentication
 from .permissions import IsAuthenticatedOrNode
+from .utils import make_node_request
+
+# from .utils import connect_to_remote_node
 from django.shortcuts import get_object_or_404
 from urllib.parse import urlparse
 from django.shortcuts import render
@@ -30,6 +40,11 @@ import markdown2
 from .serializers import FollowRequestSerializer
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
+import requests
+from datetime import datetime
+
+from rest_framework.test import APIRequestFactory
+from django.urls import reverse
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
 
@@ -37,8 +52,9 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 def defaultPath(request):
     return render(request, "index.html")
 
+
 @swagger_auto_schema(
-    method='post',
+    method="post",
     operation_summary="Create a new post for a specific author",
     operation_description="""
     Use this endpoint to create a new post for the author specified by `author_serial`. 
@@ -48,40 +64,63 @@ def defaultPath(request):
     request_body=openapi.Schema(
         type=openapi.TYPE_OBJECT,
         properties={
-            'title': openapi.Schema(type=openapi.TYPE_STRING, description='Title of the post (Required)'),
-            'content': openapi.Schema(type=openapi.TYPE_STRING, description='Content of the post (Required)'),
-            'published': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_DATETIME, description='Date and time when the post was published (Optional)'),
+            "title": openapi.Schema(
+                type=openapi.TYPE_STRING, description="Title of the post (Required)"
+            ),
+            "content": openapi.Schema(
+                type=openapi.TYPE_STRING, description="Content of the post (Required)"
+            ),
+            "published": openapi.Schema(
+                type=openapi.TYPE_STRING,
+                format=openapi.FORMAT_DATETIME,
+                description="Date and time when the post was published (Optional)",
+            ),
         },
-        required=['title', 'content'],  # Specify required fields
+        required=["title", "content"],  # Specify required fields
     ),
     responses={
         201: openapi.Response(
-            'Created',
+            "Created",
             openapi.Schema(
                 type=openapi.TYPE_OBJECT,
                 properties={
-                    'id': openapi.Schema(type=openapi.TYPE_STRING, description='Post ID'),
-                    'author_id': openapi.Schema(type=openapi.TYPE_STRING, description='Author ID'),
-                    'title': openapi.Schema(type=openapi.TYPE_STRING, description='Title of the post'),
-                    'content': openapi.Schema(type=openapi.TYPE_STRING, description='Content of the post'),
-                    'published': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_DATETIME, description='Date and time when the post was published'),
+                    "id": openapi.Schema(
+                        type=openapi.TYPE_STRING, description="Post ID"
+                    ),
+                    "author_id": openapi.Schema(
+                        type=openapi.TYPE_STRING, description="Author ID"
+                    ),
+                    "title": openapi.Schema(
+                        type=openapi.TYPE_STRING, description="Title of the post"
+                    ),
+                    "content": openapi.Schema(
+                        type=openapi.TYPE_STRING, description="Content of the post"
+                    ),
+                    "published": openapi.Schema(
+                        type=openapi.TYPE_STRING,
+                        format=openapi.FORMAT_DATETIME,
+                        description="Date and time when the post was published",
+                    ),
                 },
-            )
+            ),
         ),
         400: openapi.Response(
-            'Bad Request',
+            "Bad Request",
             openapi.Schema(
                 type=openapi.TYPE_OBJECT,
                 properties={
-                    'errors': openapi.Schema(
+                    "errors": openapi.Schema(
                         type=openapi.TYPE_OBJECT,
-                        additional_properties=openapi.Schema(type=openapi.TYPE_ARRAY, items=openapi.Schema(type=openapi.TYPE_STRING)),
+                        additional_properties=openapi.Schema(
+                            type=openapi.TYPE_ARRAY,
+                            items=openapi.Schema(type=openapi.TYPE_STRING),
+                        ),
                     )
-                }
-            )
+                },
+            ),
         ),
     },
-    tags=["Posts"]
+    tags=["Posts"],
 )
 @api_view(["POST"])
 def create_post(request, author_serial):
@@ -138,17 +177,20 @@ def create_post(request, author_serial):
     # Set the 'author_id' field to the author's ID (URL)
     data["author_id"] = author.uuid  # This will be accepted by the serializer
 
-    if 'content' in data:
-        data['content'] = markdown2.markdown(
-            data['content'], extras=["fenced-code-blocks", "tables"])
+    if "content" in data:
+        data["content"] = markdown2.markdown(
+            data["content"], extras=["fenced-code-blocks", "tables"]
+        )
 
-    if 'title' in data:
-        data['title'] = markdown2.markdown(
-            data['title'], extras=["fenced-code-blocks", "tables"])
+    if "title" in data:
+        data["title"] = markdown2.markdown(
+            data["title"], extras=["fenced-code-blocks", "tables"]
+        )
 
-    if 'description' in data:
-        data['description'] = markdown2.markdown(data['description'], extras=[
-                                                 "fenced-code-blocks", "tables"])
+    if "description" in data:
+        data["description"] = markdown2.markdown(
+            data["description"], extras=["fenced-code-blocks", "tables"]
+        )
     # Remove fields that are generated automatically and 'author' if present
     data.pop("id", None)
     data.pop("page", None)
@@ -169,8 +211,9 @@ def create_post(request, author_serial):
 def vueTest(request):
     return render(request, "index.html")
 
+
 @swagger_auto_schema(
-    method='GET',
+    method="GET",
     operation_summary="Retrieve a specific post",
     operation_description="Retrieve details of a post specified by post_serial for the given author.",
     responses={
@@ -178,22 +221,19 @@ def vueTest(request):
             description="Post details",
             schema=PostSerializer(),
         ),
-        404: "Post not found"
+        404: "Post not found",
     },
-    tags=["Posts"]
+    tags=["Posts"],
 )
 @swagger_auto_schema(
-    method='DELETE',
+    method="DELETE",
     operation_summary="Delete a specific post",
     operation_description="Delete a post specified by post_serial for the given author.",
-    responses={
-        204: "Post deleted successfully",
-        404: "Post not found"
-    },
-    tags=["Posts"]
+    responses={204: "Post deleted successfully", 404: "Post not found"},
+    tags=["Posts"],
 )
 @swagger_auto_schema(
-    method='PUT',
+    method="PUT",
     operation_summary="Update a specific post",
     operation_description="Update details of a post specified by post_serial for the given author.",
     request_body=PostSerializer,
@@ -203,22 +243,29 @@ def vueTest(request):
             schema=PostSerializer(),
         ),
         400: "Invalid request data",
-        404: "Post not found"
+        404: "Post not found",
     },
-    tags=["Posts"]
+    tags=["Posts"],
 )
 @swagger_auto_schema(
-    method='POST',
+    method="POST",
     operation_summary="Like or comment on a post",
     operation_description="Like a post or add a comment to it, depending on the action specified in the URL.",
     request_body=openapi.Schema(
         type=openapi.TYPE_OBJECT,
         properties={
-            'author_id': openapi.Schema(type=openapi.TYPE_STRING, description='ID of the author'),
-            'post_id': openapi.Schema(type=openapi.TYPE_STRING, description='ID of the post'),
-            'content': openapi.Schema(type=openapi.TYPE_STRING, description='Content of the comment (if applicable)'),
+            "author_id": openapi.Schema(
+                type=openapi.TYPE_STRING, description="ID of the author"
+            ),
+            "post_id": openapi.Schema(
+                type=openapi.TYPE_STRING, description="ID of the post"
+            ),
+            "content": openapi.Schema(
+                type=openapi.TYPE_STRING,
+                description="Content of the comment (if applicable)",
+            ),
         },
-        required=['author_id', 'post_id']
+        required=["author_id", "post_id"],
     ),
     responses={
         201: openapi.Response(
@@ -226,19 +273,20 @@ def vueTest(request):
             schema=openapi.Schema(
                 type=openapi.TYPE_OBJECT,
                 properties={
-                    'success': openapi.Schema(type=openapi.TYPE_BOOLEAN),
-                    'message': openapi.Schema(type=openapi.TYPE_STRING),
-                }
+                    "success": openapi.Schema(type=openapi.TYPE_BOOLEAN),
+                    "message": openapi.Schema(type=openapi.TYPE_STRING),
+                },
             ),
         ),
-        400: "Invalid request data"
+        400: "Invalid request data",
     },
-    tags=["Posts"]
+    tags=["Posts"],
 )
+
 @api_view(["GET", "DELETE", "PUT", "POST"])
 def post_detail(request, author_serial, post_serial):
     segments = post_serial.split("/")
-    post_id = segments[0]  # This should be the UUID part
+    post_id = segments[0]
     action = segments[1] if len(segments) > 1 else None
     parsed_author_id = urlparse(author_serial).path.split("/")[-1]
 
@@ -246,87 +294,69 @@ def post_detail(request, author_serial, post_serial):
     author = get_object_or_404(Author, uuid=parsed_author_id)
     post = get_object_or_404(Post, author=author, id=post_id)
 
-    # If the request is a GET and no action is specified, return the post details
+    # Handle GET request for post details
     if request.method == "GET" and not action:
-        serializer = PostSerializer(post)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        comments = Comment.objects.filter(post=post).order_by("-published")
+        comment_serializer = CommentSerializer(comments, many=True)
 
-    # Handle "like" action for POST request
-    if action == "like":
-        if request.method == "POST":
-            data = request.data.copy()
-            data["author_id"] = str(author.id)
-            data["post_id"] = str(post.id)
-            data["post"] = post.id
+        post_serializer = PostSerializer(post)
+        return Response({
+            "type": "post_detail",
+            "post": post_serializer.data,
+            "comments": {
+                "type": "comments",
+                "page": f"http://{request.get_host()}/posts/{post_id}/comments/",
+                "id": f"http://{request.get_host()}/posts/{post_id}/comments/",
+                "page_number": 1,
+                "size": len(comments),
+                "count": comments.count(),
+                "src": comment_serializer.data,
+            },
+            "likes": {
+                "type": "likes",
+                "page": f"http://{request.get_host()}/posts/{post_id}/likes/",
+                "id": f"http://{request.get_host()}/posts/{post_id}/likes/",
+                "page_number": 1,
+                "size": Like.objects.filter(post=post).count(),
+                "count": Like.objects.filter(post=post).count(),
+                "src": LikeSerializer(
+                    Like.objects.filter(post=post).order_by("-published")[:5], many=True
+                ).data,
+            }
+        }, status=status.HTTP_200_OK)
 
-            serializer = LikeSerializer(data=data)
-            if serializer.is_valid():
-                serializer.save()
-                return Response(serializer.data, status=status.HTTP_201_CREATED)
-            else:
-                print("Serializer errors:", serializer.errors)
-                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    # Handle POST request for adding comments or likes
+    if action == "comments" and request.method == "POST":
+        data = request.data.copy()
+        data["author_id"] = str(request.user.id)
+        data["post_id"] = str(post.id)
 
-    # Handle fetching likes
-    if action == "likes":
-        if request.method == "GET":
-            likes = Like.objects.filter(post=post).order_by("-published")
-            serializer = LikeSerializer(likes, many=True)
-            return Response(serializer.data, status=status.HTTP_200_OK)
+        serializer = CommentSerializer(data=data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    # Handle comments if specified in the URL
-    elif action == "comments":
-        if request.method == "GET":
-            # Filter comments based on visibility rules
-            current_user = request.user
-            if post.visibility == "FRIENDS":
-                # Check if the current user is a friend or the post's author
-                is_friend = (
-                    current_user in author.followers.all()
-                    and current_user in author.following.all()
-                )
-                if not (is_friend or current_user == author):
-                    # If the current user is not a friend or the post's author, filter out comments
-                    return Response(
-                        {"detail": "You are not authorized to view these comments."},
-                        status=status.HTTP_403_FORBIDDEN,
-                    )
+    elif action == "like" and request.method == "POST":
+        data = request.data.copy()
+        data["author_id"] = str(request.user.id)
+        data["post_id"] = str(post.id)
 
-            # Return all comments, as visibility rules are satisfied
-            comments = Comment.objects.filter(post=post).order_by("-published")
-            serializer = CommentSerializer(
-                comments, many=True, context={"request": request}
-            )
-            return Response(serializer.data, status=status.HTTP_200_OK)
+        serializer = LikeSerializer(data=data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        elif request.method == "POST":
-            # Handle comment creation directly here
-            data = request.data.copy()
-            data["author_id"] = str(author.id)
-            data["post_id"] = str(post.id)
+    # Handle DELETE request for deleting the post
+    if request.method == "DELETE" and not action:
+        post.delete()
+        return Response({"detail": "Post deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
 
-            serializer = CommentSerializer(data=data)
-            if serializer.is_valid():
-                serializer.save()
-                return Response(serializer.data, status=status.HTTP_201_CREATED)
-            else:
-                print("Serializer errors:", serializer.errors)
-                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-        # Handle DELETE request to delete the post
-        elif request.method == "DELETE" and not action:
-            post.delete()  # Now delete the original post or repost
-            return Response(status=status.HTTP_204_NO_CONTENT)
-
-            
-        # Handle DELETE request to delete the post
-        elif request.method == "DELETE" and not action:
-            post.delete()  # Now delete the original post or repost
-            return Response(status=status.HTTP_204_NO_CONTENT)
-
-            
-    # Handle PUT request to update the post
-    elif request.method == "PUT" and not action:
+    # Handle PUT request for updating the post
+    if request.method == "PUT" and not action:
         data = request.data
         if "content" in data:
             markdown_content = data["content"]
@@ -342,58 +372,70 @@ def post_detail(request, author_serial, post_serial):
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    # If the action doesn't match any known value, return an error
+    # If the action is unrecognized
     return Response({"detail": "Invalid request"}, status=status.HTTP_400_BAD_REQUEST)
 
+
 @swagger_auto_schema(
-    method='post',
+    method="post",
     operation_summary="Post a comment on a specific post",
     operation_description="API to handle posting a comment for a specific post by post_id.",
     manual_parameters=[
         openapi.Parameter(
-            'post_id',
+            "post_id",
             openapi.IN_PATH,
             description="UUID of the post to comment on",
             type=openapi.TYPE_STRING,
-            required=True
+            required=True,
         )
     ],
     request_body=openapi.Schema(
         type=openapi.TYPE_OBJECT,
         properties={
-            'content': openapi.Schema(type=openapi.TYPE_STRING, description='Content of the comment'),
-            'contentType': openapi.Schema(type=openapi.TYPE_STRING, description='Type of content (e.g., text/plain)'),
+            "content": openapi.Schema(
+                type=openapi.TYPE_STRING, description="Content of the comment"
+            ),
+            "contentType": openapi.Schema(
+                type=openapi.TYPE_STRING,
+                description="Type of content (e.g., text/plain)",
+            ),
         },
-        required=['content', 'contentType']
+        required=["content", "contentType"],
     ),
     responses={
         201: openapi.Response(
-            description="Comment posted successfully.",
-            schema=CommentSerializer()
+            description="Comment posted successfully.", schema=CommentSerializer()
         ),
         400: openapi.Response(
             description="Invalid input data.",
             schema=openapi.Schema(
                 type=openapi.TYPE_OBJECT,
                 properties={
-                    'detail': openapi.Schema(type=openapi.TYPE_STRING, description='Error message'),
-                    'content': openapi.Schema(type=openapi.TYPE_ARRAY, items=openapi.Schema(type=openapi.TYPE_STRING)),
+                    "detail": openapi.Schema(
+                        type=openapi.TYPE_STRING, description="Error message"
+                    ),
+                    "content": openapi.Schema(
+                        type=openapi.TYPE_ARRAY,
+                        items=openapi.Schema(type=openapi.TYPE_STRING),
+                    ),
                     # Add other fields as needed based on your serializer errors
-                }
-            )
+                },
+            ),
         ),
         404: openapi.Response(
             description="Post not found.",
             schema=openapi.Schema(
                 type=openapi.TYPE_OBJECT,
                 properties={
-                    'detail': openapi.Schema(type=openapi.TYPE_STRING, description='Error message')
-                }
-            )
+                    "detail": openapi.Schema(
+                        type=openapi.TYPE_STRING, description="Error message"
+                    )
+                },
+            ),
         ),
         401: "Unauthorized",
     },
-    tags=["Comments"]
+    tags=["Comments"],
 )
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
@@ -415,54 +457,119 @@ def post_comment(request, post_id):
     else:
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def like_comment(request, comment_id):
+    """
+    API to handle liking a specific comment by comment_id.
+    """
+    comment = get_object_or_404(Comment, id=comment_id)
+    author = request.user
+
+    # Check if the user has already liked the comment
+    if Like.objects.filter(comment=comment, author=author).exists():
+        return Response(
+            {"detail": "You have already liked this comment."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    data = {
+        "author_id": str(author.id),
+        "comment_id": str(comment.id),
+    }
+
+    serializer = LikeSerializer(data=data)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    else:
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def comment_likes(request, comment_id):
+    """
+    API to fetch likes for a specific comment by comment_id.
+    """
+    comment = get_object_or_404(Comment, id=comment_id)
+    likes = Like.objects.filter(comment=comment).order_by("-published")
+    serializer = LikeSerializer(likes, many=True)
+    return Response({
+        "type": "likes",
+        "page": f"http://{request.get_host()}/comments/{comment_id}/likes",
+        "id": f"http://{request.get_host()}/comments/{comment_id}/likes",
+        "page_number": 1,
+        "size": len(likes),
+        "count": likes.count(),
+        "src": serializer.data,
+    })
+
+
 @swagger_auto_schema(
-    method='post',
+    method="post",
     operation_summary="Like a specific post",
     operation_description="API to handle liking a specific post by post_id.",
     manual_parameters=[
         openapi.Parameter(
-            'post_id',
+            "post_id",
             openapi.IN_PATH,
             description="UUID of the post to like",
             type=openapi.TYPE_STRING,
-            required=True
+            required=True,
         )
     ],
     request_body=openapi.Schema(
         type=openapi.TYPE_OBJECT,
         properties={
-            'author_id': openapi.Schema(type=openapi.TYPE_STRING, description='ID of the author liking the post', read_only=True),
-            'post_id': openapi.Schema(type=openapi.TYPE_STRING, description='ID of the post being liked', read_only=True),
-            'post': openapi.Schema(type=openapi.TYPE_STRING, description='Reference to the post', read_only=True),
+            "author_id": openapi.Schema(
+                type=openapi.TYPE_STRING,
+                description="ID of the author liking the post",
+                read_only=True,
+            ),
+            "post_id": openapi.Schema(
+                type=openapi.TYPE_STRING,
+                description="ID of the post being liked",
+                read_only=True,
+            ),
+            "post": openapi.Schema(
+                type=openapi.TYPE_STRING,
+                description="Reference to the post",
+                read_only=True,
+            ),
         },
-        required=['author_id', 'post_id', 'post']
+        required=["author_id", "post_id", "post"],
     ),
     responses={
         201: openapi.Response(
-            description="Post liked successfully.",
-            schema=LikeSerializer()
+            description="Post liked successfully.", schema=LikeSerializer()
         ),
         400: openapi.Response(
             description="Invalid input data or already liked post.",
             schema=openapi.Schema(
                 type=openapi.TYPE_OBJECT,
                 properties={
-                    'detail': openapi.Schema(type=openapi.TYPE_STRING, description='Error message')
-                }
-            )
+                    "detail": openapi.Schema(
+                        type=openapi.TYPE_STRING, description="Error message"
+                    )
+                },
+            ),
         ),
         404: openapi.Response(
             description="Post not found.",
             schema=openapi.Schema(
                 type=openapi.TYPE_OBJECT,
                 properties={
-                    'detail': openapi.Schema(type=openapi.TYPE_STRING, description='Error message')
-                }
-            )
+                    "detail": openapi.Schema(
+                        type=openapi.TYPE_STRING, description="Error message"
+                    )
+                },
+            ),
         ),
         401: "Unauthorized",
     },
-    tags=["Likes"]
+    tags=["Likes"],
 )
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
@@ -494,17 +601,18 @@ def like_post(request, post_id):
     else:
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+
 @swagger_auto_schema(
-    method='get',
+    method="get",
     operation_summary="Fetch comments for a specific post",
     operation_description="API to fetch comments for a specific post by post_id.",
     manual_parameters=[
         openapi.Parameter(
-            'post_id',
+            "post_id",
             openapi.IN_PATH,
             description="UUID of the post to fetch comments for",
             type=openapi.TYPE_STRING,
-            required=True
+            required=True,
         )
     ],
     responses={
@@ -515,27 +623,42 @@ def like_post(request, post_id):
                 items=openapi.Schema(
                     type=openapi.TYPE_OBJECT,
                     properties={
-                        'id': openapi.Schema(type=openapi.TYPE_STRING, description='Comment ID'),
-                        'author_id': openapi.Schema(type=openapi.TYPE_STRING, description='ID of the comment author'),
-                        'post_id': openapi.Schema(type=openapi.TYPE_STRING, description='ID of the post'),
-                        'content': openapi.Schema(type=openapi.TYPE_STRING, description='Comment content'),
-                        'published': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_DATETIME, description='Timestamp of when the comment was published'),
-                    }
-                )
-            )
+                        "id": openapi.Schema(
+                            type=openapi.TYPE_STRING, description="Comment ID"
+                        ),
+                        "author_id": openapi.Schema(
+                            type=openapi.TYPE_STRING,
+                            description="ID of the comment author",
+                        ),
+                        "post_id": openapi.Schema(
+                            type=openapi.TYPE_STRING, description="ID of the post"
+                        ),
+                        "content": openapi.Schema(
+                            type=openapi.TYPE_STRING, description="Comment content"
+                        ),
+                        "published": openapi.Schema(
+                            type=openapi.TYPE_STRING,
+                            format=openapi.FORMAT_DATETIME,
+                            description="Timestamp of when the comment was published",
+                        ),
+                    },
+                ),
+            ),
         ),
         404: openapi.Response(
             description="Post not found.",
             schema=openapi.Schema(
                 type=openapi.TYPE_OBJECT,
                 properties={
-                    'detail': openapi.Schema(type=openapi.TYPE_STRING, description='Error message')
-                }
-            )
+                    "detail": openapi.Schema(
+                        type=openapi.TYPE_STRING, description="Error message"
+                    )
+                },
+            ),
         ),
         401: "Unauthorized",
     },
-    tags=["Comments"]
+    tags=["Comments"],
 )
 @api_view(["GET"])
 @permission_classes([AllowAny])
@@ -548,17 +671,18 @@ def stream_page_comments(request, post_id):
     serializer = CommentSerializer(comments, many=True)
     return Response(serializer.data, status=200)
 
+
 @swagger_auto_schema(
-    method='get',
+    method="get",
     operation_summary="Fetch likes for a specific post",
     operation_description="API to fetch likes for a specific post by post_id.",
     manual_parameters=[
         openapi.Parameter(
-            'post_id',
+            "post_id",
             openapi.IN_PATH,
             description="UUID of the post to fetch likes for",
             type=openapi.TYPE_STRING,
-            required=True
+            required=True,
         )
     ],
     responses={
@@ -569,26 +693,39 @@ def stream_page_comments(request, post_id):
                 items=openapi.Schema(
                     type=openapi.TYPE_OBJECT,
                     properties={
-                        'id': openapi.Schema(type=openapi.TYPE_STRING, description='Like ID'),
-                        'author_id': openapi.Schema(type=openapi.TYPE_STRING, description='ID of the user who liked the post'),
-                        'post_id': openapi.Schema(type=openapi.TYPE_STRING, description='ID of the post'),
-                        'published': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_DATETIME, description='Timestamp of when the like was made'),
-                    }
-                )
-            )
+                        "id": openapi.Schema(
+                            type=openapi.TYPE_STRING, description="Like ID"
+                        ),
+                        "author_id": openapi.Schema(
+                            type=openapi.TYPE_STRING,
+                            description="ID of the user who liked the post",
+                        ),
+                        "post_id": openapi.Schema(
+                            type=openapi.TYPE_STRING, description="ID of the post"
+                        ),
+                        "published": openapi.Schema(
+                            type=openapi.TYPE_STRING,
+                            format=openapi.FORMAT_DATETIME,
+                            description="Timestamp of when the like was made",
+                        ),
+                    },
+                ),
+            ),
         ),
         404: openapi.Response(
             description="Post not found.",
             schema=openapi.Schema(
                 type=openapi.TYPE_OBJECT,
                 properties={
-                    'detail': openapi.Schema(type=openapi.TYPE_STRING, description='Error message')
-                }
-            )
+                    "detail": openapi.Schema(
+                        type=openapi.TYPE_STRING, description="Error message"
+                    )
+                },
+            ),
         ),
         401: "Unauthorized",
     },
-    tags=["Likes"]
+    tags=["Likes"],
 )
 @api_view(["GET"])
 @permission_classes([AllowAny])
@@ -603,16 +740,16 @@ def stream_page_likes(request, post_id):
 
 
 @swagger_auto_schema(
-    method='GET',
+    method="GET",
     operation_summary="Retrieve all posts for a specific author",
     operation_description="Fetch all posts created by the author specified by author_serial.",
     manual_parameters=[
         openapi.Parameter(
-            'author_serial',
+            "author_serial",
             openapi.IN_PATH,
             description="UUID of the author whose posts you want to retrieve",
             type=openapi.TYPE_STRING,
-            required=True
+            required=True,
         )
     ],
     responses={
@@ -621,52 +758,69 @@ def stream_page_likes(request, post_id):
             schema=openapi.Schema(
                 type=openapi.TYPE_OBJECT,
                 properties={
-                    'type': openapi.Schema(type=openapi.TYPE_STRING, example='posts'),
-                    'items': openapi.Schema(
+                    "type": openapi.Schema(type=openapi.TYPE_STRING, example="posts"),
+                    "items": openapi.Schema(
                         type=openapi.TYPE_ARRAY,
-                        items=openapi.Schema(type=openapi.TYPE_OBJECT, properties={
-                            'id': openapi.Schema(type=openapi.TYPE_STRING, example='post_id_here'),
-                            'author_id': openapi.Schema(type=openapi.TYPE_STRING, example='author_id_here'),
-                            'title': openapi.Schema(type=openapi.TYPE_STRING, example='Sample Post Title'),
-                            'content': openapi.Schema(type=openapi.TYPE_STRING, example='Post content goes here...'),
-                            'published': openapi.Schema(type=openapi.TYPE_STRING, example='2023-01-01T00:00:00Z'),
-                        })
-                    )
-                }
-            )
+                        items=openapi.Schema(
+                            type=openapi.TYPE_OBJECT,
+                            properties={
+                                "id": openapi.Schema(
+                                    type=openapi.TYPE_STRING, example="post_id_here"
+                                ),
+                                "author_id": openapi.Schema(
+                                    type=openapi.TYPE_STRING, example="author_id_here"
+                                ),
+                                "title": openapi.Schema(
+                                    type=openapi.TYPE_STRING,
+                                    example="Sample Post Title",
+                                ),
+                                "content": openapi.Schema(
+                                    type=openapi.TYPE_STRING,
+                                    example="Post content goes here...",
+                                ),
+                                "published": openapi.Schema(
+                                    type=openapi.TYPE_STRING,
+                                    example="2023-01-01T00:00:00Z",
+                                ),
+                            },
+                        ),
+                    ),
+                },
+            ),
         ),
-        404: "Author not found"
+        404: "Author not found",
     },
-    tags=["Posts"]
+    tags=["Posts"],
 )
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def get_all_posts(request, author_serial):
+    print("(((((((((((((((((((((((((((((())))))))))))))))))))))))))))))")
     author_serial = unquote(author_serial)
     author = get_object_or_404(Author, uuid=author_serial)
     posts = Post.objects.filter(author=author).order_by("-edited_at")
 
     # Pagination
     paginator = PageNumberPagination()
-    paginator.page_size = 10  # Adjust as needed
+    paginator.page_size = 100  # Adjust as needed
     result_page = paginator.paginate_queryset(posts, request)
 
     serializer = PostSerializer(result_page, many=True)
 
-    return paginator.get_paginated_response({'type': 'posts', 'items': serializer.data})
+    return paginator.get_paginated_response({"type": "posts", "items": serializer.data})
 
 
 @swagger_auto_schema(
-    method='POST',
+    method="POST",
     operation_summary="Send a follow request to an author",
     operation_description="Send a follow request from the currently authenticated user to the specified author.",
     manual_parameters=[
         openapi.Parameter(
-            'author_uuid',
+            "author_uuid",
             openapi.IN_PATH,
             description="UUID of the author to whom the follow request is sent",
             type=openapi.TYPE_STRING,
-            required=True
+            required=True,
         )
     ],
     responses={
@@ -675,24 +829,29 @@ def get_all_posts(request, author_serial):
             schema=openapi.Schema(
                 type=openapi.TYPE_OBJECT,
                 properties={
-                    'detail': openapi.Schema(type=openapi.TYPE_STRING, example='Follow request sent.')
-                }
-            )
+                    "detail": openapi.Schema(
+                        type=openapi.TYPE_STRING, example="Follow request sent."
+                    )
+                },
+            ),
         ),
         400: openapi.Response(
             description="Bad Request",
             schema=openapi.Schema(
                 type=openapi.TYPE_OBJECT,
                 properties={
-                    'detail': openapi.Schema(type=openapi.TYPE_STRING, example='You are already following this author.')
-                }
-            )
+                    "detail": openapi.Schema(
+                        type=openapi.TYPE_STRING,
+                        example="You are already following this author.",
+                    )
+                },
+            ),
         ),
-        404: "Author not found"
+        404: "Author not found",
     },
-    tags=["Follow Requests"]
+    tags=["Follow Requests"],
 )
-@api_view(['POST'])
+@api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def send_follow_request(request, author_uuid):
     current_author = request.user  # The one sending the request
@@ -702,27 +861,24 @@ def send_follow_request(request, author_uuid):
     # Check if already following
     if current_author in target_author.followers.all():
         return Response(
-            {'detail': 'You are already following this author.'},
-            status=status.HTTP_400_BAD_REQUEST
+            {"detail": "You are already following this author."},
+            status=status.HTTP_400_BAD_REQUEST,
         )
 
     # Check if a pending request already exists
     existing_request = FollowRequest.objects.filter(
-        actor=current_author,
-        object=target_author,
-        accepted=False
+        actor=current_author, object=target_author, accepted=False
     ).exists()
 
     if existing_request:
         return Response(
-            {'detail': 'A follow request is already pending.'},
-            status=status.HTTP_400_BAD_REQUEST
+            {"detail": "A follow request is already pending."},
+            status=status.HTTP_400_BAD_REQUEST,
         )
 
     # Create new follow request
     follow_request = FollowRequest.objects.create(
-        actor=current_author,
-        object=target_author
+        actor=current_author, object=target_author
     )
 
     # Notify through WebSocket
@@ -730,28 +886,28 @@ def send_follow_request(request, author_uuid):
     async_to_sync(channel_layer.group_send)(
         f"notifications_{target_author.uuid}",
         {
-            'type': 'follow_request_notification',
-            'count': FollowRequest.objects.filter(
-                object=target_author,
-                accepted=False
+            "type": "follow_request_notification",
+            "count": FollowRequest.objects.filter(
+                object=target_author, accepted=False
             ).count(),
-            'message': f'{current_author.displayName} sent you a follow request'
-        }
+            "message": f"{current_author.displayName} sent you a follow request",
+        },
     )
 
-    return Response({'detail': 'Follow request sent.'}, status=status.HTTP_201_CREATED)
+    return Response({"detail": "Follow request sent."}, status=status.HTTP_201_CREATED)
+
 
 @swagger_auto_schema(
-    method='POST',
+    method="POST",
     operation_summary="Accept a follow request from an author",
     operation_description="Accept a follow request from the specified author.",
     manual_parameters=[
         openapi.Parameter(
-            'author_uuid',
+            "author_uuid",
             openapi.IN_PATH,
             description="UUID of the author who sent the follow request",
             type=openapi.TYPE_STRING,
-            required=True
+            required=True,
         )
     ],
     responses={
@@ -760,57 +916,64 @@ def send_follow_request(request, author_uuid):
             schema=openapi.Schema(
                 type=openapi.TYPE_OBJECT,
                 properties={
-                    'detail': openapi.Schema(type=openapi.TYPE_STRING, example='Follow request accepted.')
-                }
-            )
+                    "detail": openapi.Schema(
+                        type=openapi.TYPE_STRING, example="Follow request accepted."
+                    )
+                },
+            ),
         ),
         400: openapi.Response(
             description="Bad Request",
             schema=openapi.Schema(
                 type=openapi.TYPE_OBJECT,
                 properties={
-                    'detail': openapi.Schema(type=openapi.TYPE_STRING, example='This author is already following you.')
-                }
-            )
+                    "detail": openapi.Schema(
+                        type=openapi.TYPE_STRING,
+                        example="This author is already following you.",
+                    )
+                },
+            ),
         ),
         404: openapi.Response(
             description="Follow request not found",
             schema=openapi.Schema(
                 type=openapi.TYPE_OBJECT,
                 properties={
-                    'detail': openapi.Schema(type=openapi.TYPE_STRING, example='Follow request no longer exists or has already been resolved.')
-                }
-            )
-        )
+                    "detail": openapi.Schema(
+                        type=openapi.TYPE_STRING,
+                        example="Follow request no longer exists or has already been resolved.",
+                    )
+                },
+            ),
+        ),
     },
-    tags=["Follow Requests"]
+    tags=["Follow Requests"],
 )
-@api_view(['POST'])
+@api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def accept_follow_request(request, author_uuid):
     current_author = request.user  # The one accepting
     requesting_author = get_object_or_404(
-        Author, uuid=author_uuid)  # The one who sent request
+        Author, uuid=author_uuid
+    )  # The one who sent request
 
     # Check if request still exists and hasn't been resolved
     follow_request = FollowRequest.objects.filter(
-        actor=requesting_author,
-        object=current_author,
-        accepted=False
+        actor=requesting_author, object=current_author, accepted=False
     ).first()
 
     if not follow_request:
         return Response(
-            {'detail': 'Follow request no longer exists or has already been resolved.'},
-            status=status.HTTP_404_NOT_FOUND
+            {"detail": "Follow request no longer exists or has already been resolved."},
+            status=status.HTTP_404_NOT_FOUND,
         )
 
     # Check if already following
     if requesting_author in current_author.followers.all():
         follow_request.delete()
         return Response(
-            {'detail': 'This author is already following you.'},
-            status=status.HTTP_400_BAD_REQUEST
+            {"detail": "This author is already following you."},
+            status=status.HTTP_400_BAD_REQUEST,
         )
 
     # Accept the request
@@ -826,25 +989,26 @@ def accept_follow_request(request, author_uuid):
     async_to_sync(channel_layer.group_send)(
         f"notifications_{requesting_author.uuid}",
         {
-            'type': 'follow_request_notification',
-            'message': f'{current_author.displayName} accepted your follow request',
-            'status': 'accepted'
-        }
+            "type": "follow_request_notification",
+            "message": f"{current_author.displayName} accepted your follow request",
+            "status": "accepted",
+        },
     )
 
-    return Response({'detail': 'Follow request accepted.'}, status=status.HTTP_200_OK)
+    return Response({"detail": "Follow request accepted."}, status=status.HTTP_200_OK)
+
 
 @swagger_auto_schema(
-    method='POST',
+    method="POST",
     operation_summary="Decline a follow request from an author",
     operation_description="Decline a follow request from the specified author.",
     manual_parameters=[
         openapi.Parameter(
-            'author_uuid',
+            "author_uuid",
             openapi.IN_PATH,
             description="UUID of the author who sent the follow request",
             type=openapi.TYPE_STRING,
-            required=True
+            required=True,
         )
     ],
     responses={
@@ -853,23 +1017,28 @@ def accept_follow_request(request, author_uuid):
             schema=openapi.Schema(
                 type=openapi.TYPE_OBJECT,
                 properties={
-                    'detail': openapi.Schema(type=openapi.TYPE_STRING, example='Follow request declined.')
-                }
-            )
+                    "detail": openapi.Schema(
+                        type=openapi.TYPE_STRING, example="Follow request declined."
+                    )
+                },
+            ),
         ),
         404: openapi.Response(
             description="Follow request not found",
             schema=openapi.Schema(
                 type=openapi.TYPE_OBJECT,
                 properties={
-                    'detail': openapi.Schema(type=openapi.TYPE_STRING, example='Follow request no longer exists or has already been resolved.')
-                }
-            )
-        )
+                    "detail": openapi.Schema(
+                        type=openapi.TYPE_STRING,
+                        example="Follow request no longer exists or has already been resolved.",
+                    )
+                },
+            ),
+        ),
     },
-    tags=["Follow Requests"]
+    tags=["Follow Requests"],
 )
-@api_view(['POST'])
+@api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def decline_follow_request(request, author_uuid):
     current_author = request.user
@@ -877,15 +1046,13 @@ def decline_follow_request(request, author_uuid):
 
     # Check if request still exists and hasn't been resolved
     follow_requests = FollowRequest.objects.filter(
-        actor=requesting_author,
-        object=current_author,
-        accepted=False
+        actor=requesting_author, object=current_author, accepted=False
     )
 
     if not follow_requests.exists():
         return Response(
-            {'detail': 'Follow request no longer exists or has already been resolved.'},
-            status=status.HTTP_404_NOT_FOUND
+            {"detail": "Follow request no longer exists or has already been resolved."},
+            status=status.HTTP_404_NOT_FOUND,
         )
 
     # Delete all pending requests from this user
@@ -896,16 +1063,19 @@ def decline_follow_request(request, author_uuid):
     async_to_sync(channel_layer.group_send)(
         f"notifications_{requesting_author.uuid}",
         {
-            'type': 'follow_request_notification',
-            'count': FollowRequest.objects.filter(object=requesting_author, accepted=False).count(),
-            'message': 'Follow request declined'
-        }
+            "type": "follow_request_notification",
+            "count": FollowRequest.objects.filter(
+                object=requesting_author, accepted=False
+            ).count(),
+            "message": "Follow request declined",
+        },
     )
 
-    return Response({'detail': 'Follow request declined.'}, status=status.HTTP_200_OK)
+    return Response({"detail": "Follow request declined."}, status=status.HTTP_200_OK)
+
 
 @swagger_auto_schema(
-    method='GET',
+    method="GET",
     operation_summary="Retrieve pending follow requests",
     operation_description="Get all follow requests that are pending for the authenticated user.",
     responses={
@@ -916,40 +1086,66 @@ def decline_follow_request(request, author_uuid):
                 items=openapi.Schema(
                     type=openapi.TYPE_OBJECT,
                     properties={
-                        'id': openapi.Schema(type=openapi.TYPE_INTEGER, example=1),
-                        'actor': openapi.Schema(type=openapi.TYPE_OBJECT, properties={
-                            'uuid': openapi.Schema(type=openapi.TYPE_STRING, example='author-uuid'),
-                            'displayName': openapi.Schema(type=openapi.TYPE_STRING, example='Author Name')
-                        }),
-                        'object': openapi.Schema(type=openapi.TYPE_OBJECT, properties={
-                            'uuid': openapi.Schema(type=openapi.TYPE_STRING, example='current-author-uuid'),
-                            'displayName': openapi.Schema(type=openapi.TYPE_STRING, example='Current Author Name')
-                        }),
-                        'accepted': openapi.Schema(type=openapi.TYPE_BOOLEAN, example=False),
-                        'created_at': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_DATETIME, example='2024-01-01T12:00:00Z')
-                    }
-                )
-            )
+                        "id": openapi.Schema(type=openapi.TYPE_INTEGER, example=1),
+                        "actor": openapi.Schema(
+                            type=openapi.TYPE_OBJECT,
+                            properties={
+                                "uuid": openapi.Schema(
+                                    type=openapi.TYPE_STRING, example="author-uuid"
+                                ),
+                                "displayName": openapi.Schema(
+                                    type=openapi.TYPE_STRING, example="Author Name"
+                                ),
+                            },
+                        ),
+                        "object": openapi.Schema(
+                            type=openapi.TYPE_OBJECT,
+                            properties={
+                                "uuid": openapi.Schema(
+                                    type=openapi.TYPE_STRING,
+                                    example="current-author-uuid",
+                                ),
+                                "displayName": openapi.Schema(
+                                    type=openapi.TYPE_STRING,
+                                    example="Current Author Name",
+                                ),
+                            },
+                        ),
+                        "accepted": openapi.Schema(
+                            type=openapi.TYPE_BOOLEAN, example=False
+                        ),
+                        "created_at": openapi.Schema(
+                            type=openapi.TYPE_STRING,
+                            format=openapi.FORMAT_DATETIME,
+                            example="2024-01-01T12:00:00Z",
+                        ),
+                    },
+                ),
+            ),
         ),
         401: openapi.Response(
             description="Unauthorized access",
             schema=openapi.Schema(
                 type=openapi.TYPE_OBJECT,
                 properties={
-                    'detail': openapi.Schema(type=openapi.TYPE_STRING, example='Authentication credentials were not provided.')
-                }
-            )
-        )
+                    "detail": openapi.Schema(
+                        type=openapi.TYPE_STRING,
+                        example="Authentication credentials were not provided.",
+                    )
+                },
+            ),
+        ),
     },
-    tags=["Follow Requests"]
+    tags=["Follow Requests"],
 )
-@api_view(['GET'])
+@api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def get_follow_requests(request):
     current_author = request.user
     # Filter to only show pending follow requests
     pending_requests = FollowRequest.objects.filter(
-        object=current_author, accepted=False)
+        object=current_author, accepted=False
+    )
     serializer = FollowRequestSerializer(pending_requests, many=True)
     return Response(serializer.data)
 
@@ -1001,7 +1197,6 @@ def get_follow_requests(request):
                 properties={
                     "detail": openapi.Schema(
                         type=openapi.TYPE_STRING,
-                        example="An error occurred while fetching authors.",
                     )
                 },
             ),
@@ -1041,21 +1236,21 @@ def get_all_authors(request):
         print(f"Error in get_all_authors: {str(e)}")
         print(f"Traceback: {traceback.format_exc()}")
         return Response(
-            {"detail": "An error occurred while fetching authors."},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
 
+
 @swagger_auto_schema(
-    method='get',
+    method="get",
     operation_summary="Fetch the stream of posts for a specific author",
     operation_description="API to retrieve a stream of posts based on the following relationships of the author.",
     manual_parameters=[
         openapi.Parameter(
-            'author_id',
+            "author_id",
             openapi.IN_PATH,
             description="UUID of the author to fetch the stream for",
             type=openapi.TYPE_STRING,
-            required=True
+            required=True,
         )
     ],
     responses={
@@ -1064,46 +1259,90 @@ def get_all_authors(request):
             schema=openapi.Schema(
                 type=openapi.TYPE_OBJECT,
                 properties={
-                    'count': openapi.Schema(type=openapi.TYPE_INTEGER, description='Total number of posts'),
-                    'next': openapi.Schema(type=openapi.TYPE_STRING, description='URL to the next page of results'),
-                    'previous': openapi.Schema(type=openapi.TYPE_STRING, description='URL to the previous page of results'),
-                    'results': openapi.Schema(
+                    "count": openapi.Schema(
+                        type=openapi.TYPE_INTEGER, description="Total number of posts"
+                    ),
+                    "next": openapi.Schema(
+                        type=openapi.TYPE_STRING,
+                        description="URL to the next page of results",
+                    ),
+                    "previous": openapi.Schema(
+                        type=openapi.TYPE_STRING,
+                        description="URL to the previous page of results",
+                    ),
+                    "results": openapi.Schema(
                         type=openapi.TYPE_ARRAY,
                         items=openapi.Schema(
                             type=openapi.TYPE_OBJECT,
                             properties={
-                                'id': openapi.Schema(type=openapi.TYPE_STRING, description='Post ID'),
-                                'author': openapi.Schema(type=openapi.TYPE_OBJECT, description='Post author details', 
-                                    properties={
-                                        'id': openapi.Schema(type=openapi.TYPE_STRING, description='Author ID'),
-                                        'displayName': openapi.Schema(type=openapi.TYPE_STRING, description='Author display name'),
-                                        'profileImage': openapi.Schema(type=openapi.TYPE_STRING, description='URL to author profile image')
-                                    }
+                                "id": openapi.Schema(
+                                    type=openapi.TYPE_STRING, description="Post ID"
                                 ),
-                                'title': openapi.Schema(type=openapi.TYPE_STRING, description='Post title'),
-                                'description': openapi.Schema(type=openapi.TYPE_STRING, description='Post description'),
-                                'contentType': openapi.Schema(type=openapi.TYPE_STRING, description='Content type of the post'),
-                                'content': openapi.Schema(type=openapi.TYPE_STRING, description='Main content of the post'),
-                                'visibility': openapi.Schema(type=openapi.TYPE_STRING, description='Visibility of the post'),
-                                'published': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_DATETIME, description='Post publication timestamp'),
-                                'repost_count': openapi.Schema(type=openapi.TYPE_INTEGER, description='Count of reposts'),
-                            }
-                        )
-                    )
-                }
-            )
+                                "author": openapi.Schema(
+                                    type=openapi.TYPE_OBJECT,
+                                    description="Post author details",
+                                    properties={
+                                        "id": openapi.Schema(
+                                            type=openapi.TYPE_STRING,
+                                            description="Author ID",
+                                        ),
+                                        "displayName": openapi.Schema(
+                                            type=openapi.TYPE_STRING,
+                                            description="Author display name",
+                                        ),
+                                        "profileImage": openapi.Schema(
+                                            type=openapi.TYPE_STRING,
+                                            description="URL to author profile image",
+                                        ),
+                                    },
+                                ),
+                                "title": openapi.Schema(
+                                    type=openapi.TYPE_STRING, description="Post title"
+                                ),
+                                "description": openapi.Schema(
+                                    type=openapi.TYPE_STRING,
+                                    description="Post description",
+                                ),
+                                "contentType": openapi.Schema(
+                                    type=openapi.TYPE_STRING,
+                                    description="Content type of the post",
+                                ),
+                                "content": openapi.Schema(
+                                    type=openapi.TYPE_STRING,
+                                    description="Main content of the post",
+                                ),
+                                "visibility": openapi.Schema(
+                                    type=openapi.TYPE_STRING,
+                                    description="Visibility of the post",
+                                ),
+                                "published": openapi.Schema(
+                                    type=openapi.TYPE_STRING,
+                                    format=openapi.FORMAT_DATETIME,
+                                    description="Post publication timestamp",
+                                ),
+                                "repost_count": openapi.Schema(
+                                    type=openapi.TYPE_INTEGER,
+                                    description="Count of reposts",
+                                ),
+                            },
+                        ),
+                    ),
+                },
+            ),
         ),
         404: openapi.Response(
             description="Author not found.",
             schema=openapi.Schema(
                 type=openapi.TYPE_OBJECT,
                 properties={
-                    'detail': openapi.Schema(type=openapi.TYPE_STRING, description='Error message')
-                }
-            )
+                    "detail": openapi.Schema(
+                        type=openapi.TYPE_STRING, description="Error message"
+                    )
+                },
+            ),
         ),
     },
-    tags=["Stream"]
+    tags=["Stream"],
 )
 @api_view(["GET"])
 @permission_classes([AllowAny])
@@ -1123,15 +1362,15 @@ def stream_page(request, author_id):
     # Posts from mutual friends with visibility PUBLIC, PRIVATE, UNLISTED, FRIENDS
     mutual_friends_posts = Post.objects.filter(
         author__in=mutual_friends,
-        visibility__in=["PUBLIC", "PRIVATE", "UNLISTED", "FRIENDS"]
+        visibility__in=["PUBLIC", "PRIVATE", "UNLISTED", "FRIENDS"],
     )
 
     # Posts from authors the current author is following (but not mutual friends) with visibility PUBLIC and UNLISTED
     other_following_authors = following_authors.exclude(
-        id__in=mutual_friends.values("id"))
+        id__in=mutual_friends.values("id")
+    )
     other_following_posts = Post.objects.filter(
-        author__in=other_following_authors,
-        visibility__in=["PUBLIC", "UNLISTED"]
+        author__in=other_following_authors, visibility__in=["PUBLIC", "UNLISTED"]
     )
 
     # Public posts from any author (visible to everyone)
@@ -1141,13 +1380,16 @@ def stream_page(request, author_id):
     personal_posts = Post.objects.filter(author=current_author)
 
     # Combine all posts and avoid duplicates
-    all_posts = (public_posts |
-                 mutual_friends_posts | other_following_posts | personal_posts
-                 ).distinct().order_by("-edited_at")
+
+    all_posts = (
+        (public_posts | mutual_friends_posts | other_following_posts | personal_posts)
+        .distinct()
+        .order_by("-edited_at")
+    )
 
     # Paginate and return response
     paginator = PageNumberPagination()
-    paginator.page_size = 10
+    paginator.page_size = 100
     result_page = paginator.paginate_queryset(all_posts, request)
     serializer = PostSerializer(result_page, many=True)
     return paginator.get_paginated_response(serializer.data)
@@ -1202,8 +1444,6 @@ def stream_page(request, author_id):
     },
     tags=["Authentication"],
 )
-
-
 @csrf_exempt
 @api_view(["POST"])
 @permission_classes([AllowAny])
@@ -1211,30 +1451,36 @@ def signup(request):
     serializer = AuthorSerializer(data=request.data)
     if serializer.is_valid():
         user = serializer.save()
-        
+
         # Fetch the toggle setting from the database
         settings = AdminSettings.objects.first()
         if settings and not settings.user_approval_required:
             user.is_approved = True  # Automatically approve the user
         else:
             user.is_approved = False  # Require admin approval
-        
+
         user.save()
 
         # Notify the user about their approval status
         if user.is_approved:
             refresh = RefreshToken.for_user(user)
-            return Response({
-                "message": "User created and approved.",
-                "refresh": str(refresh),
-                "access": str(refresh.access_token),
-                "user": AuthorSerializer(user).data
-            }, status=status.HTTP_201_CREATED)
-        
-        return Response({
-            "message": "User created. Your account is pending admin approval.",
-            "user": AuthorSerializer(user).data
-        }, status=status.HTTP_201_CREATED)
+            return Response(
+                {
+                    "message": "User created and approved.",
+                    "refresh": str(refresh),
+                    "access": str(refresh.access_token),
+                    "user": AuthorSerializer(user).data,
+                },
+                status=status.HTTP_201_CREATED,
+            )
+
+        return Response(
+            {
+                "message": "User created. Your account is pending admin approval.",
+                "user": AuthorSerializer(user).data,
+            },
+            status=status.HTTP_201_CREATED,
+        )
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -1328,7 +1574,7 @@ def login(request):
 
 
 @swagger_auto_schema(
-    method='get',
+    method="get",
     operation_summary="Get all pending outgoing follow requests",
     operation_description="Get all pending follow requests sent by the current user.",
     responses={
@@ -1339,47 +1585,71 @@ def login(request):
                 items=openapi.Schema(
                     type=openapi.TYPE_OBJECT,
                     properties={
-                        'id': openapi.Schema(type=openapi.TYPE_STRING, description='Unique identifier for the follow request'),
-                        'actor': openapi.Schema(type=openapi.TYPE_OBJECT, properties={
-                            'uuid': openapi.Schema(type=openapi.TYPE_STRING, description='UUID of the actor'),
-                            'displayName': openapi.Schema(type=openapi.TYPE_STRING, description='Display name of the actor'),
-                        }),
-                        'object': openapi.Schema(type=openapi.TYPE_OBJECT, properties={
-                            'uuid': openapi.Schema(type=openapi.TYPE_STRING, description='UUID of the target author'),
-                            'displayName': openapi.Schema(type=openapi.TYPE_STRING, description='Display name of the target author'),
-                        }),
-                        'accepted': openapi.Schema(type=openapi.TYPE_BOOLEAN, description='Indicates if the follow request is accepted'),
-                    }
-                )
-            )
+                        "id": openapi.Schema(
+                            type=openapi.TYPE_STRING,
+                            description="Unique identifier for the follow request",
+                        ),
+                        "actor": openapi.Schema(
+                            type=openapi.TYPE_OBJECT,
+                            properties={
+                                "uuid": openapi.Schema(
+                                    type=openapi.TYPE_STRING,
+                                    description="UUID of the actor",
+                                ),
+                                "displayName": openapi.Schema(
+                                    type=openapi.TYPE_STRING,
+                                    description="Display name of the actor",
+                                ),
+                            },
+                        ),
+                        "object": openapi.Schema(
+                            type=openapi.TYPE_OBJECT,
+                            properties={
+                                "uuid": openapi.Schema(
+                                    type=openapi.TYPE_STRING,
+                                    description="UUID of the target author",
+                                ),
+                                "displayName": openapi.Schema(
+                                    type=openapi.TYPE_STRING,
+                                    description="Display name of the target author",
+                                ),
+                            },
+                        ),
+                        "accepted": openapi.Schema(
+                            type=openapi.TYPE_BOOLEAN,
+                            description="Indicates if the follow request is accepted",
+                        ),
+                    },
+                ),
+            ),
         ),
         401: "Unauthorized",
     },
-    tags=["Follow Requests"]
+    tags=["Follow Requests"],
 )
-@api_view(['GET'])
+@api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def get_pending_requests(request):
     """Get all pending follow requests sent by the current user"""
     current_author = request.user
     pending_requests = FollowRequest.objects.filter(
-        actor=current_author,
-        accepted=False
+        actor=current_author, accepted=False
     )
     serializer = FollowRequestSerializer(pending_requests, many=True)
     return Response(serializer.data)
 
+
 @swagger_auto_schema(
-    method='delete',
+    method="delete",
     operation_summary="Remove a follow request",
     operation_description="Remove a pending follow request.",
     manual_parameters=[
         openapi.Parameter(
-            'author_uuid',
+            "author_uuid",
             openapi.IN_PATH,
             description="UUID of the author whose follow request is to be removed",
             type=openapi.TYPE_STRING,
-            required=True
+            required=True,
         )
     ],
     responses={
@@ -1388,24 +1658,28 @@ def get_pending_requests(request):
             schema=openapi.Schema(
                 type=openapi.TYPE_OBJECT,
                 properties={
-                    'detail': openapi.Schema(type=openapi.TYPE_STRING, description='Confirmation message')
-                }
-            )
+                    "detail": openapi.Schema(
+                        type=openapi.TYPE_STRING, description="Confirmation message"
+                    )
+                },
+            ),
         ),
         404: openapi.Response(
             description="No follow request found.",
             schema=openapi.Schema(
                 type=openapi.TYPE_OBJECT,
                 properties={
-                    'detail': openapi.Schema(type=openapi.TYPE_STRING, description='Error message')
-                }
-            )
+                    "detail": openapi.Schema(
+                        type=openapi.TYPE_STRING, description="Error message"
+                    )
+                },
+            ),
         ),
         401: "Unauthorized",
     },
-    tags=["Follow Requests"]
+    tags=["Follow Requests"],
 )
-@api_view(['DELETE'])
+@api_view(["DELETE"])
 @permission_classes([IsAuthenticated])
 def remove_follow_request(request, author_uuid):
     """Remove a pending follow request"""
@@ -1413,15 +1687,12 @@ def remove_follow_request(request, author_uuid):
     target_author = get_object_or_404(Author, uuid=author_uuid)
 
     follow_requests = FollowRequest.objects.filter(
-        actor=current_author,
-        object=target_author,
-        accepted=False
+        actor=current_author, object=target_author, accepted=False
     )
 
     if not follow_requests.exists():
         return Response(
-            {'detail': 'No follow request found.'},
-            status=status.HTTP_404_NOT_FOUND
+            {"detail": "No follow request found."}, status=status.HTTP_404_NOT_FOUND
         )
 
     # Delete all pending requests from this user
@@ -1432,116 +1703,122 @@ def remove_follow_request(request, author_uuid):
     async_to_sync(channel_layer.group_send)(
         f"notifications_{target_author.uuid}",
         {
-            'type': 'follow_request_notification',
-            'count': FollowRequest.objects.filter(
-                object=target_author,
-                accepted=False
+            "type": "follow_request_notification",
+            "count": FollowRequest.objects.filter(
+                object=target_author, accepted=False
             ).count(),
-            'message': f'{current_author.displayName} removed their follow request'
-        }
+            "message": f"{current_author.displayName} removed their follow request",
+        },
     )
 
-    return Response({'detail': 'Follow request removed.'}, status=status.HTTP_200_OK)
+    return Response({"detail": "Follow request removed."}, status=status.HTTP_200_OK)
 
-# @swagger_auto_schema(
-#     method='delete',
-#     operation_summary="Unfollow an Author",
-#     operation_description="Unfollow an author.",
-#     manual_parameters=[
-#         openapi.Parameter(
-#             'author_id',
-#             openapi.IN_PATH,
-#             description="UUID of the author to unfollow",
-#             type=openapi.TYPE_STRING,
-#             required=True
-#         )
-#     ],
-#     responses={
-#         200: openapi.Response(
-#             description="Successfully unfollowed the author.",
-#             schema=openapi.Schema(
-#                 type=openapi.TYPE_OBJECT,
-#                 properties={
-#                     'detail': openapi.Schema(type=openapi.TYPE_STRING, description='Success message')
-#                 }
-#             )
-#         ),
-#         400: openapi.Response(
-#             description="You are not following this author.",
-#             schema=openapi.Schema(
-#                 type=openapi.TYPE_OBJECT,
-#                 properties={
-#                     'detail': openapi.Schema(type=openapi.TYPE_STRING, description='Error message')
-#                 }
-#             )
-#         ),
-#         404: openapi.Response(
-#             description="Author not found.",
-#             schema=openapi.Schema(
-#                 type=openapi.TYPE_OBJECT,
-#                 properties={
-#                     'detail': openapi.Schema(type=openapi.TYPE_STRING, description='Error message')
-#                 }
-#             )
-#         ),
-#         401: "Unauthorized",
-#     },
-#     tags=["Follow Requests"]
-# )
-# @api_view(['DELETE'])
-# @permission_classes([IsAuthenticated])
-# def unfollow_author(request, author_id):
-#     try:
-#         target_author = get_object_or_404(Author, uuid=author_id)
-#         current_author = request.user  # Since your user model is Author
-
-#         # Remove from followers
-#         if current_author in target_author.followers.all():
-#             target_author.followers.remove(current_author)
-#             target_author.save()
-
-#             # Notify through WebSocket
-#             channel_layer = get_channel_layer()
-#             async_to_sync(channel_layer.group_send)(
-#                 f"notifications_{target_author.uuid}",
-#                 {
-#                     'type': 'follow_request_notification',
-#                     'count': FollowRequest.objects.filter(
-#                         object=target_author,
-#                         accepted=False
-#                     ).count(),
-#                     'message': f'{current_author.displayName} unfollowed you'
-#                 }
-#             )
-
-#             return Response({
-#                 "detail": f"Successfully unfollowed {target_author.displayName}"
-#             }, status=status.HTTP_200_OK)
-#         else:
-#             return Response({
-#                 "detail": "You are not following this author"
-#             }, status=status.HTTP_400_BAD_REQUEST)
-
-#     except Author.DoesNotExist:
-#         return Response({
-#             "detail": "Author not found"
-#         }, status=status.HTTP_404_NOT_FOUND)
-#     except Exception as e:
-#         return Response({
-#             "detail": str(e)
-#         }, status=status.HTTP_400_BAD_REQUEST)
 
 @swagger_auto_schema(
-    method='get',
+    method="delete",
+    operation_summary="Unfollow an Author",
+    operation_description="Unfollow an author.",
+    manual_parameters=[
+        openapi.Parameter(
+            "author_id",
+            openapi.IN_PATH,
+            description="UUID of the author to unfollow",
+            type=openapi.TYPE_STRING,
+            required=True,
+        )
+    ],
+    responses={
+        200: openapi.Response(
+            description="Successfully unfollowed the author.",
+            schema=openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "detail": openapi.Schema(
+                        type=openapi.TYPE_STRING, description="Success message"
+                    )
+                },
+            ),
+        ),
+        400: openapi.Response(
+            description="You are not following this author.",
+            schema=openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "detail": openapi.Schema(
+                        type=openapi.TYPE_STRING, description="Error message"
+                    )
+                },
+            ),
+        ),
+        404: openapi.Response(
+            description="Author not found.",
+            schema=openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "detail": openapi.Schema(
+                        type=openapi.TYPE_STRING, description="Error message"
+                    )
+                },
+            ),
+        ),
+        401: "Unauthorized",
+    },
+    tags=["Follow Requests"],
+)
+@api_view(["DELETE"])
+@permission_classes([IsAuthenticated])
+def unfollow_author(request, author_id):
+    try:
+        target_author = get_object_or_404(Author, uuid=author_id)
+        current_author = request.user  # Since your user model is Author
+
+        # Remove from followers
+        if current_author in target_author.followers.all():
+            target_author.followers.remove(current_author)
+            target_author.save()
+
+            # Notify through WebSocket
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                f"notifications_{target_author.uuid}",
+                {
+                    "type": "follow_request_notification",
+                    "count": FollowRequest.objects.filter(
+                        object=target_author, accepted=False
+                    ).count(),
+                    "message": f"{current_author.displayName} unfollowed you",
+                },
+            )
+
+            return Response(
+                {"detail": f"Successfully unfollowed {target_author.displayName}"},
+                status=status.HTTP_200_OK,
+            )
+        else:
+            return Response(
+                {"detail": "You are not following this author"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+    except Author.DoesNotExist:
+        return Response(
+            {"detail": "Author not found"}, status=status.HTTP_404_NOT_FOUND
+        )
+    except Exception as e:
+        return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@swagger_auto_schema(
+    method="get",
     operation_summary="Check Relationship Status",
     operation_description="Check the relationship status between the current user and a target author.",
     manual_parameters=[
         openapi.Parameter(
-            'author_uuid',
+            "author_uuid",
             openapi.IN_PATH,
             description="UUID of the author to check the relationship with",
             type=openapi.TYPE_STRING,
-            required=True
+            required=True,
         )
     ],
     responses={
@@ -1550,56 +1827,70 @@ def remove_follow_request(request, author_uuid):
             schema=openapi.Schema(
                 type=openapi.TYPE_OBJECT,
                 properties={
-                    'is_following': openapi.Schema(type=openapi.TYPE_BOOLEAN, description='True if the current user is following the target author'),
-                    'is_followed_by': openapi.Schema(type=openapi.TYPE_BOOLEAN, description='True if the target author is following the current user'),
-                    'is_friend': openapi.Schema(type=openapi.TYPE_BOOLEAN, description='True if both users are following each other')
-                }
-            )
+                    "is_following": openapi.Schema(
+                        type=openapi.TYPE_BOOLEAN,
+                        description="True if the current user is following the target author",
+                    ),
+                    "is_followed_by": openapi.Schema(
+                        type=openapi.TYPE_BOOLEAN,
+                        description="True if the target author is following the current user",
+                    ),
+                    "is_friend": openapi.Schema(
+                        type=openapi.TYPE_BOOLEAN,
+                        description="True if both users are following each other",
+                    ),
+                },
+            ),
         ),
         404: openapi.Response(
             description="Author not found.",
             schema=openapi.Schema(
                 type=openapi.TYPE_OBJECT,
                 properties={
-                    'error': openapi.Schema(type=openapi.TYPE_STRING, description='Error message')
-                }
-            )
+                    "error": openapi.Schema(
+                        type=openapi.TYPE_STRING, description="Error message"
+                    )
+                },
+            ),
         ),
         401: "Unauthorized",
     },
-    tags=["Relationships"]
+    tags=["Relationships"],
 )
-@api_view(['GET'])
+@api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def check_relationship_status(request, author_uuid):
     """Check complete relationship status between current user and target author"""
     try:
         current_author = request.user
         target_author = get_object_or_404(Author, uuid=author_uuid)
-        
+
         is_following = target_author.followers.filter(id=current_author.id).exists()
         is_followed_by = current_author.followers.filter(id=target_author.id).exists()
         is_friend = is_following and is_followed_by
-        
-        return Response({
-            'is_following': is_following,
-            'is_followed_by': is_followed_by,
-            'is_friend': is_friend
-        })
+
+        return Response(
+            {
+                "is_following": is_following,
+                "is_followed_by": is_followed_by,
+                "is_friend": is_friend,
+            }
+        )
     except Author.DoesNotExist:
-        return Response({'error': 'Author not found'}, status=404)
+        return Response({"error": "Author not found"}, status=404)
+
 
 @swagger_auto_schema(
-    method='get',
+    method="get",
     operation_summary="Get Author Statistics",
     operation_description="Retrieve statistics about the specified author's relationships.",
     manual_parameters=[
         openapi.Parameter(
-            'author_uuid',
+            "author_uuid",
             openapi.IN_PATH,
             description="UUID of the author for whom to retrieve statistics",
             type=openapi.TYPE_STRING,
-            required=True
+            required=True,
         )
     ],
     responses={
@@ -1608,53 +1899,69 @@ def check_relationship_status(request, author_uuid):
             schema=openapi.Schema(
                 type=openapi.TYPE_OBJECT,
                 properties={
-                    'followers': openapi.Schema(type=openapi.TYPE_INTEGER, description='Total number of followers'),
-                    'following': openapi.Schema(type=openapi.TYPE_INTEGER, description='Total number of users the author is following'),
-                    'friends': openapi.Schema(type=openapi.TYPE_INTEGER, description='Total number of mutual followers (friends)')
-                }
-            )
+                    "followers": openapi.Schema(
+                        type=openapi.TYPE_INTEGER,
+                        description="Total number of followers",
+                    ),
+                    "following": openapi.Schema(
+                        type=openapi.TYPE_INTEGER,
+                        description="Total number of users the author is following",
+                    ),
+                    "friends": openapi.Schema(
+                        type=openapi.TYPE_INTEGER,
+                        description="Total number of mutual followers (friends)",
+                    ),
+                },
+            ),
         ),
         404: openapi.Response(
             description="Author not found.",
             schema=openapi.Schema(
                 type=openapi.TYPE_OBJECT,
                 properties={
-                    'error': openapi.Schema(type=openapi.TYPE_STRING, description='Error message')
-                }
-            )
+                    "error": openapi.Schema(
+                        type=openapi.TYPE_STRING, description="Error message"
+                    )
+                },
+            ),
         ),
         401: "Unauthorized",
     },
-    tags=["Author Stats"]
+    tags=["Author Stats"],
 )
-@api_view(['GET'])
+@api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def get_author_stats(request, author_uuid):
     try:
         author = get_object_or_404(Author, uuid=author_uuid)
         followers_count = author.followers.count()
         following_count = author.following.count()
-        friends_count = author.followers.filter(id__in=author.following.values('id')).count()
-        
-        return Response({
-            'followers': followers_count,
-            'following': following_count,
-            'friends': friends_count
-        })
+        friends_count = author.followers.filter(
+            id__in=author.following.values("id")
+        ).count()
+
+        return Response(
+            {
+                "followers": followers_count,
+                "following": following_count,
+                "friends": friends_count,
+            }
+        )
     except Author.DoesNotExist:
-        return Response({'error': 'Author not found'}, status=404)
-    
+        return Response({"error": "Author not found"}, status=404)
+
+
 @swagger_auto_schema(
-    method='post',
+    method="post",
     operation_summary="Repost a Post",
     operation_description="Create a repost of an existing post. The original post must be public.",
     manual_parameters=[
         openapi.Parameter(
-            'post_id',
+            "post_id",
             openapi.IN_PATH,
             description="ID of the post to repost",
             type=openapi.TYPE_INTEGER,
-            required=True
+            required=True,
         )
     ],
     responses={
@@ -1663,43 +1970,54 @@ def get_author_stats(request, author_uuid):
             schema=openapi.Schema(
                 type=openapi.TYPE_OBJECT,
                 properties={
-                    'message': openapi.Schema(type=openapi.TYPE_STRING, description='Success message'),
-                    'repost_count': openapi.Schema(type=openapi.TYPE_INTEGER, description='Updated repost count of the original post')
-                }
-            )
+                    "message": openapi.Schema(
+                        type=openapi.TYPE_STRING, description="Success message"
+                    ),
+                    "repost_count": openapi.Schema(
+                        type=openapi.TYPE_INTEGER,
+                        description="Updated repost count of the original post",
+                    ),
+                },
+            ),
         ),
         400: openapi.Response(
             description="You have already reposted this post.",
             schema=openapi.Schema(
                 type=openapi.TYPE_OBJECT,
                 properties={
-                    'error': openapi.Schema(type=openapi.TYPE_STRING, description='Error message')
-                }
-            )
+                    "error": openapi.Schema(
+                        type=openapi.TYPE_STRING, description="Error message"
+                    )
+                },
+            ),
         ),
         403: openapi.Response(
             description="Post is not public.",
             schema=openapi.Schema(
                 type=openapi.TYPE_OBJECT,
                 properties={
-                    'error': openapi.Schema(type=openapi.TYPE_STRING, description='Error message')
-                }
-            )
+                    "error": openapi.Schema(
+                        type=openapi.TYPE_STRING, description="Error message"
+                    )
+                },
+            ),
         ),
         404: openapi.Response(
             description="Post not found.",
             schema=openapi.Schema(
                 type=openapi.TYPE_OBJECT,
                 properties={
-                    'error': openapi.Schema(type=openapi.TYPE_STRING, description='Error message')
-                }
-            )
+                    "error": openapi.Schema(
+                        type=openapi.TYPE_STRING, description="Error message"
+                    )
+                },
+            ),
         ),
         401: "Unauthorized",
     },
-    tags=["Posts"]
+    tags=["Posts"],
 )
-@api_view(['POST'])
+@api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def repost_post(request, post_id):
     reposted_post = get_object_or_404(Post, id=post_id)
@@ -1711,12 +2029,12 @@ def repost_post(request, post_id):
         original_post = reposted_post
 
     # Check if the original post is public
-    if original_post.visibility != 'PUBLIC':
-        return Response({'error': 'Post is not public.'}, status=403)
+    if original_post.visibility != "PUBLIC":
+        return Response({"error": "Post is not public."}, status=403)
 
     # Check if the user has already reposted the original post
     if request.user in original_post.reposted_by.all():
-        return Response({'error': 'You have already reposted this post.'}, status=400)
+        return Response({"error": "You have already reposted this post."}, status=400)
 
     # Create a new post for the repost
     new_repost = Post(
@@ -1737,74 +2055,97 @@ def repost_post(request, post_id):
     original_post.repost_count += 1
     original_post.save()
 
-    return Response({
-        'message': 'Post reposted successfully.',
-        'repost_count': original_post.repost_count
-    }, status=200)
+    return Response(
+        {
+            "message": "Post reposted successfully.",
+            "repost_count": original_post.repost_count,
+        },
+        status=200,
+    )
 
-# @swagger_auto_schema(
-#     method='get',
-#     operation_summary="Get Author Followers",
-#     operation_description="Retrieve the list of followers for a specific author.",
-#     manual_parameters=[
-#         openapi.Parameter(
-#             'author_uuid',
-#             openapi.IN_PATH,
-#             description="UUID of the author to retrieve followers for",
-#             type=openapi.TYPE_STRING,
-#             required=True
-#         )
-#     ],
-#     responses={
-#         200: openapi.Response(
-#             description="Successfully retrieved followers.",
-#             schema=openapi.Schema(
-#                 type=openapi.TYPE_ARRAY,
-#                 items=openapi.Schema(
-#                     type=openapi.TYPE_OBJECT,
-#                     properties={
-#                         'id': openapi.Schema(type=openapi.TYPE_INTEGER, description='ID of the author'),
-#                         'uuid': openapi.Schema(type=openapi.TYPE_STRING, description='UUID of the author'),
-#                         'host': openapi.Schema(type=openapi.TYPE_STRING, description='Host of the author'),
-#                         'displayName': openapi.Schema(type=openapi.TYPE_STRING, description='Display name of the author'),
-#                         'github': openapi.Schema(type=openapi.TYPE_STRING, description='GitHub URL of the author'),
-#                         'profileImage': openapi.Schema(type=openapi.TYPE_STRING, description='Profile image URL of the author'),
-#                         'page': openapi.Schema(type=openapi.TYPE_STRING, description='Page URL of the author'),
-#                         'username': openapi.Schema(type=openapi.TYPE_STRING, description='Username of the author'),
-#                         'email': openapi.Schema(type=openapi.TYPE_STRING, description='Email of the author'),
-#                     }
-#                 )
-#             )
-#         ),
-#         404: openapi.Response(
-#             description="Author not found.",
-#             schema=openapi.Schema(
-#                 type=openapi.TYPE_OBJECT,
-#                 properties={
-#                     'error': openapi.Schema(type=openapi.TYPE_STRING, description='Error message')
-#                 }
-#             )
-#         ),
-#         401: "Unauthorized",
-#     },
-#     tags=["Authors"]
-# )
-# @api_view(['GET'])
-# @permission_classes([IsAuthenticated])
-# def get_author_followers(request, author_uuid):
-#     try:
-#         author = get_object_or_404(Author, uuid=author_uuid)
-#         followers = author.followers.all()
-#         serializer = AuthorSerializer(followers, many=True)
 
-#         response_data = {
-#             "type" : "followers",
-#             "followers" : serializer.data
-#         }
-
-#         return Response(response_data)
-#     except Author.DoesNotExist:
-#         return Response({'error': 'Author not found'}, status=404)
+@swagger_auto_schema(
+    method="get",
+    operation_summary="Get Author Followers",
+    operation_description="Retrieve the list of followers for a specific author.",
+    manual_parameters=[
+        openapi.Parameter(
+            "author_uuid",
+            openapi.IN_PATH,
+            description="UUID of the author to retrieve followers for",
+            type=openapi.TYPE_STRING,
+            required=True,
+        )
+    ],
+    responses={
+        200: openapi.Response(
+            description="Successfully retrieved followers.",
+            schema=openapi.Schema(
+                type=openapi.TYPE_ARRAY,
+                items=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        "id": openapi.Schema(
+                            type=openapi.TYPE_INTEGER, description="ID of the author"
+                        ),
+                        "uuid": openapi.Schema(
+                            type=openapi.TYPE_STRING, description="UUID of the author"
+                        ),
+                        "host": openapi.Schema(
+                            type=openapi.TYPE_STRING, description="Host of the author"
+                        ),
+                        "displayName": openapi.Schema(
+                            type=openapi.TYPE_STRING,
+                            description="Display name of the author",
+                        ),
+                        "github": openapi.Schema(
+                            type=openapi.TYPE_STRING,
+                            description="GitHub URL of the author",
+                        ),
+                        "profileImage": openapi.Schema(
+                            type=openapi.TYPE_STRING,
+                            description="Profile image URL of the author",
+                        ),
+                        "page": openapi.Schema(
+                            type=openapi.TYPE_STRING,
+                            description="Page URL of the author",
+                        ),
+                        "username": openapi.Schema(
+                            type=openapi.TYPE_STRING,
+                            description="Username of the author",
+                        ),
+                        "email": openapi.Schema(
+                            type=openapi.TYPE_STRING, description="Email of the author"
+                        ),
+                    },
+                ),
+            ),
+        ),
+        404: openapi.Response(
+            description="Author not found.",
+            schema=openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "error": openapi.Schema(
+                        type=openapi.TYPE_STRING, description="Error message"
+                    )
+                },
+            ),
+        ),
+        401: "Unauthorized",
+    },
+    tags=["Authors"],
+)
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def get_author_followers(request, author_uuid):
+    try:
+        author = get_object_or_404(Author, uuid=author_uuid)
+        followers = author.followers.all()
+        serializer = AuthorSerializer(followers, many=True)
+        return Response(serializer.data)
+    except Author.DoesNotExist:
+        return Response({"error": "Author not found"}, status=404)
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -1880,18 +2221,17 @@ def specific_follower_handler(request, author_serial, foreign_author_fqid):
             {'error': str(e)}, 
             status=status.HTTP_400_BAD_REQUEST
         )
-
 @swagger_auto_schema(
-    method='get',
+    method="get",
     operation_summary="Get Authors Following",
     operation_description="Retrieve the list of authors that a specific author is following.",
     manual_parameters=[
         openapi.Parameter(
-            'author_uuid',
+            "author_uuid",
             openapi.IN_PATH,
             description="UUID of the author to retrieve following authors for",
             type=openapi.TYPE_STRING,
-            required=True
+            required=True,
         )
     ],
     responses={
@@ -1902,33 +2242,58 @@ def specific_follower_handler(request, author_serial, foreign_author_fqid):
                 items=openapi.Schema(
                     type=openapi.TYPE_OBJECT,
                     properties={
-                        'id': openapi.Schema(type=openapi.TYPE_INTEGER, description='ID of the author'),
-                        'uuid': openapi.Schema(type=openapi.TYPE_STRING, description='UUID of the author'),
-                        'host': openapi.Schema(type=openapi.TYPE_STRING, description='Host of the author'),
-                        'displayName': openapi.Schema(type=openapi.TYPE_STRING, description='Display name of the author'),
-                        'github': openapi.Schema(type=openapi.TYPE_STRING, description='GitHub URL of the author'),
-                        'profileImage': openapi.Schema(type=openapi.TYPE_STRING, description='Profile image URL of the author'),
-                        'page': openapi.Schema(type=openapi.TYPE_STRING, description='Page URL of the author'),
-                        'username': openapi.Schema(type=openapi.TYPE_STRING, description='Username of the author'),
-                        'email': openapi.Schema(type=openapi.TYPE_STRING, description='Email of the author'),
-                    }
-                )
-            )
+                        "id": openapi.Schema(
+                            type=openapi.TYPE_INTEGER, description="ID of the author"
+                        ),
+                        "uuid": openapi.Schema(
+                            type=openapi.TYPE_STRING, description="UUID of the author"
+                        ),
+                        "host": openapi.Schema(
+                            type=openapi.TYPE_STRING, description="Host of the author"
+                        ),
+                        "displayName": openapi.Schema(
+                            type=openapi.TYPE_STRING,
+                            description="Display name of the author",
+                        ),
+                        "github": openapi.Schema(
+                            type=openapi.TYPE_STRING,
+                            description="GitHub URL of the author",
+                        ),
+                        "profileImage": openapi.Schema(
+                            type=openapi.TYPE_STRING,
+                            description="Profile image URL of the author",
+                        ),
+                        "page": openapi.Schema(
+                            type=openapi.TYPE_STRING,
+                            description="Page URL of the author",
+                        ),
+                        "username": openapi.Schema(
+                            type=openapi.TYPE_STRING,
+                            description="Username of the author",
+                        ),
+                        "email": openapi.Schema(
+                            type=openapi.TYPE_STRING, description="Email of the author"
+                        ),
+                    },
+                ),
+            ),
         ),
         404: openapi.Response(
             description="Author not found.",
             schema=openapi.Schema(
                 type=openapi.TYPE_OBJECT,
                 properties={
-                    'error': openapi.Schema(type=openapi.TYPE_STRING, description='Error message')
-                }
-            )
+                    "error": openapi.Schema(
+                        type=openapi.TYPE_STRING, description="Error message"
+                    )
+                },
+            ),
         ),
         401: "Unauthorized",
     },
-    tags=["Authors"]
+    tags=["Authors"],
 )
-@api_view(['GET'])
+@api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def get_author_following(request, author_uuid):
     try:
@@ -1937,19 +2302,20 @@ def get_author_following(request, author_uuid):
         serializer = AuthorSerializer(following, many=True)
         return Response(serializer.data)
     except Author.DoesNotExist:
-        return Response({'error': 'Author not found'}, status=404)
+        return Response({"error": "Author not found"}, status=404)
+
 
 @swagger_auto_schema(
-    method='get',
+    method="get",
     operation_summary="Get Author Friends",
     operation_description="Retrieve the list of friends for a specific author. Friends are defined as those who are both following and followed by the author.",
     manual_parameters=[
         openapi.Parameter(
-            'author_uuid',
+            "author_uuid",
             openapi.IN_PATH,
             description="UUID of the author to retrieve friends for",
             type=openapi.TYPE_STRING,
-            required=True
+            required=True,
         )
     ],
     responses={
@@ -1960,71 +2326,119 @@ def get_author_following(request, author_uuid):
                 items=openapi.Schema(
                     type=openapi.TYPE_OBJECT,
                     properties={
-                        'id': openapi.Schema(type=openapi.TYPE_INTEGER, description='ID of the friend author'),
-                        'uuid': openapi.Schema(type=openapi.TYPE_STRING, description='UUID of the friend author'),
-                        'host': openapi.Schema(type=openapi.TYPE_STRING, description='Host of the friend author'),
-                        'displayName': openapi.Schema(type=openapi.TYPE_STRING, description='Display name of the friend author'),
-                        'github': openapi.Schema(type=openapi.TYPE_STRING, description='GitHub URL of the friend author'),
-                        'profileImage': openapi.Schema(type=openapi.TYPE_STRING, description='Profile image URL of the friend author'),
-                        'page': openapi.Schema(type=openapi.TYPE_STRING, description='Page URL of the friend author'),
-                        'username': openapi.Schema(type=openapi.TYPE_STRING, description='Username of the friend author'),
-                        'email': openapi.Schema(type=openapi.TYPE_STRING, description='Email of the friend author'),
-                    }
-                )
-            )
+                        "id": openapi.Schema(
+                            type=openapi.TYPE_INTEGER,
+                            description="ID of the friend author",
+                        ),
+                        "uuid": openapi.Schema(
+                            type=openapi.TYPE_STRING,
+                            description="UUID of the friend author",
+                        ),
+                        "host": openapi.Schema(
+                            type=openapi.TYPE_STRING,
+                            description="Host of the friend author",
+                        ),
+                        "displayName": openapi.Schema(
+                            type=openapi.TYPE_STRING,
+                            description="Display name of the friend author",
+                        ),
+                        "github": openapi.Schema(
+                            type=openapi.TYPE_STRING,
+                            description="GitHub URL of the friend author",
+                        ),
+                        "profileImage": openapi.Schema(
+                            type=openapi.TYPE_STRING,
+                            description="Profile image URL of the friend author",
+                        ),
+                        "page": openapi.Schema(
+                            type=openapi.TYPE_STRING,
+                            description="Page URL of the friend author",
+                        ),
+                        "username": openapi.Schema(
+                            type=openapi.TYPE_STRING,
+                            description="Username of the friend author",
+                        ),
+                        "email": openapi.Schema(
+                            type=openapi.TYPE_STRING,
+                            description="Email of the friend author",
+                        ),
+                    },
+                ),
+            ),
         ),
         404: openapi.Response(
             description="Author not found.",
             schema=openapi.Schema(
                 type=openapi.TYPE_OBJECT,
                 properties={
-                    'error': openapi.Schema(type=openapi.TYPE_STRING, description='Error message')
-                }
-            )
+                    "error": openapi.Schema(
+                        type=openapi.TYPE_STRING, description="Error message"
+                    )
+                },
+            ),
         ),
         401: "Unauthorized",
     },
-    tags=["Authors"]
+    tags=["Authors"],
 )
-@api_view(['GET'])
+@api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def get_author_friends(request, author_uuid):
     try:
         author = get_object_or_404(Author, uuid=author_uuid)
         followers = author.followers.all()
         following = author.following.all()
-        friends = followers.filter(id__in=following.values('id'))
+        friends = followers.filter(id__in=following.values("id"))
         serializer = AuthorSerializer(friends, many=True)
         return Response(serializer.data)
     except Author.DoesNotExist:
-        return Response({'error': 'Author not found'}, status=404)
+        return Response({"error": "Author not found"}, status=404)
+
 
 @swagger_auto_schema(
-    method='post',
+    method="post",
     operation_summary="Update Author Profile",
     operation_description="Update the profile of the specified author. Only the author can update their profile.",
     manual_parameters=[
         openapi.Parameter(
-            'author_uuid',
+            "author_uuid",
             openapi.IN_PATH,
             description="UUID of the author whose profile is to be updated",
             type=openapi.TYPE_STRING,
-            required=True
+            required=True,
         )
     ],
     request_body=openapi.Schema(
         type=openapi.TYPE_OBJECT,
         properties={
-            'host': openapi.Schema(type=openapi.TYPE_STRING, description='Host of the author'),
-            'displayName': openapi.Schema(type=openapi.TYPE_STRING, description='Display name of the author'),
-            'github': openapi.Schema(type=openapi.TYPE_STRING, description='GitHub URL of the author'),
-            'profileImage': openapi.Schema(type=openapi.TYPE_STRING, description='Profile image URL of the author'),
-            'page': openapi.Schema(type=openapi.TYPE_STRING, description='Page URL of the author'),
-            'username': openapi.Schema(type=openapi.TYPE_STRING, description='Username of the author'),
-            'email': openapi.Schema(type=openapi.TYPE_STRING, description='Email of the author'),
-            'password': openapi.Schema(type=openapi.TYPE_STRING, description='Password of the author (if updating)', write_only=True)
+            "host": openapi.Schema(
+                type=openapi.TYPE_STRING, description="Host of the author"
+            ),
+            "displayName": openapi.Schema(
+                type=openapi.TYPE_STRING, description="Display name of the author"
+            ),
+            "github": openapi.Schema(
+                type=openapi.TYPE_STRING, description="GitHub URL of the author"
+            ),
+            "profileImage": openapi.Schema(
+                type=openapi.TYPE_STRING, description="Profile image URL of the author"
+            ),
+            "page": openapi.Schema(
+                type=openapi.TYPE_STRING, description="Page URL of the author"
+            ),
+            "username": openapi.Schema(
+                type=openapi.TYPE_STRING, description="Username of the author"
+            ),
+            "email": openapi.Schema(
+                type=openapi.TYPE_STRING, description="Email of the author"
+            ),
+            "password": openapi.Schema(
+                type=openapi.TYPE_STRING,
+                description="Password of the author (if updating)",
+                write_only=True,
+            ),
         },
-        required=[]  # Specify fields that are required if any
+        required=[],  # Specify fields that are required if any
     ),
     responses={
         200: openapi.Response(
@@ -2032,56 +2446,84 @@ def get_author_friends(request, author_uuid):
             schema=openapi.Schema(
                 type=openapi.TYPE_OBJECT,
                 properties={
-                    'id': openapi.Schema(type=openapi.TYPE_INTEGER, description='ID of the author'),
-                    'uuid': openapi.Schema(type=openapi.TYPE_STRING, description='UUID of the author'),
-                    'host': openapi.Schema(type=openapi.TYPE_STRING, description='Host of the author'),
-                    'displayName': openapi.Schema(type=openapi.TYPE_STRING, description='Display name of the author'),
-                    'github': openapi.Schema(type=openapi.TYPE_STRING, description='GitHub URL of the author'),
-                    'profileImage': openapi.Schema(type=openapi.TYPE_STRING, description='Profile image URL of the author'),
-                    'page': openapi.Schema(type=openapi.TYPE_STRING, description='Page URL of the author'),
-                    'username': openapi.Schema(type=openapi.TYPE_STRING, description='Username of the author'),
-                    'email': openapi.Schema(type=openapi.TYPE_STRING, description='Email of the author'),
-                }
-            )
+                    "id": openapi.Schema(
+                        type=openapi.TYPE_INTEGER, description="ID of the author"
+                    ),
+                    "uuid": openapi.Schema(
+                        type=openapi.TYPE_STRING, description="UUID of the author"
+                    ),
+                    "host": openapi.Schema(
+                        type=openapi.TYPE_STRING, description="Host of the author"
+                    ),
+                    "displayName": openapi.Schema(
+                        type=openapi.TYPE_STRING,
+                        description="Display name of the author",
+                    ),
+                    "github": openapi.Schema(
+                        type=openapi.TYPE_STRING, description="GitHub URL of the author"
+                    ),
+                    "profileImage": openapi.Schema(
+                        type=openapi.TYPE_STRING,
+                        description="Profile image URL of the author",
+                    ),
+                    "page": openapi.Schema(
+                        type=openapi.TYPE_STRING, description="Page URL of the author"
+                    ),
+                    "username": openapi.Schema(
+                        type=openapi.TYPE_STRING, description="Username of the author"
+                    ),
+                    "email": openapi.Schema(
+                        type=openapi.TYPE_STRING, description="Email of the author"
+                    ),
+                },
+            ),
         ),
         403: openapi.Response(
             description="Permission denied.",
             schema=openapi.Schema(
                 type=openapi.TYPE_OBJECT,
                 properties={
-                    'error': openapi.Schema(type=openapi.TYPE_STRING, description='Error message')
-                }
-            )
+                    "error": openapi.Schema(
+                        type=openapi.TYPE_STRING, description="Error message"
+                    )
+                },
+            ),
         ),
         404: openapi.Response(
             description="Author not found.",
             schema=openapi.Schema(
                 type=openapi.TYPE_OBJECT,
                 properties={
-                    'error': openapi.Schema(type=openapi.TYPE_STRING, description='Error message')
-                }
-            )
+                    "error": openapi.Schema(
+                        type=openapi.TYPE_STRING, description="Error message"
+                    )
+                },
+            ),
         ),
         400: openapi.Response(
             description="Invalid input data.",
             schema=openapi.Schema(
                 type=openapi.TYPE_OBJECT,
                 properties={
-                    'error': openapi.Schema(type=openapi.TYPE_STRING, description='Error message')
-                }
-            )
+                    "error": openapi.Schema(
+                        type=openapi.TYPE_STRING, description="Error message"
+                    )
+                },
+            ),
         ),
         401: "Unauthorized",
     },
-    tags=["Authors"]
+    tags=["Authors"],
 )
-@api_view(['POST'])
+@api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def update_author_profile(request, author_uuid):
     try:
         author = Author.objects.get(uuid=author_uuid)
         if request.user != author:
-            return Response({"error": "Permission denied"}, status=status.HTTP_403_FORBIDDEN)
+            return Response(
+                {"error": "Permission denied"}, status=status.HTTP_403_FORBIDDEN
+            )
 
         serializer = AuthorSerializer(author, data=request.data, partial=True)
         if serializer.is_valid():
@@ -2091,52 +2533,58 @@ def update_author_profile(request, author_uuid):
     except Author.DoesNotExist:
         return Response({"error": "Author not found"}, status=status.HTTP_404_NOT_FOUND)
 
+
 @swagger_auto_schema(
-    method='get',
+    method="get",
     operation_summary="Fetch a Post by ID",
     operation_description="Retrieve a post by its ID. The post must be either public or unlisted.",
     manual_parameters=[
         openapi.Parameter(
-            'post_id',
+            "post_id",
             openapi.IN_PATH,
             description="ID of the post to retrieve",
             type=openapi.TYPE_STRING,
-            required=True
+            required=True,
         )
     ],
     responses={
         200: openapi.Response(
             description="Post retrieved successfully.",
-            schema=PostSerializer()  # Use the PostSerializer schema
+            schema=PostSerializer(),  # Use the PostSerializer schema
         ),
         403: openapi.Response(
             description="You are not authorized to view this post.",
             schema=openapi.Schema(
                 type=openapi.TYPE_OBJECT,
                 properties={
-                    'detail': openapi.Schema(type=openapi.TYPE_STRING, description='Error message')
-                }
-            )
+                    "detail": openapi.Schema(
+                        type=openapi.TYPE_STRING, description="Error message"
+                    )
+                },
+            ),
         ),
         404: openapi.Response(
             description="Post not found.",
             schema=openapi.Schema(
                 type=openapi.TYPE_OBJECT,
                 properties={
-                    'detail': openapi.Schema(type=openapi.TYPE_STRING, description='Error message')
-                }
-            )
+                    "detail": openapi.Schema(
+                        type=openapi.TYPE_STRING, description="Error message"
+                    )
+                },
+            ),
         ),
     },
-    tags=["Posts"]
+    tags=["Posts"],
 )
+
+
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def get_post_by_link(request, post_id):
     """
     Fetch a post by ID if it's either public or unlisted.
     """
-    # print("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAa")
     post = get_object_or_404(Post, id=post_id)
 
     # Check if the post is public or unlisted
@@ -2148,24 +2596,50 @@ def get_post_by_link(request, post_id):
     return Response({"detail": "You are not authorized to view this post."}, status=403)
 
 
+GITHUB_API_URL = "https://api.github.com/users/{}/events/public"
 
-@api_view(['GET'])
-@authentication_classes([NodeBasicAuthentication])
-@permission_classes([IsAuthenticatedOrNode])
-def node_protected_endpoint(request):
-    # This endpoint can only be accessed by authenticated nodes or regular authenticated users
-    return Response({"message": "Access granted"})
 
-# def call_remote_node(url, username, password):
-#     # Create basic auth header
-#     credentials = base64.b64encode(f"{username}:{password}".encode()).decode()
-#     headers = {
-#         'Authorization': f'Basic {credentials}',
-#         'Content-Type': 'application/json'
-#     }
-    
-#     response = requests.get(url, headers=headers)
-#     return response.json()
+def fetch_and_create_github_posts():
+    authors = Author.objects.filter(github__isnull=False)
+    for author in authors:
+        github_username = author.github.split("/")[-1]
+        if github_username:
+            response = requests.get(GITHUB_API_URL.format(github_username))
+            if response.status_code == 200:
+                events = response.json()
+                for event in events:
+                    if not GitHubPost.objects.filter(
+                        github_event_id=event["id"]
+                    ).exists():
+                        github_post = GitHubPost.objects.create(
+                            author=author,
+                            activity_type=event["type"],
+                            activity_data=event,
+                            github_event_id=event["id"],
+                        )
+                        create_public_post_from_github_activity(author, github_post)
+            else:
+                print(
+                    f"Failed to fetch events for {github_username}: {response.status_code}"
+                )
+
+
+def create_public_post_from_github_activity(author, github_post):
+    event_type = github_post.activity_type
+    event_data = github_post.activity_data
+    title = f"{author.displayName} performed a {event_type} on GitHub"
+    content = f"Event data: {event_data}"
+
+    Post.objects.create(
+        title=title,
+        description=f"GitHub activity: {event_type}",
+        contentType="text/plain",
+        content=content,
+        author=author,
+        published=timezone.now(),
+        visibility="PUBLIC",
+    )
+
 
 @api_view(['GET'])
 @authentication_classes([NodeBasicAuthentication])
@@ -2173,7 +2647,6 @@ def node_protected_endpoint(request):
 def verify_node_connection(request):
     try:
         # Log incoming request details
-        print(f"Incoming request from: {request.user.url if hasattr(request.user, 'url') else 'Unknown'}")
         return Response({
             "status": "success",
             "message": "Connection verified",
@@ -2181,7 +2654,6 @@ def verify_node_connection(request):
         })
     except Exception as e:
         # Log any exceptions
-        print(f"Error in verify_node_connection: {str(e)}")
         return Response({
             "status": "error",
             "message": str(e)
@@ -2236,24 +2708,25 @@ def test_node_connection(request):
             "message": str(e),
             "type": str(type(e))
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
-@api_view(['POST', 'GET', 'DELETE'])
-@csrf_exempt
-def inbox_handler(request, author_serial):
-    author = get_object_or_404(Author, uuid=author_serial)
-    inbox, created = Inbox.objects.get_or_create(author=author)
 
-    print("Request method:", request.method)
-    print("User authenticated:", request.user.is_authenticated)
-    print("Authorization header:", request.headers.get('Authorization'))
-    print("Content type:", request.headers.get('Content-Type'))
-    print("Request data:", request.data)
+@csrf_exempt
+@api_view(['POST', 'GET', 'DELETE'])
+@permission_classes([IsAuthenticated])
+def inbox_handler(request, author_serial):
+    """
+    Handles inbox activities for a given author. Supports POST (to add activities),
+    GET (to retrieve inbox contents), and DELETE (to clear the inbox).
+    """
+    # Retrieve the author based on UUID
+    author = get_object_or_404(Author, uuid=author_serial)
+    # Get or create the inbox for the author
+    inbox, created = Inbox.objects.get_or_create(author=author)
+    
 
     if request.method == 'GET':
+        # Serialize and return the inbox data
         serializer = InboxSerializer(inbox)
-        data = serializer.data
-        print("Serialized inbox data:", data)  # Debug log
-        return Response(data)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     elif request.method == 'POST':
         data = request.data
@@ -2261,135 +2734,396 @@ def inbox_handler(request, author_serial):
 
         try:
             if item_type == 'post':
-                post_serializer = PostSerializer(data=data)
-                if post_serializer.is_valid():
-                    post = post_serializer.save()
-                    inbox.posts.add(post)
-                    return Response({'message': 'Post added to inbox'}, status=201)
+                # to create a post, basically call this url: service/api/authors/<path:author_serial>/posts/
+                # i need the author_serial from data
+                auth_serial = data.get("author_id")
+                hostname = data["author"]["host"]
+
+                api_url = f"{hostname}service/api/authors/{auth_serial}/posts/"
+
+                # Prepare the body for creating a post
+                post_data = {
+                    'title': data.get('title'),
+                    'description': data.get('description', ''),
+                    'contentType': data.get('contentType', 'text/plain'),
+                    'visibility': data.get('visibility', 'PUBLIC'),
+                    'content': data.get('content', ''),
+                }
+
+                # Check if there is an image to upload
+                if 'image' in data:
+                    post_data['image'] = data['image']  # Assuming the image is included in the data
+
+                response = requests.post(api_url, json=post_data, headers={
+                    'Authorization': f"Token {data.get('token')}",  # Ensure this line is correctly indented
+                    'Content-Type': 'application/json'
+                })
+
+                return Response({'message': 'Post added to inbox and created locally.'}, status=status.HTTP_201_CREATED)
 
             elif item_type == 'like':
-                like_serializer = LikeSerializer(data=data)
-                if like_serializer.is_valid():
-                    like = like_serializer.save()
+                # Handle Like Activity
+                like_id = data.get('id')
+                if not like_id:
+                    return Response({'error': 'Like ID is missing.'}, status=status.HTTP_400_BAD_REQUEST)
+
+                # Check if the Like already exists
+                like, created_like = Like.objects.get_or_create(id=like_id, defaults=data)
+                if created_like:
+                    like_serializer = LikeSerializer(like, data=data, partial=True)
+                    if like_serializer.is_valid():
+                        like = like_serializer.save()
+                        print(f"Like {like_id} created and added to inbox of author {author_serial}.")
+                    else:
+                        like.delete()
+                        print("Like serializer errors:", like_serializer.errors)
+                        return Response(like_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                else:
+                    print(f"Like {like_id} already exists.")
+
+                # Add the like to the inbox if not already added
+                if not inbox.likes.filter(id=like.id).exists():
                     inbox.likes.add(like)
-                    return Response({'message': 'Like added to inbox'}, status=201)
+                    print(f"Like {like.id} added to inbox of author {author_serial}.")
+                else:
+                    print(f"Like {like.id} already in inbox of author {author_serial}.")
+
+                # **Process the like by calling the local API endpoint**
+                response = create_local_like(request, like)
+                if response.status_code != status.HTTP_201_CREATED:
+                    return Response({'error': 'Failed to create local like.'}, status=status.HTTP_400_BAD_REQUEST)
+
+                return Response({'message': 'Like added to inbox and created locally.'}, status=status.HTTP_201_CREATED)
 
             elif item_type == 'comment':
-                comment_serializer = CommentSerializer(data=data)
-                if comment_serializer.is_valid():
-                    comment = comment_serializer.save()
+                print(" ============================== ")
+                # Handle Comment Activity
+                comment_id = data.get('id')
+                if not comment_id:
+                    return Response({'error': 'Comment ID is missing.'}, status=status.HTTP_400_BAD_REQUEST)
+
+                # Check if the Comment already exists
+                comment, created_comment = Comment.objects.get_or_create(id=comment_id, defaults=data)
+                if created_comment:
+                    comment_serializer = CommentSerializer(comment, data=data, partial=True)
+                    if comment_serializer.is_valid():
+                        comment = comment_serializer.save()
+                        print(f"Comment {comment_id} created and added to inbox of author {author_serial}.")
+                    else:
+                        comment.delete()
+                        print("Comment serializer errors:", comment_serializer.errors)
+                        return Response(comment_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                else:
+                    print(f"Comment {comment_id} already exists.")
+
+                # Add the comment to the inbox if not already added
+                if not inbox.comments.filter(id=comment.id).exists():
                     inbox.comments.add(comment)
-                    return Response({'message': 'Comment added to inbox'}, status=201)
+                    print(f"Comment {comment.id} added to inbox of author {author_serial}.")
+                else:
+                    print(f"Comment {comment.id} already in inbox of author {author_serial}.")
+
+                # **Process the comment by calling the local API endpoint**
+                response = create_local_comment(request, comment)
+                if response.status_code != status.HTTP_201_CREATED:
+                    return Response({'error': 'Failed to create local comment.'}, status=status.HTTP_400_BAD_REQUEST)
+
+                return Response({'message': 'Comment added to inbox and created locally.'}, status=status.HTTP_201_CREATED)
 
             elif item_type == 'follow':
-                try:
-                    print("Processing Follow Request")
-                    # Get the target author's UUID from the request data
-                    target_uuid = data['object']['id'].split("/").pop();
-                    print("Target UUID: ", target_uuid)
-                    target_author = get_object_or_404(Author, uuid=target_uuid)
-                    print("Target author found: ", target_author.displayName)
-                    current_author = request.user
-                    print("Current Author: ", current_author)
-                    
-                    # Check if already following
-                    if current_author in target_author.followers.all():
-                        return Response(
-                            {'detail': 'You are already following this author.'},
-                            status=status.HTTP_400_BAD_REQUEST
-                        )
+                # Handle Follow Activity
+                print("Handling follow request.")
 
-                    # Check if a pending request exists
-                    existing_request = FollowRequest.objects.filter(
-                        actor=current_author,
-                        object=target_author,
+                # Get the target author's UUID from the request data
+                target_uuid = data.get('object', {}).get('id')
+                if not target_uuid:
+                    return Response({'error': 'Target UUID for follow is missing.'}, status=status.HTTP_400_BAD_REQUEST)
+
+                django_request = request._request  # Get the underlying Django HttpRequest
+
+                # Call the existing send_follow_request function
+                response = send_follow_request(django_request, target_uuid)
+
+                if response.status_code == status.HTTP_201_CREATED:
+                    print("Follow request created successfully.")
+
+                    # Get the most recent follow request
+                    follow_request = FollowRequest.objects.filter(
+                        actor=request.user,
+                        object=author,
                         accepted=False
-                    ).exists()
+                    ).latest('created_at')
 
-                    if existing_request:
-                        return Response(
-                            {'detail': 'A follow request is already pending.'},
-                            status=status.HTTP_400_BAD_REQUEST
-                        )
-                    
-                    # Create a new follow request
-                    follow_request = FollowRequest.objects.create(
-                        actor=current_author,
-                        object=target_author, 
-                        accepted=False
-                    )
-                    
-                    inbox.follow_requests.add(follow_request)
+                    print(f"Adding follow request {follow_request.id} to inbox.")
+                    # Add to inbox if not already added
+                    if not inbox.follow_requests.filter(id=follow_request.id).exists():
+                        inbox.follow_requests.add(follow_request)
+                        print(f"Follow request {follow_request.id} added to inbox of author {author_serial}.")
+                    else:
+                        print(f"Follow request {follow_request.id} already in inbox of author {author_serial}.")
 
-                                # Notify through WebSocket
-                    channel_layer = get_channel_layer()
-                    async_to_sync(channel_layer.group_send)(
-                        f"notifications_{target_author.uuid}",
-                        {
-                            'type': 'follow_request_notification',
-                            'count': FollowRequest.objects.filter(
-                                object=target_author,
-                                accepted=False
-                            ).count(),
-                            'message': f'{current_author.displayName} sent you a follow request'
-                        }
-                    )
+                    # **Process the follow request by calling the local API endpoint**
+                    response = process_follow_request(request, follow_request)
+                    if response.status_code != status.HTTP_200_OK:
+                        return Response({'error': 'Failed to process follow request locally.'}, status=status.HTTP_400_BAD_REQUEST)
 
-                    return Response({'message': 'Follow request added to inbox'}, status=201)
+                    return Response({'message': 'Follow request added to inbox and processed locally.'}, status=status.HTTP_201_CREATED)
 
-                except Author.DoesNotExist:
-                    return Response({'error': 'Author not found'}, status=404)
-                except Exception as e:
-                    return Response({'error': str(e)}, status=400)  # Add this line to complete the except block
+                # If there was an error, return the original response
+                print(f"send_follow_request response status: {response.status_code}")
+                return response
 
-            
-            elif item_type == 'unfollow':
-                current_author = request.user
-                target_author = author  # The author whose inbox this is
-
-                # Check if currently following
-                if current_author in target_author.followers.all():
-                    # Remove from followers
-                    target_author.followers.remove(current_author)
-                    target_author.save()
-
-                    # Notify through WebSocket
-                    channel_layer = get_channel_layer()
-                    async_to_sync(channel_layer.group_send)(
-                        f"notifications_{target_author.uuid}",
-                        {
-                            'type': 'follow_request_notification',
-                            'count': FollowRequest.objects.filter(
-                                object=target_author,
-                                accepted=False
-                            ).count(),
-                            'message': f'{current_author.displayName} unfollowed you'
-                        }
-                    )
-
-                    return Response({
-                        'message': f'Successfully unfollowed {target_author.displayName}'
-                    }, status=status.HTTP_200_OK)
-                else:
-                    return Response({
-                        'message': 'You are not following this author'
-                    }, status=status.HTTP_400_BAD_REQUEST)
-            
-            return Response({
-                'message': f'Unsupported item type: {item_type}'
-            }, status=status.HTTP_400_BAD_REQUEST)
-
+            else:
+                # Unsupported activity type
+                print(f"Unsupported activity type: {item_type}")
+                return Response({'error': f"Unsupported activity type: {item_type}"}, status=status.HTTP_400_BAD_REQUEST)
 
         except Exception as e:
-            return Response({'error': str(e)}, status=400)
+            print(f"Error in inbox_handler: {e}")
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     elif request.method == 'DELETE':
+        # Clear all activities from the inbox
         inbox.posts.clear()
         inbox.likes.clear()
         inbox.comments.clear()
         inbox.follow_requests.clear()
-        return Response(status=204)
+        print(f"Inbox for author {author_serial} has been cleared.")
+        return Response({'message': 'Inbox cleared.'}, status=status.HTTP_204_NO_CONTENT)
+def create_local_post(request, post):
+    """
+    Processes a post activity by creating a local post via the API.
+    """
+    try:
+        factory = APIRequestFactory()
+        api_request = factory.post(
+            reverse('post-list'),  # Ensure this URL name matches your URL configuration
+            data={
+                'type': post.type,
+                'title': post.title,
+                'id': post.id,
+                'page': post.page,
+                'description': post.description,
+                'contentType': post.contentType,
+                'content': post.content,
+                'published': post.published,
+                'visibility': post.visibility,
+                'author': post.author.id,  # Assuming author is referenced by ID
+            },
+            format='json'
+        )
+        api_request.user = request.user
+        response = create_post(api_request)  # Call your post creation view
+        return response
+    except Exception as e:
+        print(f"Error creating local post: {e}")
+        return Response({'error': 'Failed to create local post.'}, status=status.HTTP_400_BAD_REQUEST)
+
+def create_local_like(request, like):
+    """
+    Processes a like activity by creating a local like via the API.
+    """
+    try:
+        factory = APIRequestFactory()
+        api_request = factory.post(
+            reverse('like-list'),  # Ensure this URL name matches your URL configuration
+            data={
+                'type': like.type,
+                'id': like.id,
+                'author': like.author.id,
+                'object': like.object,
+                'published': like.published,
+            },
+            format='json'
+        )
+        api_request.user = request.user
+        response = create_like(api_request)  # Call your like creation view
+        return response
+    except Exception as e:
+        print(f"Error creating local like: {e}")
+        return Response({'error': 'Failed to create local like.'}, status=status.HTTP_400_BAD_REQUEST)
+
+def create_local_comment(request, comment):
+    """
+    Processes a comment activity by creating a local comment via the API.
+    """
+    try:
+        factory = APIRequestFactory()
+        api_request = factory.post(
+            reverse('comment-list'),  # Ensure this URL name matches your URL configuration
+            data={
+                'type': comment.type,
+                'id': comment.id,
+                'author': comment.author.id,
+                'post': comment.post,
+                'comment': comment.comment,
+                'contentType': comment.contentType,
+                'published': comment.published,
+            },
+            format='json'
+        )
+        api_request.user = request.user
+        response = post_comment(api_request)  # Call your comment creation view
+        return response
+    except Exception as e:
+        print(f"Error creating local comment: {e}")
+        return Response({'error': 'Failed to create local comment.'}, status=status.HTTP_400_BAD_REQUEST)
+
+def process_follow_request(request, follow_request):
+    """
+    Processes a follow request by accepting it via the API.
+    """
+    try:
+        factory = APIRequestFactory()
+        api_request = factory.post(
+            reverse('follow-request-accept', args=[follow_request.id]),  # Ensure this URL name matches your URL configuration
+            data={},  # If your accept_follow_request view requires additional data, include it here
+            format='json'
+        )
+        api_request.user = request.user
+        response = accept_follow_request(api_request, follow_request.id)  # Call your follow request acceptance view
+        return response
+    except Exception as e:
+        print(f"Error processing follow request: {e}")
+        return Response({'error': 'Failed to process follow request.'}, status=status.HTTP_400_BAD_REQUEST)
     
-    return Response({
-        'message': f'Method {request.method} not allowed'
-    }, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def sync_public_posts(request):
+    try:
+        # Get all active remote nodes
+        remote_nodes = ToWhichItsConnected.objects.filter(active=True)
+        if not remote_nodes:
+            return Response({
+                "status": "error",
+                "message": "No remote nodes found in the database. Please create one in the admin panel."
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        results = []
+        for node in remote_nodes:
+            node_result = {
+                "node_url": node.url,
+                "authors_synced": 0,
+                "posts_synced": 0,
+                "errors": []
+            }
+
+            try:
+                # Fetch all authors from the remote node
+                base_url = node.url
+                endpoint = 'service/api/authors/'
+
+                response = make_node_request(
+                    base_url=base_url,
+                    endpoint=endpoint,
+                )
+
+                if response.status_code == 200:
+                    data = response.json()
+                    # Adjust based on the remote node's response structure
+                    remote_authors = data
+
+                    # Iterate over authors and save them to the local database
+                    for author_data in remote_authors:
+                        try:
+                            # Get or create the author
+                            author_id = author_data.get('id')
+                            if not author_id:
+                                continue  # Skip if author ID is missing
+
+                            # Ensure unique username by appending host or ID if needed
+                            unique_username = f"{author_data.get('username', '')}@{author_data.get('host', '').replace('https://', '').replace('/', '')}"
+
+                            author_defaults = {
+                                'uuid': author_data.get('uuid'),
+                                'host': author_data.get('host', base_url),
+                                'displayName': author_data.get('displayName', ''),
+                                'github': author_data.get('github', ''),
+                                'profileImage': author_data.get('profileImage', ''),
+                                'username': unique_username,
+                                'email': '',  # Email might not be available
+                                'is_active': False,  # Remote authors are not local users
+                            }
+
+                            author, created = Author.objects.update_or_create(
+                                id=author_id,
+                                defaults=author_defaults
+                            )
+                            node_result['authors_synced'] += 1
+
+                            # Now fetch posts for this author
+                            posts_endpoint = f"service/api/authors/{author.uuid}/posts/all/"
+                            posts_response = make_node_request(
+                                base_url=base_url,
+                                endpoint=posts_endpoint
+                            )
+
+                            if posts_response.status_code == 200:
+                                posts_data = posts_response.json()
+                                print(posts_data)
+                                remote_posts = posts_data.get('results', {}).get('items', posts_data.get('posts', []))
+
+                                # Iterate over posts and save them to the local database
+                                for post_data in remote_posts:
+                                    # Only process public posts
+                                    if post_data.get('visibility', '').upper() == 'PUBLIC':
+                                        try:
+                                            # Prepare post data
+                                            post_id = post_data.get('id')
+                                            if not post_id:
+                                                continue  # Skip if post ID is missing
+
+                                            post_defaults = {
+                                                'type': post_data.get('type', 'post'),
+                                                'title': post_data.get('title', ''),
+                                                'page': post_data.get('source', post_id),
+                                                'description': post_data.get('description', ''),
+                                                'contentType': post_data.get('contentType', ''),
+                                                'content': post_data.get('content', ''),
+                                                'published': post_data.get('published', timezone.now()),
+                                                'visibility': post_data.get('visibility', 'PUBLIC'),
+                                            }
+
+                                            # Get or create the post
+                                            post, created = Post.objects.update_or_create(
+                                                id=post_id,
+                                                defaults={**post_defaults, 'author': author},
+                                            )
+                                            node_result['posts_synced'] += 1
+
+                                        except Exception as e:
+                                            error_message = f"Error processing post {post_data.get('id')}: {e}"
+                                            node_result['errors'].append(error_message)
+                                            continue  # Skip to the next post
+                                    else:
+                                        # Skip non-public posts
+                                        continue
+                            else:
+                                error_message = f"Failed to fetch posts for author {author_id}: Status {posts_response.status_code}"
+                                node_result['errors'].append(error_message)
+
+                        except Exception as e:
+                            error_message = f"Error processing author {author_data.get('id')}: {e}"
+                            node_result['errors'].append(error_message)
+                            continue  # Skip to the next author
+                    results.append(node_result)
+                else:
+                    error_message = f"Failed to fetch authors from {node.url}: Status {response.status_code}"
+                    node_result['errors'].append(error_message)
+                    results.append(node_result)
+            except requests.RequestException as e:
+                error_message = f"Connection error with {node.url}: {e}"
+                node_result['errors'].append(error_message)
+                results.append(node_result)
+
+        return Response({
+            "status": "completed",
+            "sync_results": results
+        })
+
+    except Exception as e:
+        return Response({
+            "status": "error",
+            "message": str(e),
+            "type": str(type(e).__name__)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
