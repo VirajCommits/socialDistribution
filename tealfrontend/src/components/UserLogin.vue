@@ -88,8 +88,6 @@ export default {
           password: this.password,
         });
 
-        print("REACHED HERE")
-
         // Store authentication tokens and user data
         const accessToken = response.data.access;
         localStorage.setItem("token", accessToken);
