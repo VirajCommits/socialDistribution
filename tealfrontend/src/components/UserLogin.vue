@@ -102,7 +102,7 @@ export default {
         console.log("Reached here!")
 
         // Call the sync posts endpoint
-        await this.syncPosts(accessToken);
+        // await this.syncPosts(accessToken);
 
         // Redirect to the stream page
         this.$router.push("/stream");
@@ -112,20 +112,20 @@ export default {
         this.isLoading = false;
       }
     },
-    async syncPosts(accessToken) {
-      try {
-        const syncResponse = await axios.get("sync_public_posts/", {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-          },
-        });
-        console.log("Sync successful:", syncResponse.data);
-      } catch (syncError) {
-        console.error("Error syncing posts:", syncError);
-        // Optionally display an error message to the user
-        // this.error = "Failed to sync posts. Please try again later.";
-      }
-    },
+    // async syncPosts(accessToken) {
+    //   try {
+    //     const syncResponse = await axios.get("sync_public_posts/", {
+    //       headers: {
+    //         'Authorization': `Bearer ${accessToken}`,
+    //       },
+    //     });
+    //     console.log("Sync successful:", syncResponse.data);
+    //   } catch (syncError) {
+    //     console.error("Error syncing posts:", syncError);
+    //     // Optionally display an error message to the user
+    //     // this.error = "Failed to sync posts. Please try again later.";
+    //   }
+    // },
     signupredirect() {
       this.$router.push("/signup");
     },
