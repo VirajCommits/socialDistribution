@@ -111,6 +111,7 @@ export default {
       }
     },
     async syncPosts(accessToken) {
+      console.log("SYNCING POSTS!")
       try {
         const syncResponse = await axios.get("sync_public_posts/", {
           headers: {
