@@ -2680,7 +2680,7 @@ def test_node_connection(request):
                  # Test outgoing connection (us -> them)
                 outgoing_url = f"{node.url}"
                 # endpoint = 'service/api/authors/931b3149-9101-4bb6-a78d-3350fdb70615/posts/all/'
-                endpoint = 'service/api/authors/'
+                endpoint = 'service/api/authors/931b3149-9101-4bb6-a78d-3350fdb70615/posts/all'
                 outgoing_response = make_node_request(base_url=outgoing_url, endpoint=endpoint)
                 
                 results.append({
