@@ -78,6 +78,8 @@ export default {
       this.error = "";
       this.isLoading = true;
 
+      console.log("Trying to log in")
+
       try {
         // Attempt to log in the user
         const response = await axios.post("/login/", {
