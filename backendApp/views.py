@@ -1344,7 +1344,6 @@ def get_all_authors(request):
 )
 @api_view(["GET"])
 @permission_classes([AllowAny])
-@authentication_classes([])
 def stream_page(request, author_id):
     # Get the current author
     current_author = get_object_or_404(Author, uuid=author_id)
@@ -1446,7 +1445,6 @@ def stream_page(request, author_id):
 @csrf_exempt
 @api_view(["POST"])
 @permission_classes([AllowAny])
-@authentication_classes([])
 
 def signup(request):
     serializer = AuthorSerializer(data=request.data)
@@ -1548,7 +1546,6 @@ def signup(request):
 @csrf_exempt
 @api_view(["POST"])
 @permission_classes([AllowAny])
-@authentication_classes([])
 def login(request):
     username = request.data.get("username")
     password = request.data.get("password")
