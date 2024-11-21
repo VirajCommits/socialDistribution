@@ -1548,9 +1548,10 @@ def signup(request):
 def login(request):
     username = request.data.get("username")
     password = request.data.get("password")
+    print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" , username , password)
     user = authenticate(username=username, password=password)
 
-    print("This is the user:" , user)
+    print("This is the user:" , user , username , password)
 
     if user:
         if not user.is_approved:

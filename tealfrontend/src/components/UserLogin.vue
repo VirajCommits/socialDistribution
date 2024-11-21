@@ -82,6 +82,7 @@ export default {
 
       try {
         // Attempt to log in the user
+        console.log("username and pass:" , this.username , this.password)
         const response = await axios.post("/login/", {
           username: this.username,
           password: this.password,
