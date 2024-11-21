@@ -100,7 +100,7 @@ export default {
         console.log("Reached here!")
 
         // Call the sync posts endpoint
-        // await this.syncPosts(accessToken);
+        await this.syncPosts(accessToken);
 
         // Redirect to the stream page
         this.$router.push("/stream");
