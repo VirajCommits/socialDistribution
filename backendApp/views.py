@@ -2906,7 +2906,7 @@ def process_follow_request(request, follow_request):
     
 @csrf_exempt
 @api_view(['GET'])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def sync_public_posts(request):
     try:
         # Get all active remote nodes
