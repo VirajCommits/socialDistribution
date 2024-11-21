@@ -12,7 +12,6 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 
 from pathlib import Path
 import os
-import environ
 import django_heroku
 import dj_database_url
 
@@ -21,12 +20,6 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
-
-# Initialize environment variables
-env = environ.Env()
-
-# Reading the env file (env.production for production, .env for local development)
-environ.Env.read_env(os.path.join(BASE_DIR, 'env.production'))  # Or 'read_env()' without specifying for .env
 
 
 # Quick-start development settings - unsuitable for production
@@ -48,6 +41,7 @@ USER_APPROVAL_REQUIRED = True
 ALLOWED_HOSTS = [
     "127.0.0.1",
     "localhost",
+    "social-distribution-1-3adb84f120d9.herokuapp.com",
     ".herokuapp.com",
 ]
 
@@ -87,23 +81,34 @@ MIDDLEWARE = [
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework_simplejwt.authentication.JWTAuthentication",  # Use JWT authentication
+        'rest_framework.authentication.SessionAuthentication',
+        'backendApp.authentication.NodeBasicAuthentication',
     ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ]
 }
 
 # CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:8080",  # Frontend development server
+    "http://127.0.0.1:8000",
+    "http://localhost:8081",  # Frontend development server
     "http://localhost:8000",  # Backend development server
-    "https://*.herokuapp.com",
+    "https://social-distribution-1-3adb84f120d9.herokuapp.com/",
 ]
 CORS_ALLOW_CREDENTIALS = True
 
 CSRF_TRUSTED_ORIGINS = [
-    "https://*.herokuapp.com",
-    "http://localhost:8080",
-    "http://localhost:8000",
     "http://127.0.0.1:8000",
+    "https://social-distribution-1-3adb84f120d9.herokuapp.com/",
+    "http://localhost:8081"
+    "http://localhost:8000",
 ]
+
+WHITENOISE_ALLOW_ALL_ORIGINS = True
+WHITENOISE_MANIFEST_STRICT = False
+WHITENOISE_USE_FINDERS = True
+
 
 
 ROOT_URLCONF = "tealBackend.urls"
@@ -127,10 +132,24 @@ TEMPLATES = [
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
-DATABASES = {
-    'default': env.db(),  # This automatically reads DATABASE_URL
-}
-
+if os.environ.get("DATABASE_URL") != None:
+    # Running on Heroku
+    DATABASES = {
+        "default": dj_database_url.config(
+            default="postgres://u2otn6q2ltrgno:p2e65e85bfb00199be08a2a6f6789d828de556eefe3b2f3106d23f2815518ca07@c3cj4hehegopde.cluster-czrs8kj4isg7.us-east-1.rds.amazonaws.com:5432/ddod6g6fsr1kkh",
+            conn_max_age=600,
+            conn_health_checks=True,
+            ssl_require=True
+        )
+    }
+else:
+    # Running locally.
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
+    }
 
 
 # Password validation
