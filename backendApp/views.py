@@ -17,7 +17,7 @@ from .serializers import (
     AuthorSerializer,
     InboxSerializer
 )
-from .models import Author, Post, Comment, Like, FollowRequest, Inbox , GitHubPost , ToWhichItsConnected
+from .models import Author, Post, Comment, Like, FollowRequest, Inbox , ToWhichItsConnected
 
 from .authentication import NodeBasicAuthentication
 from .permissions import IsAuthenticatedOrNode
@@ -1447,6 +1447,7 @@ def stream_page(request, author_id):
 @csrf_exempt
 @api_view(["POST"])
 @permission_classes([AllowAny])
+
 def signup(request):
     serializer = AuthorSerializer(data=request.data)
     if serializer.is_valid():
@@ -1460,9 +1461,11 @@ def signup(request):
             user.is_approved = False  # Require admin approval
 
         user.save()
+        print("user saved")
 
         # Notify the user about their approval status
         if user.is_approved:
+            print("user approved")
             refresh = RefreshToken.for_user(user)
             return Response(
                 {
@@ -1550,7 +1553,10 @@ def signup(request):
 def login(request):
     username = request.data.get("username")
     password = request.data.get("password")
+    print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" , username , password)
     user = authenticate(username=username, password=password)
+
+    print("This is the user:" , user , username , password)
 
     if user:
         if not user.is_approved:
@@ -2599,29 +2605,29 @@ def get_post_by_link(request, post_id):
 GITHUB_API_URL = "https://api.github.com/users/{}/events/public"
 
 
-def fetch_and_create_github_posts():
-    authors = Author.objects.filter(github__isnull=False)
-    for author in authors:
-        github_username = author.github.split("/")[-1]
-        if github_username:
-            response = requests.get(GITHUB_API_URL.format(github_username))
-            if response.status_code == 200:
-                events = response.json()
-                for event in events:
-                    if not GitHubPost.objects.filter(
-                        github_event_id=event["id"]
-                    ).exists():
-                        github_post = GitHubPost.objects.create(
-                            author=author,
-                            activity_type=event["type"],
-                            activity_data=event,
-                            github_event_id=event["id"],
-                        )
-                        create_public_post_from_github_activity(author, github_post)
-            else:
-                print(
-                    f"Failed to fetch events for {github_username}: {response.status_code}"
-                )
+# def fetch_and_create_github_posts():
+#     authors = Author.objects.filter(github__isnull=False)
+#     for author in authors:
+#         github_username = author.github.split("/")[-1]
+#         if github_username:
+#             response = requests.get(GITHUB_API_URL.format(github_username))
+#             if response.status_code == 200:
+#                 events = response.json()
+#                 for event in events:
+#                     if not GitHubPost.objects.filter(
+#                         github_event_id=event["id"]
+#                     ).exists():
+#                         github_post = GitHubPost.objects.create(
+#                             author=author,
+#                             activity_type=event["type"],
+#                             activity_data=event,
+#                             github_event_id=event["id"],
+#                         )
+#                         create_public_post_from_github_activity(author, github_post)
+#             else:
+#                 print(
+#                     f"Failed to fetch events for {github_username}: {response.status_code}"
+#                 )
 
 
 def create_public_post_from_github_activity(author, github_post):
@@ -2677,7 +2683,8 @@ def test_node_connection(request):
             try:
                  # Test outgoing connection (us -> them)
                 outgoing_url = f"{node.url}"
-                endpoint = 'service/api/authors/'
+                # endpoint = 'service/api/authors/931b3149-9101-4bb6-a78d-3350fdb70615/posts/all/'
+                endpoint = 'service/api/authors/931b3149-9101-4bb6-a78d-3350fdb70615/posts/all'
                 outgoing_response = make_node_request(base_url=outgoing_url, endpoint=endpoint)
                 
                 results.append({
@@ -2738,8 +2745,10 @@ def inbox_handler(request, author_serial):
                 # i need the author_serial from data
                 auth_serial = data.get("author_id")
                 hostname = data["author"]["host"]
+                print("THIS IS THE HOSTNAME: " , hostname , auth_serial)
 
                 api_url = f"{hostname}service/api/authors/{auth_serial}/posts/"
+                print("complete url:" , api_url)
 
                 # Prepare the body for creating a post
                 post_data = {
@@ -2762,73 +2771,10 @@ def inbox_handler(request, author_serial):
                 return Response({'message': 'Post added to inbox and created locally.'}, status=status.HTTP_201_CREATED)
 
             elif item_type == 'like':
-                # Handle Like Activity
-                like_id = data.get('id')
-                if not like_id:
-                    return Response({'error': 'Like ID is missing.'}, status=status.HTTP_400_BAD_REQUEST)
-
-                # Check if the Like already exists
-                like, created_like = Like.objects.get_or_create(id=like_id, defaults=data)
-                if created_like:
-                    like_serializer = LikeSerializer(like, data=data, partial=True)
-                    if like_serializer.is_valid():
-                        like = like_serializer.save()
-                        print(f"Like {like_id} created and added to inbox of author {author_serial}.")
-                    else:
-                        like.delete()
-                        print("Like serializer errors:", like_serializer.errors)
-                        return Response(like_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-                else:
-                    print(f"Like {like_id} already exists.")
-
-                # Add the like to the inbox if not already added
-                if not inbox.likes.filter(id=like.id).exists():
-                    inbox.likes.add(like)
-                    print(f"Like {like.id} added to inbox of author {author_serial}.")
-                else:
-                    print(f"Like {like.id} already in inbox of author {author_serial}.")
-
-                # **Process the like by calling the local API endpoint**
-                response = create_local_like(request, like)
-                if response.status_code != status.HTTP_201_CREATED:
-                    return Response({'error': 'Failed to create local like.'}, status=status.HTTP_400_BAD_REQUEST)
-
-                return Response({'message': 'Like added to inbox and created locally.'}, status=status.HTTP_201_CREATED)
+                pass
 
             elif item_type == 'comment':
-                print(" ============================== ")
-                # Handle Comment Activity
-                comment_id = data.get('id')
-                if not comment_id:
-                    return Response({'error': 'Comment ID is missing.'}, status=status.HTTP_400_BAD_REQUEST)
-
-                # Check if the Comment already exists
-                comment, created_comment = Comment.objects.get_or_create(id=comment_id, defaults=data)
-                if created_comment:
-                    comment_serializer = CommentSerializer(comment, data=data, partial=True)
-                    if comment_serializer.is_valid():
-                        comment = comment_serializer.save()
-                        print(f"Comment {comment_id} created and added to inbox of author {author_serial}.")
-                    else:
-                        comment.delete()
-                        print("Comment serializer errors:", comment_serializer.errors)
-                        return Response(comment_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-                else:
-                    print(f"Comment {comment_id} already exists.")
-
-                # Add the comment to the inbox if not already added
-                if not inbox.comments.filter(id=comment.id).exists():
-                    inbox.comments.add(comment)
-                    print(f"Comment {comment.id} added to inbox of author {author_serial}.")
-                else:
-                    print(f"Comment {comment.id} already in inbox of author {author_serial}.")
-
-                # **Process the comment by calling the local API endpoint**
-                response = create_local_comment(request, comment)
-                if response.status_code != status.HTTP_201_CREATED:
-                    return Response({'error': 'Failed to create local comment.'}, status=status.HTTP_400_BAD_REQUEST)
-
-                return Response({'message': 'Comment added to inbox and created locally.'}, status=status.HTTP_201_CREATED)
+                pass
 
             elif item_type == 'follow':
                 # Handle Follow Activity
@@ -2919,30 +2865,6 @@ def create_local_post(request, post):
         print(f"Error creating local post: {e}")
         return Response({'error': 'Failed to create local post.'}, status=status.HTTP_400_BAD_REQUEST)
 
-def create_local_like(request, like):
-    """
-    Processes a like activity by creating a local like via the API.
-    """
-    try:
-        factory = APIRequestFactory()
-        api_request = factory.post(
-            reverse('like-list'),  # Ensure this URL name matches your URL configuration
-            data={
-                'type': like.type,
-                'id': like.id,
-                'author': like.author.id,
-                'object': like.object,
-                'published': like.published,
-            },
-            format='json'
-        )
-        api_request.user = request.user
-        response = create_like(api_request)  # Call your like creation view
-        return response
-    except Exception as e:
-        print(f"Error creating local like: {e}")
-        return Response({'error': 'Failed to create local like.'}, status=status.HTTP_400_BAD_REQUEST)
-
 def create_local_comment(request, comment):
     """
     Processes a comment activity by creating a local comment via the API.
@@ -2987,8 +2909,9 @@ def process_follow_request(request, follow_request):
         print(f"Error processing follow request: {e}")
         return Response({'error': 'Failed to process follow request.'}, status=status.HTTP_400_BAD_REQUEST)
     
+@csrf_exempt
 @api_view(['GET'])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def sync_public_posts(request):
     try:
         # Get all active remote nodes
@@ -3031,16 +2954,12 @@ def sync_public_posts(request):
                             if not author_id:
                                 continue  # Skip if author ID is missing
 
-                            # Ensure unique username by appending host or ID if needed
-                            unique_username = f"{author_data.get('username', '')}@{author_data.get('host', '').replace('https://', '').replace('/', '')}"
-
                             author_defaults = {
                                 'uuid': author_data.get('uuid'),
                                 'host': author_data.get('host', base_url),
                                 'displayName': author_data.get('displayName', ''),
                                 'github': author_data.get('github', ''),
                                 'profileImage': author_data.get('profileImage', ''),
-                                'username': unique_username,
                                 'email': '',  # Email might not be available
                                 'is_active': False,  # Remote authors are not local users
                             }

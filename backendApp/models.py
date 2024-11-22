@@ -211,20 +211,7 @@ class Inbox(models.Model):
             self.comments.add(item)
         elif isinstance(item, FollowRequest):
             self.follow_requests.add(item)
-class GitHubPost(models.Model):
-    author = models.ForeignKey(
-        Author, on_delete=models.CASCADE, related_name="github_posts"
-    )
-    activity_type = models.CharField(
-        max_length=50
-    )  # e.g., 'PushEvent', 'PullRequestEvent'
-    activity_data = models.JSONField()  # Store event data in JSON format
-    created_at = models.DateTimeField(auto_now_add=True)
-    github_event_id = models.CharField(
-        max_length=100, unique=True
-    )  # Ensure we don't repost the same event
-    def __str__(self):
-        return f"{self.author.displayName}'s GitHub {self.activity_type}"
+
 
 class RemoteNode(models.Model):
     

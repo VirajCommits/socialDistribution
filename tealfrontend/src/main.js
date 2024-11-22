@@ -46,9 +46,9 @@ axios.interceptors.response.use(
       switch (error.response.status) {
         case 401:
           console.warn('Authentication error - redirecting to login');
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-          router.push('/login');
+          // localStorage.removeItem('token');
+          // localStorage.removeItem('user');
+          // router.push('/login');
           break;
         case 403:
           console.error('Authorization error:', error.response.data);

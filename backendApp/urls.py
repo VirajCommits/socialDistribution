@@ -180,7 +180,7 @@ urlpatterns = [
         name="specific_follower_handler"
     ),
     path(
-        "stream", TemplateView.as_view(template_name="vue/index.html"), name="stream"
+        "stream", TemplateView.as_view(template_name="index.html"), name="stream"
     ),
     path(
         "service/api/sync_public_posts/",

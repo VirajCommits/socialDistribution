@@ -78,8 +78,11 @@ export default {
       this.error = "";
       this.isLoading = true;
 
+      console.log("Trying to log in")
+
       try {
         // Attempt to log in the user
+        console.log("username and pass:" , this.username , this.password)
         const response = await axios.post("/login/", {
           username: this.username,
           password: this.password,
@@ -94,6 +97,8 @@ export default {
         const uuid = userId.split("/").pop();
         localStorage.setItem("uuid", uuid);
 
+        console.log("Reached here!")
+
         // Call the sync posts endpoint
         await this.syncPosts(accessToken);
 
@@ -106,6 +111,7 @@ export default {
       }
     },
     async syncPosts(accessToken) {
+      console.log("SYNCING POSTS!")
       try {
         const syncResponse = await axios.get("sync_public_posts/", {
           headers: {

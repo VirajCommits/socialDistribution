@@ -6,7 +6,6 @@ from .models import (
     FollowRequest,
     Comment,
     Like,
-    GitHubPost,
     RemoteNode,
     ToWhichItsConnected
 )
@@ -71,12 +70,12 @@ class LikeAdmin(admin.ModelAdmin):
     readonly_fields = ("id", "published")
 
 
-@admin.register(GitHubPost)
-class GitHubPostAdmin(admin.ModelAdmin):
-    list_display = ("author", "activity_type", "created_at", "github_event_id")
-    search_fields = ("author__displayName", "activity_type", "github_event_id")
-    list_filter = ("created_at",)
-    readonly_fields = ("created_at",)
+# @admin.register(GitHubPost)
+# class GitHubPostAdmin(admin.ModelAdmin):
+#     list_display = ("author", "activity_type", "created_at", "github_event_id")
+#     search_fields = ("author__displayName", "activity_type", "github_event_id")
+#     list_filter = ("created_at",)
+#     readonly_fields = ("created_at",)
 
 
 # class RemoteNodeAdmin(admin.ModelAdmin):
