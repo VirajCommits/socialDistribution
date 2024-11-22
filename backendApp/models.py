@@ -241,6 +241,6 @@ class ToWhichItsConnected(models.Model):
     username = models.CharField(max_length=255)  # Node's username
     password = models.CharField(max_length=255)  # Node's password (or token)
     active = models.BooleanField(default=True)
-    
+
     def str(self):
         return self.url
