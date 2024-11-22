@@ -210,3 +210,9 @@ class LikeSerializer(serializers.ModelSerializer):
 #     class Meta:
 #         model = RemoteNode
 #         fields = ["url", "username", "connected"]
+
+
+class PublicAuthorSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Author
+        fields = ["id", "username", "displayName", "profileImage", "github"]

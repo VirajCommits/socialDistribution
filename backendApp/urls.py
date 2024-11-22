@@ -163,6 +163,21 @@ urlpatterns = [
         views.update_author_profile,
         name="update_author_profile",
     ),
+    path(
+        "service/api/authors/<uuid:author_uuid>/public/",
+        views.PublicAuthorProfileView.as_view(),
+        name="public-author-profile",
+    ),
+    path(
+        "service/api/authors/<uuid:author_uuid>/stats/public/",
+        views.PublicAuthorStatsView.as_view(),
+        name="public-author-stats",
+    ),
+    path(
+        "service/api/authors/<uuid:author_uuid>/post/public/",
+        views.PublicPostsView.as_view(),
+        name="public-author-posts",
+    ),
     # path(
     #     "nodes/<int:pk>/test_connection/",
     #     TestRemoteNodeConnectionView.as_view(),

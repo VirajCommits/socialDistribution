@@ -88,7 +88,7 @@
       <div v-else class="posts-feed">
         <div v-for="post in visiblePosts" :key="post.id" class="post-card">
           <div class="post-header">
-            <div class="author-info">
+            <div class="author-info" @click="navigateToProfile(post.author.uuid)">
               <i class="fas fa-user-circle"></i>
               <span>{{ post.author.displayName }}</span>
             </div>
@@ -198,6 +198,9 @@ export default {
     }
   },
   methods: {
+  navigateToProfile(authorId) {
+      this.$router.push({ name: "PublicProfile", params: { authorId } });
+    },
   copyToClipboard(post) {
       // Construct a simpler URL for the post
       const postUrl = `${window.location.origin}/posts/${post.id}`;

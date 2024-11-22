@@ -13,6 +13,7 @@ from .serializers import (
     LikeSerializer,
     FollowRequestSerializer,
     AuthorSerializer,
+    PublicAuthorSerializer,
 )
 from .models import Author, Post, Comment, Like, FollowRequest, GitHubPost
 
@@ -2563,3 +2564,60 @@ def create_public_post_from_github_activity(author, github_post):
 #             return Response(
 #                 {"error": "Node not found"}, status=status.HTTP_404_NOT_FOUND
 #             )
+
+
+class PublicAuthorProfileView(APIView):
+    # permission_classes = []  # Allow all users to access this view
+
+    def get(self, request, author_uuid):
+        try:
+            # Fetch the author using UUID
+            author = Author.objects.get(uuid=author_uuid)
+            serializer = PublicAuthorSerializer(author)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Author.DoesNotExist:
+            return Response(
+                {"detail": "Author not found."}, status=status.HTTP_404_NOT_FOUND
+            )
+
+
+class PublicAuthorStatsView(APIView):
+    # permission_classes = []  # Allow all users to access this view
+
+    def get(self, request, author_uuid):
+        try:
+            # Fetch the author using UUID
+            author = Author.objects.get(uuid=author_uuid)
+            stats = {
+                "followers": author.followers.count(),
+                "following": author.following.count(),
+                "friends": author.followers.filter(
+                    id__in=author.following.values("id")
+                ).count(),
+            }
+            return Response(stats, status=status.HTTP_200_OK)
+        except Author.DoesNotExist:
+            return Response(
+                {"detail": "Author not found."}, status=status.HTTP_404_NOT_FOUND
+            )
+
+
+class PublicPostsView(APIView):
+    def get(self, request, author_uuid):
+        try:
+            # Ensure author_uuid is properly handled as a UUID
+            posts = Post.objects.filter(
+                author__uuid=author_uuid, visibility="PUBLIC"
+            ).order_by("-published")
+            serializer = PostSerializer(posts, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Post.DoesNotExist:
+            return Response(
+                {"detail": "No public posts found for this author."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        except Exception as e:
+            return Response(
+                {"detail": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
