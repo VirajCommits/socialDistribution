@@ -857,6 +857,10 @@ def send_follow_request(request, author_uuid):
     # The one receiving the request
     target_author = get_object_or_404(Author, uuid=author_uuid)
 
+    my_host = request.build_absolute_uri('/').rstrip('/')
+    target_host = target_author.host.rstrip('/')
+    print("yes>>>>>>>>>>>>>>>>>>>>" , my_host , target_host)
+
     # Check if already following
     if current_author in target_author.followers.all():
         return Response(

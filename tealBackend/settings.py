@@ -40,7 +40,7 @@ ALLOWED_HOSTS = env.list(
         "localhost",
         "social-distribution-1-3adb84f120d9.herokuapp.com",
         "social-sanket-603a86c4b610.herokuapp.com",
-        ".herokuapp.com",
+        "teal-rakshit-a972530cc317.herokuapp.com/",
     ],
 )
 
@@ -89,6 +89,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:8080",  # Frontend development server
     "http://localhost:8000",  # Backend development server
     "https://social-distribution-1-3adb84f120d9.herokuapp.com",  # Production domain
+    'https://teal-rakshit-a972530cc317.herokuapp.com',
     "https://social-sanket-603a86c4b610.herokuapp.com",
     "http://127.0.0.1:8000",  # Localhost alternative
 ]
@@ -96,6 +97,7 @@ CORS_ALLOW_CREDENTIALS = True
 
 # CSRF Trusted Origins
 CSRF_TRUSTED_ORIGINS = [
+    'https://teal-rakshit-a972530cc317.herokuapp.com',
     "https://social-distribution-1-3adb84f120d9.herokuapp.com",
     "https://social-sanket-603a86c4b610.herokuapp.com",
     "http://localhost:8080",

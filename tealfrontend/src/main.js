@@ -31,6 +31,8 @@ axios.interceptors.request.use(
       // console.log('Token found and added to request');
     } else {
       // console.log('No token found in localStorage');
+      localStorage.removeItem('token');
+      router.push('/login');
     }
     return config;
   },

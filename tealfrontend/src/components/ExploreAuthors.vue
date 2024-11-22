@@ -229,9 +229,38 @@ export default {
         }
       }
     },
-    async sendFollowRequest(authorId) {
-      try {
-        const targetUuid = authorId.split("/").pop();
+    async sendFollowRequest(author) {
+    try {
+        
+        const user = JSON.parse(localStorage.getItem("user"));
+        const followRequest = {
+            type: "follow",
+            summary: `${user.displayName} wants to follow ${author.displayName}`,
+            actor: {
+                type: "author",
+                id: user.id,
+                host: user.host || window.location.origin + '/',
+                displayName: user.displayName,
+                github: user.github || "",
+                profileImage: user.profileImage || "",
+                page: `${user.host || window.location.origin + '/'}authors/${user.uuid}`
+            },
+            object: {
+                type: "author",
+                id: author.id,
+                host: author.host,
+                displayName: author.displayName,
+                github: author.github || "",
+                profileImage: author.profileImage || "",
+                page: author.page || `${author.host}authors/${author.uuid}`
+            }
+        };
+        const targetUrl = author.host && author.host !== window.location.origin + '/' ?
+            `${author.host}service/api/authors/${author.id.split('/').pop()}/inbox/` :
+            `/authors/${author.id.split("/").pop()}/inbox/`;
+        console.log("aaaaaaaaaaaaaaaaaaaa: ", targetUrl)
+          
+
         await axios.post(
           `/authors/${targetUuid}/send_follow_request/`,
           null,
