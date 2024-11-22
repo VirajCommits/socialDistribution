@@ -11,7 +11,7 @@ class Author(AbstractUser):
     type = models.CharField(max_length=6, default="author", editable=False)
     uuid = models.UUIDField(unique=True, editable=False, default=uuid.uuid4)
     id = models.URLField(primary_key=True, max_length=500)
-    host = models.URLField(default="http://localhost:8000/")
+    host = models.URLField(default="https://social-distribution-1-3adb84f120d9.herokuapp.com/")
     displayName = models.CharField(max_length=255)
     github = models.URLField(blank=True)
     is_approved = models.BooleanField(default=False)
@@ -54,6 +54,27 @@ class Author(AbstractUser):
                 return path_parts[-1]  # The username should be the last part of the URL
         return None
 
+    
+    def get_full_data(self):
+        """Return the author data in the format required by the API"""
+        return {
+            "type": "author",
+            "id": self.id,
+            "host": self.host,
+            "displayName": self.displayName,
+            "github": self.github,
+            "profileImage": self.profileImage,
+            "page": self.page
+        }
+
+    def format_follow_request(self, target_author):
+        """Create a properly formatted follow request object"""
+        return {
+            "type": "follow",
+            "summary": f"{self.displayName} wants to follow {target_author.displayName}",
+            "actor": self.get_full_data(),
+            "object": target_author.get_full_data()
+        }
 
 class Post(models.Model):
     VISIBILITY_CHOICES = [
@@ -155,9 +176,25 @@ class Like(models.Model):
         Comment, on_delete=models.CASCADE, related_name="likes", null=True, blank=True
     )
     published = models.DateTimeField(default=timezone.now)
-
     def __str__(self):
         return f"Like by {self.author.displayName} on {self.post.title if self.post else self.comment.id}"
+
+
+
+class InboxItem(models.Model):
+    INBOX_ITEM_TYPES = [
+        ('post', 'Post'),
+        ('follow', 'Follow'),
+        ('like', 'Like'),
+        ('comment', 'Comment'),
+    ]
+
+    author = models.ForeignKey(Author, on_delete=models.CASCADE, related_name='inbox_items') # the person who receives the inbox item
+    item_type = models.CharField(max_length=10, choices=INBOX_ITEM_TYPES) # whats the type:post , follow , like , comment
+    item = models.JSONField() # the actual data sent(in json format)
+
+    def __str__(self):
+        return f"InboxItem({self.item_type}) for {self.author}"
 
 
 class AdminSettings(models.Model):
@@ -208,3 +245,46 @@ class GitHubPost(models.Model):
 
 #     def __str__(self):
 #         return f"Remote Node at {self.url} (Connected: {self.connected})"
+
+class Inbox(models.Model):
+    author = models.OneToOneField(
+        Author, on_delete=models.CASCADE, related_name="inbox"
+    )
+    posts = models.ManyToManyField(Post, blank=True, related_name="inbox_posts")
+    likes = models.ManyToManyField(Like, blank=True, related_name="inbox_likes")
+    comments = models.ManyToManyField(Comment, blank=True, related_name="inbox_comments")
+    follow_requests = models.ManyToManyField(FollowRequest, blank=True, related_name="inbox_follows")
+
+    def __str__(self):
+        return f"Inbox of {self.author.displayName}"
+
+    def add_item(self, item):
+        """Add an item to the appropriate collection based on its type"""
+        if isinstance(item, Post):
+            self.posts.add(item)
+        elif isinstance(item, Like):
+            self.likes.add(item)
+        elif isinstance(item, Comment):
+            self.comments.add(item)
+        elif isinstance(item, FollowRequest):
+            self.follow_requests.add(item)
+
+
+class RemoteNode(models.Model):
+    
+    url = models.URLField(unique=True)  # The base URL of the remote node
+    username = models.CharField(max_length=255)  # Node's username
+    password = models.CharField(max_length=255)  # Node's password (or token)
+    active = models.BooleanField(default=True)
+    
+    def str(self):
+        return self.url
+    
+class ToWhichItsConnected(models.Model):
+    url = models.URLField(unique=True)  # The base URL of the remote node
+    username = models.CharField(max_length=255)  # Node's username
+    password = models.CharField(max_length=255)  # Node's password (or token)
+    active = models.BooleanField(default=True)
+    
+    def str(self):
+        return self.url

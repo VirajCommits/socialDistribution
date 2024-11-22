@@ -6,6 +6,8 @@ from .models import (
     FollowRequest,
     Comment,
     Like,
+    RemoteNode,
+    ToWhichItsConnected,
     GitHubPost,
 )
 
@@ -67,6 +69,20 @@ class LikeAdmin(admin.ModelAdmin):
     search_fields = ("post__title", "author__displayName")
     list_filter = ("published",)
     readonly_fields = ("id", "published")
+
+
+
+@admin.register(RemoteNode)
+class RemoteNodeAdmin(admin.ModelAdmin):
+    list_display = ['url', 'username']
+    list_filter = ['active']
+    search_fields = ['url', 'username']
+
+@admin.register(ToWhichItsConnected)
+class ToWhichItsConnected(admin.ModelAdmin):
+    list_display = ['url', 'username']
+    list_filter = ['active']
+    search_fields = ['url', 'username']
 
 
 @admin.register(GitHubPost)

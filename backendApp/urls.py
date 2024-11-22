@@ -9,6 +9,8 @@ from rest_framework import permissions
 
 # from .views import TestRemoteNodeConnectionView
 
+# from .views import TestRemoteNodeConnectionView
+
 schema_view = get_schema_view(
     openapi.Info(
         title="Your API Title",
@@ -113,11 +115,11 @@ urlpatterns = [
         views.stream_page,
         name="stream_page",
     ),
-    path(
-        "service/api/authors/<str:author_id>/unfollow/",
-        views.unfollow_author,
-        name="unfollow_author",
-    ),
+    # path(
+    #     "service/api/authors/<str:author_id>/unfollow/",
+    #     views.unfollow_author,
+    #     name="unfollow_author",
+    # ),
     path(
         "service/api/posts/<uuid:post_id>/",
         views.get_post_by_link,
@@ -133,11 +135,11 @@ urlpatterns = [
         views.get_author_stats,
         name="get-author-stats",
     ),
-    path(
-        "service/api/authors/<uuid:author_uuid>/followers/",
-        views.get_author_followers,
-        name="get-author-followers",
-    ),
+    # path(
+    #     "service/api/authors/<uuid:author_uuid>/followers/",
+    #     views.get_author_followers,
+    #     name="get-author-followers",
+    # ),
     path(
         "service/api/authors/<uuid:author_uuid>/following/",
         views.get_author_following,
@@ -183,9 +185,32 @@ urlpatterns = [
     #     TestRemoteNodeConnectionView.as_view(),
     #     name="test_connection",
     # ),
-    # path(
-    #     "stream", TemplateView.as_view(template_name="vue/index.html"), name="stream"
-    # ),
+    path(
+        'service/api/authors/<str:author_serial>/inbox/', 
+        views.inbox_handler, 
+        name='inbox'
+    ),
+
+    path(
+    "service/api/authors/<path:author_serial>/followers/",
+    views.followers_handler,
+    name="followers_handler"
+    ),
+    path(
+        "service/api/authors/<path:author_serial>/followers/<path:foreign_author_fqid>/",
+        views.specific_follower_handler,
+        name="specific_follower_handler"
+    ),
+    path(
+        "stream", TemplateView.as_view(template_name="index.html"), name="stream"
+    ),
+    path(
+        "service/api/sync_public_posts/",
+        views.sync_public_posts,
+        name="sync_public_posts",
+    ),
+    path('test-node-connection/', views.test_node_connection, name=' '),
+    path('verify-connection/', views.verify_node_connection, name='verify_node_connection'),
     path(
         "posts/<uuid:post_id>/",
         TemplateView.as_view(template_name="index.html"),

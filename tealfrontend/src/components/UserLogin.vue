@@ -70,32 +70,59 @@ export default {
       password: "",
       error: "",
       isLoading: false,
-      showPassword: false
+      showPassword: false,
     };
   },
   methods: {
     async login() {
       this.error = "";
       this.isLoading = true;
-      
+
+      console.log("Trying to log in")
+
       try {
-        const response = await axios.post(
-          "/login/",
-          {
-            username: this.username,
-            password: this.password,
-          }
-        );
-        localStorage.setItem("token", response.data.access);
+        // Attempt to log in the user
+        console.log("username and pass:" , this.username , this.password)
+        const response = await axios.post("/login/", {
+          username: this.username,
+          password: this.password,
+        });
+
+        // Store authentication tokens and user data
+        const accessToken = response.data.access;
+        localStorage.setItem("token", accessToken);
         localStorage.setItem("user", JSON.stringify(response.data.user));
+
         const userId = response.data.user.id;
         const uuid = userId.split("/").pop();
         localStorage.setItem("uuid", uuid);
+
+        console.log("Reached here!")
+
+        // Call the sync posts endpoint
+        await this.syncPosts(accessToken);
+
+        // Redirect to the stream page
         this.$router.push("/stream");
       } catch (error) {
         this.error = "Invalid username or password";
       } finally {
         this.isLoading = false;
+      }
+    },
+    async syncPosts(accessToken) {
+      console.log("SYNCING POSTS!")
+      try {
+        const syncResponse = await axios.get("sync_public_posts/", {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+          },
+        });
+        console.log("Sync successful:", syncResponse.data);
+      } catch (syncError) {
+        console.error("Error syncing posts:", syncError);
+        // Optionally display an error message to the user
+        // this.error = "Failed to sync posts. Please try again later.";
       }
     },
     signupredirect() {
