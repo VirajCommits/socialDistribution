@@ -186,7 +186,6 @@ export default {
         this.loading = false;
       } catch (error) {
         console.error("Error fetching posts:", error.response || error);
-        this.errorMessage = "An error occurred while fetching posts.";
         this.loading = false;
       }
     },

@@ -1,10 +1,13 @@
-from rest_framework.decorators import api_view, permission_classes
+import uuid
+from rest_framework.decorators import api_view, authentication_classes, permission_classes
+from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework import status
 from django.utils import timezone
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
+import requests
 import requests
 from .models import AdminSettings
 from .serializers import (
@@ -13,8 +16,13 @@ from .serializers import (
     LikeSerializer,
     FollowRequestSerializer,
     AuthorSerializer,
+    InboxSerializer,PublicAuthorSerializer,
 )
-from .models import Author, Post, Comment, Like, FollowRequest, GitHubPost
+from .models import Author, Post, Comment, Like, FollowRequest, Inbox , ToWhichItsConnected,GitHubPost
+
+from .authentication import NodeBasicAuthentication
+from .permissions import IsAuthenticatedOrNode
+from .utils import make_node_request
 
 # from .utils import connect_to_remote_node
 from django.shortcuts import get_object_or_404
@@ -33,6 +41,11 @@ import markdown2
 from .serializers import FollowRequestSerializer
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
+import requests
+from datetime import datetime
+
+from rest_framework.test import APIRequestFactory
+from django.urls import reverse
 
 
 def defaultPath(request):
@@ -272,7 +285,7 @@ def vueTest(request):
 @api_view(["GET", "DELETE", "PUT", "POST"])
 def post_detail(request, author_serial, post_serial):
     segments = post_serial.split("/")
-    post_id = segments[0]  # This should be the UUID part
+    post_id = segments[0]
     action = segments[1] if len(segments) > 1 else None
     parsed_author_id = urlparse(author_serial).path.split("/")[-1]
 
@@ -781,6 +794,7 @@ def stream_page_likes(request, post_id):
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def get_all_posts(request, author_serial):
+    print("(((((((((((((((((((((((((((((())))))))))))))))))))))))))))))")
     author_serial = unquote(author_serial)
     author = get_object_or_404(Author, uuid=author_serial)
     posts = Post.objects.filter(author=author).order_by("-edited_at")
@@ -1182,7 +1196,6 @@ def get_follow_requests(request):
                 properties={
                     "detail": openapi.Schema(
                         type=openapi.TYPE_STRING,
-                        example="An error occurred while fetching authors.",
                     )
                 },
             ),
@@ -1191,7 +1204,8 @@ def get_follow_requests(request):
     tags=["Authors"],
 )
 @api_view(["GET"])
-@permission_classes([IsAuthenticated])
+@authentication_classes([JWTAuthentication, NodeBasicAuthentication])
+@permission_classes([IsAuthenticatedOrNode])
 def get_all_authors(request):
     try:
         current_author = request.user
@@ -1221,7 +1235,6 @@ def get_all_authors(request):
         print(f"Error in get_all_authors: {str(e)}")
         print(f"Traceback: {traceback.format_exc()}")
         return Response(
-            {"detail": "An error occurred while fetching authors."},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
 
@@ -1433,6 +1446,7 @@ def stream_page(request, author_id):
 @csrf_exempt
 @api_view(["POST"])
 @permission_classes([AllowAny])
+
 def signup(request):
     serializer = AuthorSerializer(data=request.data)
     if serializer.is_valid():
@@ -1446,9 +1460,11 @@ def signup(request):
             user.is_approved = False  # Require admin approval
 
         user.save()
+        print("user saved")
 
         # Notify the user about their approval status
         if user.is_approved:
+            print("user approved")
             refresh = RefreshToken.for_user(user)
             return Response(
                 {
@@ -1536,7 +1552,10 @@ def signup(request):
 def login(request):
     username = request.data.get("username")
     password = request.data.get("password")
+    print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" , username , password)
     user = authenticate(username=username, password=password)
+
+    print("This is the user:" , user , username , password)
 
     if user:
         if not user.is_approved:
@@ -2133,7 +2152,80 @@ def get_author_followers(request, author_uuid):
     except Author.DoesNotExist:
         return Response({"error": "Author not found"}, status=404)
 
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def followers_handler(request, author_serial):
+    """Get a list of authors who are followers"""
+    try:
+        author = get_object_or_404(Author, uuid=author_serial)
+        followers = author.followers.all()
+        serializer = AuthorSerializer(followers, many=True)
+        
+        response_data = {
+            "type": "followers",
+            "followers": serializer.data
+        }
+        return Response(response_data)
+    except Exception as e:
+        return Response(
+            {'error': str(e)}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
 
+@api_view(['GET', 'PUT', 'DELETE'])
+@permission_classes([IsAuthenticated])
+def specific_follower_handler(request, author_serial, foreign_author_fqid):
+    """Handle specific follower operations"""
+    try:
+        author = get_object_or_404(Author, uuid=author_serial)
+        # Decode the URL-encoded foreign author ID
+        decoded_fqid = unquote(foreign_author_fqid)
+        foreign_author = get_object_or_404(Author, id=decoded_fqid)
+
+        if request.method == 'GET':
+            # Check if foreign_author is a follower
+            if not author.followers.filter(id=foreign_author.id).exists():
+                return Response(status=status.HTTP_404_NOT_FOUND)
+            serializer = AuthorSerializer(foreign_author)
+            return Response(serializer.data)
+
+        elif request.method == 'PUT':
+            # Add as follower (accept follow request)
+            author.followers.add(foreign_author)
+            
+            # Notify through WebSocket
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                f"notifications_{author.uuid}",
+                {
+                    'type': 'follow_request_notification',
+                    'message': f'{foreign_author.displayName} is now following you'
+                }
+            )
+            
+            return Response(status=status.HTTP_201_CREATED)
+
+        elif request.method == 'DELETE':
+            # Remove follower
+            author.followers.remove(foreign_author)
+            
+            # Notify through WebSocket
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                f"notifications_{author.uuid}",
+                {
+                    'type': 'follow_request_notification',
+                    'message': f'{foreign_author.displayName} has unfollowed you'
+                }
+            )
+            
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+    except Exception as e:
+        return Response(
+            {'error': str(e)}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
 @swagger_auto_schema(
     method="get",
     operation_summary="Get Authors Following",
@@ -2490,13 +2582,14 @@ def update_author_profile(request, author_uuid):
     },
     tags=["Posts"],
 )
+
+
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def get_post_by_link(request, post_id):
     """
     Fetch a post by ID if it's either public or unlisted.
     """
-    # print("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAa")
     post = get_object_or_404(Post, id=post_id)
 
     # Check if the post is public or unlisted
@@ -2546,7 +2639,7 @@ def create_public_post_from_github_activity(author, github_post):
         title=title,
         description=f"GitHub activity: {event_type}",
         contentType="text/plain",
-        content=content,
+        content="",
         author=author,
         published=timezone.now(),
         visibility="PUBLIC",
@@ -2563,3 +2656,415 @@ def create_public_post_from_github_activity(author, github_post):
 #             return Response(
 #                 {"error": "Node not found"}, status=status.HTTP_404_NOT_FOUND
 #             )
+
+
+class PublicAuthorProfileView(APIView):
+    # permission_classes = []  # Allow all users to access this view
+
+    def get(self, request, author_uuid):
+        try:
+            # Fetch the author using UUID
+            author = Author.objects.get(uuid=author_uuid)
+            serializer = PublicAuthorSerializer(author)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Author.DoesNotExist:
+            return Response(
+                {"detail": "Author not found."}, status=status.HTTP_404_NOT_FOUND
+            )
+
+
+class PublicAuthorStatsView(APIView):
+    # permission_classes = []  # Allow all users to access this view
+
+    def get(self, request, author_uuid):
+        try:
+            # Fetch the author using UUID
+            author = Author.objects.get(uuid=author_uuid)
+            stats = {
+                "followers": author.followers.count(),
+                "following": author.following.count(),
+                "friends": author.followers.filter(
+                    id__in=author.following.values("id")
+                ).count(),
+            }
+            return Response(stats, status=status.HTTP_200_OK)
+        except Author.DoesNotExist:
+            return Response(
+                {"detail": "Author not found."}, status=status.HTTP_404_NOT_FOUND
+            )
+
+
+class PublicPostsView(APIView):
+    def get(self, request, author_uuid):
+        try:
+            # Ensure author_uuid is properly handled as a UUID
+            posts = Post.objects.filter(
+                author__uuid=author_uuid, visibility="PUBLIC"
+            ).order_by("-published")
+            serializer = PostSerializer(posts, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Post.DoesNotExist:
+            return Response(
+                {"detail": "No public posts found for this author."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        except Exception as e:
+            return Response(
+                {"detail": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+
+
+@api_view(['GET'])
+@authentication_classes([NodeBasicAuthentication])
+@permission_classes([IsAuthenticatedOrNode])
+def verify_node_connection(request):
+    try:
+        # Log incoming request details
+        return Response({
+            "status": "success",
+            "message": "Connection verified",
+            "node": request.user.url if hasattr(request.user, 'url') else str(request.user)
+        })
+    except Exception as e:
+        # Log any exceptions
+        return Response({
+            "status": "error",
+            "message": str(e)
+        })
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def test_node_connection(request):
+    try:
+
+        # Get all remote nodes
+        remote_nodes = ToWhichItsConnected.objects.filter(active=True)
+        if not remote_nodes:
+            return Response({
+                "status": "error",
+                "message": "No remote nodes found in database. Please create one in the admin panel."
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        results = []
+        for node in remote_nodes:
+            try:
+                 # Test outgoing connection (us -> them)
+                outgoing_url = f"{node.url}"
+                # endpoint = 'service/api/authors/931b3149-9101-4bb6-a78d-3350fdb70615/posts/all/'
+                endpoint = 'service/api/authors/931b3149-9101-4bb6-a78d-3350fdb70615/posts/all'
+                outgoing_response = make_node_request(base_url=outgoing_url, endpoint=endpoint)
+                
+                results.append({
+                    "node_url": node.url,
+                    "outgoing_test": {
+                        "status": "success",
+                        "status_code": outgoing_response.status_code,
+                        "response": outgoing_response.json() if outgoing_response.status_code == 200 else outgoing_response.text
+                    }
+                })
+                
+            except requests.RequestException as e:
+                results.append({
+                    "node_url": node.url,
+                    "status": "error",
+                    "error_type": str(type(e).__name__),
+                    "error_message": str(e)
+                })
+        
+        return Response({
+            "status": "completed",
+            "test_results": results
+        })
+        
+    except Exception as e:
+        return Response({
+            "status": "error",
+            "message": str(e),
+            "type": str(type(e))
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@csrf_exempt
+@api_view(['POST', 'GET', 'DELETE'])
+@permission_classes([IsAuthenticated])
+def inbox_handler(request, author_serial):
+    """
+    Handles inbox activities for a given author. Supports POST (to add activities),
+    GET (to retrieve inbox contents), and DELETE (to clear the inbox).
+    """
+    # Retrieve the author based on UUID
+    author = get_object_or_404(Author, uuid=author_serial)
+    # Get or create the inbox for the author
+    inbox, created = Inbox.objects.get_or_create(author=author)
+    
+
+    if request.method == 'GET':
+        # Serialize and return the inbox data
+        serializer = InboxSerializer(inbox)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    elif request.method == 'POST':
+        data = request.data
+        item_type = data.get('type', '').lower()
+
+        try:
+            if item_type == 'post':
+                # to create a post, basically call this url: service/api/authors/<path:author_serial>/posts/
+                # i need the author_serial from data
+                auth_serial = data.get("author_id")
+                hostname = data["author"]["host"]
+                print("THIS IS THE HOSTNAME: " , hostname , auth_serial)
+
+                api_url = f"{hostname}service/api/authors/{auth_serial}/posts/"
+                print("complete url:" , api_url)
+
+                # Prepare the body for creating a post
+                post_data = {
+                    'title': data.get('title'),
+                    'description': data.get('description', ''),
+                    'contentType': data.get('contentType', 'text/plain'),
+                    'visibility': data.get('visibility', 'PUBLIC'),
+                    'content': data.get('content', ''),
+                }
+
+                # Check if there is an image to upload
+                if 'image' in data:
+                    post_data['image'] = data['image']  # Assuming the image is included in the data
+
+                response = requests.post(api_url, json=post_data, headers={
+                    'Authorization': f"Token {data.get('token')}",  # Ensure this line is correctly indented
+                    'Content-Type': 'application/json'
+                })
+
+                return Response({'message': 'Post added to inbox and created locally.'}, status=status.HTTP_201_CREATED)
+
+            elif item_type == 'like':
+                pass
+
+            elif item_type == 'comment':
+                pass
+
+            elif item_type == 'follow':
+                # Handle Follow Activity
+                print("Handling follow request.")
+
+                # Get the target author's UUID from the request data
+                target_uuid = data.get('object', {}).get('id')
+                if not target_uuid:
+                    return Response({'error': 'Target UUID for follow is missing.'}, status=status.HTTP_400_BAD_REQUEST)
+
+                django_request = request._request  # Get the underlying Django HttpRequest
+
+                # Call the existing send_follow_request function
+                response = send_follow_request(django_request, target_uuid)
+
+                if response.status_code == status.HTTP_201_CREATED:
+                    print("Follow request created successfully.")
+
+                    # Get the most recent follow request
+                    follow_request = FollowRequest.objects.filter(
+                        actor=request.user,
+                        object=author,
+                        accepted=False
+                    ).latest('created_at')
+
+                    print(f"Adding follow request {follow_request.id} to inbox.")
+                    # Add to inbox if not already added
+                    if not inbox.follow_requests.filter(id=follow_request.id).exists():
+                        inbox.follow_requests.add(follow_request)
+                        print(f"Follow request {follow_request.id} added to inbox of author {author_serial}.")
+                    else:
+                        print(f"Follow request {follow_request.id} already in inbox of author {author_serial}.")
+
+                    # **Process the follow request by calling the local API endpoint**
+                    response = process_follow_request(request, follow_request)
+                    if response.status_code != status.HTTP_200_OK:
+                        return Response({'error': 'Failed to process follow request locally.'}, status=status.HTTP_400_BAD_REQUEST)
+
+                    return Response({'message': 'Follow request added to inbox and processed locally.'}, status=status.HTTP_201_CREATED)
+
+                # If there was an error, return the original response
+                print(f"send_follow_request response status: {response.status_code}")
+                return response
+
+            else:
+                # Unsupported activity type
+                print(f"Unsupported activity type: {item_type}")
+                return Response({'error': f"Unsupported activity type: {item_type}"}, status=status.HTTP_400_BAD_REQUEST)
+
+        except Exception as e:
+            print(f"Error in inbox_handler: {e}")
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    elif request.method == 'DELETE':
+        # Clear all activities from the inbox
+        inbox.posts.clear()
+        inbox.likes.clear()
+        inbox.comments.clear()
+        inbox.follow_requests.clear()
+        print(f"Inbox for author {author_serial} has been cleared.")
+        return Response({'message': 'Inbox cleared.'}, status=status.HTTP_204_NO_CONTENT)
+def create_local_post(request, post):
+    """
+    Processes a post activity by creating a local post via the API.
+    """
+    try:
+        factory = APIRequestFactory()
+        api_request = factory.post(
+            reverse('post-list'),  # Ensure this URL name matches your URL configuration
+            data={
+                'type': post.type,
+                'title': post.title,
+                'id': post.id,
+                'page': post.page,
+                'description': post.description,
+                'contentType': post.contentType,
+                'content': post.content,
+                'published': post.published,
+                'visibility': post.visibility,
+                'author': post.author.id,  # Assuming author is referenced by ID
+            },
+            format='json'
+        )
+        api_request.user = request.user
+        response = create_post(api_request)  # Call your post creation view
+        return response
+    except Exception as e:
+        print(f"Error creating local post: {e}")
+        return Response({'error': 'Failed to create local post.'}, status=status.HTTP_400_BAD_REQUEST)
+
+def create_local_comment(request, comment):
+    """
+    Processes a comment activity by creating a local comment via the API.
+    """
+    try:
+        factory = APIRequestFactory()
+        api_request = factory.post(
+            reverse('comment-list'),  # Ensure this URL name matches your URL configuration
+            data={
+                'type': comment.type,
+                'id': comment.id,
+                'author': comment.author.id,
+                'post': comment.post,
+                'comment': comment.comment,
+                'contentType': comment.contentType,
+                'published': comment.published,
+            },
+            format='json'
+        )
+        api_request.user = request.user
+        response = post_comment(api_request)  # Call your comment creation view
+        return response
+    except Exception as e:
+        print(f"Error creating local comment: {e}")
+        return Response({'error': 'Failed to create local comment.'}, status=status.HTTP_400_BAD_REQUEST)
+
+def process_follow_request(request, follow_request):
+    """
+    Processes a follow request by accepting it via the API.
+    """
+    try:
+        factory = APIRequestFactory()
+        api_request = factory.post(
+            reverse('follow-request-accept', args=[follow_request.id]),  # Ensure this URL name matches your URL configuration
+            data={},  # If your accept_follow_request view requires additional data, include it here
+            format='json'
+        )
+        api_request.user = request.user
+        response = accept_follow_request(api_request, follow_request.id)  # Call your follow request acceptance view
+        return response
+    except Exception as e:
+        print(f"Error processing follow request: {e}")
+        return Response({'error': 'Failed to process follow request.'}, status=status.HTTP_400_BAD_REQUEST)
+    
+@csrf_exempt
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def sync_remote_authors(request):
+    try:
+        # Get all active remote nodes
+        remote_nodes = ToWhichItsConnected.objects.filter(active=True)
+        if not remote_nodes:
+            return Response({
+                "status": "error",
+                "message": "No remote nodes found in the database. Please create one in the admin panel."
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        results = []
+        for node in remote_nodes:
+            node_result = {
+                "node_url": node.url,
+                "authors_synced": 0,
+                "errors": []
+            }
+
+            try:
+                # Fetch all authors from the remote node
+                base_url = node.url
+                endpoint = 'service/api/authors/'
+
+                response = make_node_request(
+                    base_url=base_url,
+                    endpoint=endpoint,
+                )
+
+                if response.status_code == 200:
+                    data = response.json()
+                    # Adjust based on the remote node's response structure
+                    remote_authors = data
+
+                    # Iterate over authors and save them to the local database
+                    for author_data in remote_authors:
+                        try:
+                            # Get or create the author
+                            author_id = author_data.get('id')
+                            if not author_id:
+                                continue  # Skip if author ID is missing
+
+                            # Ensure username is unique
+                            # unique_username = f"{author_data.get('displayName', '').lower()}_{author_id.split('/')[-1][:8]}"
+
+                            author_defaults = {
+                                'uuid': author_data.get('uuid'),
+                                'host': author_data.get('host', base_url),
+                                'displayName': author_data.get('displayName', ''),
+                                'github': author_data.get('github', ''),
+                                'profileImage': author_data.get('profileImage', ''),
+                                'username': author_data.get('username',''),  # Ensure unique usernames
+                                'email': '',  # Email might not be available
+                                'is_active': False,  # Remote authors are not local users
+                            }
+
+                            author, created = Author.objects.update_or_create(
+                                id=author_id,
+                                defaults=author_defaults
+                            )
+                            node_result['authors_synced'] += 1
+
+                        except Exception as e:
+                            error_message = f"Error processing author {author_data.get('id')}: {e}"
+                            node_result['errors'].append(error_message)
+                            continue  # Skip to the next author
+                    results.append(node_result)
+                else:
+                    error_message = f"Failed to fetch authors from {node.url}: Status {response.status_code}"
+                    node_result['errors'].append(error_message)
+                    results.append(node_result)
+            except requests.RequestException as e:
+                error_message = f"Connection error with {node.url}: {e}"
+                node_result['errors'].append(error_message)
+                results.append(node_result)
+
+        return Response({
+            "status": "completed",
+            "sync_results": results
+        })
+
+    except Exception as e:
+        return Response({
+            "status": "error",
+            "message": str(e),
+            "type": str(type(e).__name__)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

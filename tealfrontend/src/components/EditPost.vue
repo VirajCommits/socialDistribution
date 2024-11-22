@@ -14,8 +14,13 @@
       <form @submit.prevent="savePost">
         <!-- Title Field -->
         <div class="form-group">
-          <label for="title">Title:</label>
-          <input v-model="editablePost.title" type="text" id="title" required />
+          <label for="title">Title<span class="required">*</span>:</label>
+          <input
+            v-model="editablePost.title"
+            type="text"
+            id="title"
+            required
+          />
         </div>
 
         <!-- Description Field -->
@@ -90,7 +95,7 @@
           <label for="visibility">Visibility:</label>
           <select v-model="editablePost.visibility" id="visibility">
             <option value="PUBLIC">Public</option>
-            <option value="FRIENDS">Friends</option>
+            <option value="FRIENDS">Friends Only</option>
             <option value="UNLISTED">Unlisted</option>
           </select>
         </div>
@@ -104,9 +109,14 @@
         </div>
       </form>
 
-      <!-- Error Messages -->
+      <!-- Success Message -->
+      <div v-if="successMessage" class="success-message">
+        <i class="fas fa-check-circle"></i> {{ successMessage }}
+      </div>
+
+      <!-- Error Message -->
       <div v-if="errorMessage" class="error-message">
-        {{ errorMessage }}
+        <i class="fas fa-exclamation-triangle"></i> {{ errorMessage }}
       </div>
     </div>
   </div>
@@ -132,6 +142,7 @@ export default {
       newTextContent: "", // New text content to replace image
       loading: true,
       errorMessage: "",
+      successMessage: "",
       user: null,
       authID: "",
     };
@@ -170,7 +181,11 @@ export default {
           this.authID
         )}/posts/${encodeURIComponent(this.id)}`;
 
-        const response = await axios.get(apiUrl);
+        const response = await axios.get(apiUrl, {
+          headers: {
+            Authorization: `Token ${localStorage.getItem("token")}`,
+          },
+        });
         this.post = response.data;
 
         // Create an editable copy of the post
@@ -267,8 +282,12 @@ export default {
       }
     },
 
-    // Save the edited post
+    // Save the edited post and distribute updates
     async savePost() {
+      // Clear previous messages
+      this.successMessage = "";
+      this.errorMessage = "";
+
       try {
         const apiUrl = `/authors/${encodeURIComponent(
           this.authID
@@ -290,18 +309,156 @@ export default {
           );
         }
 
-        await axios.put(apiUrl, this.editablePost, {
+        // Send PUT request to update the post
+        const response = await axios.put(apiUrl, this.editablePost, {
           headers: {
             "Content-Type": "application/json",
+            Authorization: `Token ${localStorage.getItem("token")}`,
           },
         });
 
-        alert("Post updated successfully.");
+        // Update was successful
+        this.successMessage = "Post updated successfully!";
+        console.log("Post updated:", response.data);
+
+        // Distribute the updated post via inbox
+        await this.distributePostUpdate(response.data);
+
+        // Display success message and redirect
+        alert("Post updated and distributed successfully.");
         this.$router.push("/posts/all"); // Redirect to All Posts
       } catch (error) {
         console.error("Error updating post:", error.response || error);
         this.errorMessage = "An error occurred while updating the post.";
       }
+    },
+
+    // Distribute the updated post to relevant inboxes
+    async distributePostUpdate(updatedPost) {
+      try {
+        // Fetch all authors
+        const authorsResponse = await axios.get("/authors/", {
+          headers: {
+            Authorization: `Token ${localStorage.getItem("token")}`,
+          },
+        });
+        const authors = authorsResponse.data;
+
+        // Current author's ID
+        const currentAuthorId = this.authID;
+
+        // Track which authors have received the notification
+        const processedAuthors = new Set([currentAuthorId]); // Initialize with current author
+
+        switch (this.editablePost.visibility) {
+          case "PUBLIC": {
+            // Send to all authors except the current author
+            for (const author of authors) {
+              const authorId = author.id.split("/").pop();
+              console.log(
+                `Current Author ID: ${currentAuthorId}, Author ID: ${authorId}`
+              );
+
+              if (
+                authorId !== currentAuthorId &&
+                !processedAuthors.has(authorId)
+              ) {
+                await this.sendUpdateToInbox(authorId, updatedPost);
+                processedAuthors.add(authorId);
+              }
+            }
+            break;
+          }
+          case "FRIENDS": {
+            // Send only to followers
+            const followers = await this.getFollowers(currentAuthorId);
+            for (const follower of followers) {
+              const followerId = follower.id.split("/").pop();
+              if (!processedAuthors.has(followerId)) {
+                await this.sendUpdateToInbox(followerId, updatedPost);
+                processedAuthors.add(followerId);
+              }
+            }
+            break;
+          }
+          case "UNLISTED": {
+            // Typically, do not send to any inboxes
+            console.log("UNLISTED visibility: No distribution.");
+            break;
+          }
+          default:
+            break;
+        }
+      } catch (error) {
+        console.error("Error distributing post update:", error);
+        this.errorMessage =
+          "Post updated, but failed to distribute updates to followers.";
+      }
+    },
+
+    // Send the updated post to a specific author's inbox
+    async sendUpdateToInbox(authorId, updatedPost) {
+      try {
+        const inboxUrl = `/authors/${authorId}/inbox/`;
+        const token = localStorage.getItem("token");
+
+        const payload = {
+          type: "post",
+          title: this.editablePost.title,
+          id: updatedPost.id,
+          page: updatedPost.page,
+          description: this.editablePost.description,
+          contentType: this.editablePost.contentType,
+          content: this.editablePost.content,
+          author: {
+            type: "author",
+            id: this.user.id,
+            host: this.user.host,
+            displayName: this.user.displayName,
+            page: this.user.page,
+            github: this.user.github,
+            profileImage: this.user.profileImage,
+          },
+          author_id: this.authID,
+          published: new Date().toISOString(),
+          visibility: this.editablePost.visibility,
+        };
+
+        console.log(`Sending update to inbox of author ${authorId}:`, payload);
+
+        await axios.post(inboxUrl, payload, {
+          headers: {
+            Authorization: `Token ${token}`,
+            "Content-Type": "application/json",
+          },
+          withCredentials: true,
+        });
+      } catch (error) {
+        console.error(
+          `Error sending update to author ${authorId}'s inbox:`,
+          error
+        );
+        throw error; // Re-throw to handle in distributePostUpdate
+      }
+    },
+
+    // Fetch followers for FRIENDS visibility
+    async getFollowers(authorId) {
+      try {
+        const response = await axios.get(`/authors/${authorId}/followers/`, {
+          headers: {
+            Authorization: `Token ${localStorage.getItem("token")}`,
+          },
+        });
+        return response.data; // Assuming this returns a list of followers
+      } catch (error) {
+        console.error("Error fetching followers:", error);
+        return [];
+      }
+    },
+
+    goBack() {
+      this.$router.push("/posts/all");
     },
   },
 };
@@ -455,6 +612,20 @@ export default {
 
 .form-actions .cancel-button:hover {
   background-color: #c0392b;
+}
+
+/* Success Message */
+.success-message {
+  margin-top: 20px;
+  padding: 15px;
+  border: 1px solid #2ecc71;
+  border-radius: 8px;
+  background-color: #dff0d8;
+  color: #3c763d;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 /* Error Message */

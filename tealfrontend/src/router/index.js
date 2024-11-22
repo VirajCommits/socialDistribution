@@ -9,6 +9,7 @@ import EditPost from '../components/EditPost.vue';
 import ExploreAuthors from '../components/ExploreAuthors.vue';
 // Import your PostDetail component if needed
 import PostDetail from '../components/PostDetail.vue';
+import PublicProfilePage from '../components/PublicProfilePage.vue';
 
 const routes = [
   { path: '/login', component: UserLogin },
@@ -27,9 +28,17 @@ const routes = [
     props: true,
   },
   {
+    path: "/authors/:authorId/public",
+    name: "PublicProfile",
+    component: PublicProfilePage,
+    props: true,
+  },
+
+
+  {
     path: '/swagger',
     beforeEnter() {
-      window.location.href = 'http://localhost:8000/swagger'; // Redirect to Swagger UI
+      window.location.href = 'https://social-distribution-1-3adb84f120d9.herokuapp.com/swagger'; // Redirect to Swagger UI
     },
   },
   {

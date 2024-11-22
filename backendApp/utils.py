@@ -1,26 +1,44 @@
-# import requests
-# from requests.auth import HTTPBasicAuth
-# from cryptography.fernet import InvalidToken
+import base64
+import requests
+from urllib.parse import urljoin
+from .models import ToWhichItsConnected
 
+def make_node_request(base_url, endpoint, method='GET', data=None):
+    """
+    Make authenticated request to another node using ToWhichItsConnected credentials
+    @param base_url: The base URL of the target node (e.g., 'https://other-team.herokuapp.com/')
+    @param endpoint: The API endpoint (e.g., 'service/api/authors/')
+    """
+    try:
+        
 
-# def connect_to_remote_node(node):
-#     """Test the connection to a remote node."""
-#     try:
-#         password = node.get_password()  # Validate decryption
-#         response = requests.get(
-#             f"{node.url}/service/api/",
-#             auth=HTTPBasicAuth(node.username, password),
-#             timeout=10,
-#         )
-#         if response.status_code == 200:
-#             node.connected = True
-#         else:
-#             node.connected = False
-#         node.save()
-#         return node.connected
-#     except InvalidToken:
-#         raise ValueError("Invalid encrypted password or incorrect Fernet key.")
-#     except requests.RequestException:
-#         node.connected = False
-#         node.save()
-#         return False
+        # Get the node we're connecting to
+        node = ToWhichItsConnected.objects.get(url=base_url, active=True)
+        
+        # Create auth header with node's credentials
+        credentials = base64.b64encode(
+            f"{node.username}:{node.password}".encode()
+        ).decode()
+        
+        headers = {
+            'Authorization': f'Basic {credentials}',
+            'Content-Type': 'application/json'
+        }
+        
+        # Combine base URL and endpoint
+        full_url = urljoin(base_url, endpoint)
+        print("This is the full url:" , full_url)
+        
+        if method.upper() == 'GET':
+            response = requests.get(full_url, headers=headers)
+            print("this response:" , response.json())
+        elif method.upper() == 'POST':
+            response = requests.post(full_url, json=data, headers=headers)
+        else:
+            response = None
+
+        return response
+        
+    except ToWhichItsConnected.DoesNotExist:
+        error_message = f"No connection configuration found for {base_url}"
+        raise Exception(error_message)
