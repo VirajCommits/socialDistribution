@@ -206,12 +206,15 @@ export default {
         switch (this.form.visibility) {
           case "PUBLIC": {
             // Only send notifications to other authors' inboxes
+            console.log("These are all the authors:" , authors)
             for (const author of authors) {
-              const authorId = author.id.split("/").pop();
+              const authorId = author.id.split("/").pop(-1);
+              
               if (
                 authorId !== currentAuthorId &&
                 !processedAuthors.has(authorId)
               ) {
+                console.log("auth id:" , authorId)
                 await this.sendNotificationToInbox(authorId, postData);
                 processedAuthors.add(authorId);
               }
@@ -250,6 +253,7 @@ export default {
       try {
         const inboxUrl = `/authors/${authorId}/inbox/`;
         const token = localStorage.getItem("token");
+        console.log("POST DATA:" , postData , inboxUrl)
 
         const payload = {
           type: "post",
@@ -272,7 +276,7 @@ export default {
           published: new Date().toISOString(),
           visibility: this.form.visibility,
         };
-
+        console.log(payload)
         await axios.post(inboxUrl, payload, {
           headers: {
             Authorization: `Token ${token}`,

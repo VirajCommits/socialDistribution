@@ -2743,8 +2743,10 @@ def inbox_handler(request, author_serial):
                 # i need the author_serial from data
                 auth_serial = data.get("author_id")
                 hostname = data["author"]["host"]
+                print("THIS IS THE HOSTNAME: " , hostname , auth_serial)
 
                 api_url = f"{hostname}service/api/authors/{auth_serial}/posts/"
+                print("complete url:" , api_url)
 
                 # Prepare the body for creating a post
                 post_data = {
