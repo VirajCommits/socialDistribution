@@ -1459,9 +1459,11 @@ def signup(request):
             user.is_approved = False  # Require admin approval
 
         user.save()
+        print("user saved")
 
         # Notify the user about their approval status
         if user.is_approved:
+            print("user approved")
             refresh = RefreshToken.for_user(user)
             return Response(
                 {

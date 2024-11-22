@@ -4,6 +4,7 @@ import os
 import django_heroku
 import dj_database_url
 from datetime import timedelta
+from decouple import config
 
 # Build paths inside the project like this: BASE_DIR / 'subdir' or os.path.join(BASE_DIR, 'subdir')
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -24,8 +25,8 @@ environ.Env.read_env(os.path.join(BASE_DIR, '.env'))  # Ensure you have a .env f
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = env('SECRET_KEY', default='django-insecure-w)getnsr)9z21am-v4i2%)vz10ji05zcxkoa+xrzx)h7$=zaad')
-
+# SECRET_KEY = env('SECRET_KEY', default='django-insecure-w)getnsr)9z21am-v4i2%)vz10ji05zcxkoa+xrzx)h7$=zaad')
+SECRET_KEY = "django-insecure-w)getnsr)9z21am-v4i2%)vz10ji05zcxkoa+xrzx)h7$=zaad"
 # Set Debug based on environment variable
 DEBUG = env('DEBUG', default=True)
 

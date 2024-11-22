@@ -5,7 +5,8 @@ class BackendAppConfig(AppConfig):
     name = "backendApp"
 
     def ready(self):
+        pass
         # Import and start the scheduler here
-        from .tasks import start_scheduler
+        # from .tasks import start_scheduler
 
-        start_scheduler()
+        # start_scheduler()
