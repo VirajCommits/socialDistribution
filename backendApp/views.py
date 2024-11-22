@@ -2948,17 +2948,12 @@ def sync_public_posts(request):
                             if not author_id:
                                 continue  # Skip if author ID is missing
 
-                            # Ensure unique username by appending host or ID if needed
-                            unique_username = f"{author_data.get('username', '')}"
-                            print("this is the username ->>>>>>>>>>>" , unique_username)
-
                             author_defaults = {
                                 'uuid': author_data.get('uuid'),
                                 'host': author_data.get('host', base_url),
                                 'displayName': author_data.get('displayName', ''),
                                 'github': author_data.get('github', ''),
                                 'profileImage': author_data.get('profileImage', ''),
-                                'username': author_data.get('username' , ''),
                                 'email': '',  # Email might not be available
                                 'is_active': False,  # Remote authors are not local users
                             }
