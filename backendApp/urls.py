@@ -205,9 +205,9 @@ urlpatterns = [
         "stream", TemplateView.as_view(template_name="index.html"), name="stream"
     ),
     path(
-        "service/api/sync_public_posts/",
-        views.sync_public_posts,
-        name="sync_public_posts",
+        "service/api/sync_remote_authors/",
+        views.sync_remote_authors,
+        name="sync_remote_authors",
     ),
     path('test-node-connection/', views.test_node_connection, name=' '),
     path('verify-connection/', views.verify_node_connection, name='verify_node_connection'),
