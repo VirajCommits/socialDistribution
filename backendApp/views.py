@@ -503,6 +503,69 @@ def post_comment(request, post_id):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+@swagger_auto_schema(
+    method="post",
+    operation_summary="Like a specific comment",
+    operation_description="""
+    Use this endpoint to like a specific comment identified by its comment_id. 
+    The like will be associated with the authenticated user as the author.
+
+    **When to use:**
+    - Use this endpoint when you need to like a comment on a post.
+    - The comment to be liked is identified by the `comment_id` in the URL.
+    - The user must be authenticated.
+
+    **How to use:**
+    - Send a `POST` request to this endpoint with the `comment_id` in the URL path.
+    - The request body is not required since the like will be automatically associated with the authenticated user.
+    - The user will be added as the `author` of the like, and the comment will be identified by `comment_id`.
+
+    **Why use or not use:**
+    - This endpoint should be used when you want to allow a user to like a specific comment.
+    - Do not use this endpoint if the user is not authenticated or if the comment does not exist.
+    - The user cannot like the same comment multiple times; an error will be returned if they attempt to do so.
+    - Ensure that the user has not already liked the comment, as repeated likes are not allowed.
+    """,
+    manual_parameters=[
+        openapi.Parameter(
+            "comment_id",
+            openapi.IN_PATH,
+            description="UUID of the comment to like",
+            type=openapi.TYPE_STRING,
+            required=True,
+        )
+    ],
+    request_body=None,
+    responses={
+        201: openapi.Response(
+            description="Comment liked successfully.", schema=LikeSerializer()
+        ),
+        400: openapi.Response(
+            description="Invalid input data or comment already liked.",
+            schema=openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "detail": openapi.Schema(
+                        type=openapi.TYPE_STRING, description="Error message"
+                    )
+                },
+            ),
+        ),
+        404: openapi.Response(
+            description="Comment not found.",
+            schema=openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "detail": openapi.Schema(
+                        type=openapi.TYPE_STRING, description="Error message"
+                    )
+                },
+            ),
+        ),
+        401: "Unauthorized",
+    },
+    tags=["Likes"],
+)
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def like_comment(request, comment_id):
@@ -532,6 +595,72 @@ def like_comment(request, comment_id):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+@swagger_auto_schema(
+    method="get",
+    operation_summary="Fetch likes for a specific comment",
+    operation_description="""
+    Use this endpoint to fetch all likes associated with a specific comment identified by its comment_id. 
+    The response will include a list of likes for the comment.
+
+    **When to use:**
+    - Use this endpoint when you need to retrieve all the likes for a specific comment.
+    - The comment whose likes you are fetching is identified by the `comment_id` in the URL.
+
+    **How to use:**
+    - Send a `GET` request to this endpoint with the `comment_id` in the URL path.
+    - The response will include details of all the likes for the specified comment, including the number of likes and the serialized data of the likes.
+
+    **Why use or not use:**
+    - This endpoint should be used when you want to view the likes associated with a comment.
+    - Do not use this endpoint if the comment does not exist, as a 404 error will be returned.
+    - This endpoint can be used by anyone, as it is accessible without authentication (i.e., `AllowAny` permission).
+    """,
+    manual_parameters=[
+        openapi.Parameter(
+            "comment_id",
+            openapi.IN_PATH,
+            description="UUID of the comment to fetch likes for",
+            type=openapi.TYPE_STRING,
+            required=True,
+        )
+    ],
+    request_body=None,
+    responses={
+        200: openapi.Response(
+            description="Likes fetched successfully.",
+            schema=openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "type": openapi.Schema(type=openapi.TYPE_STRING, description="The type of resource (likes)"),
+                    "page": openapi.Schema(type=openapi.TYPE_STRING, description="URL for the current page"),
+                    "id": openapi.Schema(type=openapi.TYPE_STRING, description="URL of the resource"),
+                    "page_number": openapi.Schema(type=openapi.TYPE_INTEGER, description="Current page number"),
+                    "size": openapi.Schema(type=openapi.TYPE_INTEGER, description="Number of likes on this page"),
+                    "count": openapi.Schema(type=openapi.TYPE_INTEGER, description="Total number of likes"),
+                    "src": openapi.Schema(
+                        type=openapi.TYPE_ARRAY,
+                        items=openapi.Schema(type=openapi.TYPE_OBJECT, properties={
+                            "author_id": openapi.Schema(type=openapi.TYPE_STRING, description="ID of the author of the like"),
+                            "comment_id": openapi.Schema(type=openapi.TYPE_STRING, description="ID of the commented post"),
+                            "published": openapi.Schema(type=openapi.TYPE_STRING, description="Timestamp when the like was published"),
+                        }),
+                        description="List of likes",
+                    ),
+                },
+            ),
+        ),
+        404: openapi.Response(
+            description="Comment not found.",
+            schema=openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "detail": openapi.Schema(type=openapi.TYPE_STRING, description="Error message")
+                },
+            ),
+        ),
+    },
+    tags=["Likes"],
+)
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def comment_likes(request, comment_id):
@@ -1681,7 +1810,6 @@ def stream_page(request, author_id):
 @csrf_exempt
 @api_view(["POST"])
 @permission_classes([AllowAny])
-
 def signup(request):
     serializer = AuthorSerializer(data=request.data)
     if serializer.is_valid():
@@ -2538,7 +2666,79 @@ def get_author_followers(request, author_uuid):
         return Response(serializer.data)
     except Author.DoesNotExist:
         return Response({"error": "Author not found"}, status=404)
+    
+    
+@swagger_auto_schema(
+    method="get",
+    operation_summary="Get a list of followers for a specific author",
+    operation_description="""
+    Use this endpoint to retrieve the list of followers for a specific author identified by their `author_serial` (UUID).
+    The response will include the details of all the followers associated with the author.
 
+    **When to use:**
+    - Use this endpoint when you need to fetch the list of followers for a specific author.
+    - The author is identified by the `author_serial` (UUID) in the URL path.
+
+    **How to use:**
+    - Send a `GET` request to this endpoint with the `author_serial` in the URL path.
+    - The response will include details of all the followers of the author, including their serialized data.
+
+    **Why use or not use:**
+    - This endpoint should be used when you want to view all the followers of a specific author.
+    - Do not use this endpoint if the author does not exist or the `author_serial` is invalid.
+    - The user must be authenticated to access this data (i.e., authentication is required).
+    """,
+    manual_parameters=[
+        openapi.Parameter(
+            "author_serial",
+            openapi.IN_PATH,
+            description="UUID of the author whose followers are to be fetched",
+            type=openapi.TYPE_STRING,
+            required=True,
+        )
+    ],
+    request_body=None,
+    responses={
+        200: openapi.Response(
+            description="Followers fetched successfully.",
+            schema=openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "type": openapi.Schema(type=openapi.TYPE_STRING, description="The type of resource (followers)"),
+                    "followers": openapi.Schema(
+                        type=openapi.TYPE_ARRAY,
+                        items=openapi.Schema(type=openapi.TYPE_OBJECT, properties={
+                            "uuid": openapi.Schema(type=openapi.TYPE_STRING, description="UUID of the author"),
+                            "name": openapi.Schema(type=openapi.TYPE_STRING, description="Name of the follower"),
+                            # Add other fields you need from AuthorSerializer
+                        }),
+                        description="List of followers",
+                    ),
+                },
+            ),
+        ),
+        400: openapi.Response(
+            description="Bad request or error fetching followers.",
+            schema=openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "error": openapi.Schema(type=openapi.TYPE_STRING, description="Error message")
+                },
+            ),
+        ),
+        404: openapi.Response(
+            description="Author not found.",
+            schema=openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "detail": openapi.Schema(type=openapi.TYPE_STRING, description="Error message")
+                },
+            ),
+        ),
+        401: "Unauthorized",
+    },
+    tags=["Followers"],
+)
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def followers_handler(request, author_serial):
@@ -2559,6 +2759,169 @@ def followers_handler(request, author_serial):
             status=status.HTTP_400_BAD_REQUEST
         )
 
+
+@swagger_auto_schema(
+    method="get",
+    operation_summary="Get specific follower details",
+    operation_description="""
+    Use this endpoint to fetch the details of a specific follower of an author identified by `author_serial`.
+    The `foreign_author_fqid` refers to the follower's unique identifier.
+
+    **When to use:**
+    - Use this endpoint when you need to fetch details about a specific follower of an author.
+    - The author and the follower are identified by `author_serial` and `foreign_author_fqid` respectively.
+    - The follower must already exist for the author.
+
+    **How to use:**
+    - Send a `GET` request to this endpoint with the `author_serial` and `foreign_author_fqid` in the URL path.
+    - The response will return the details of the `foreign_author` if they are a follower of the specified author.
+
+    **Why use or not use:**
+    - This endpoint is useful when you want to check if a particular author follows a specific user and retrieve their details.
+    - Do not use this endpoint if the foreign author is not following the specified author, as the response will be a `404` error.
+    - Authentication is required to ensure the user is authorized to check followers.
+    """,
+    manual_parameters=[
+        openapi.Parameter(
+            "author_serial",
+            openapi.IN_PATH,
+            description="UUID of the author whose followers are being queried",
+            type=openapi.TYPE_STRING,
+            required=True,
+        ),
+        openapi.Parameter(
+            "foreign_author_fqid",
+            openapi.IN_PATH,
+            description="URL-encoded ID of the follower to fetch details for",
+            type=openapi.TYPE_STRING,
+            required=True,
+        ),
+    ],
+    request_body=None,
+    responses={
+        200: openapi.Response(
+            description="Follower details fetched successfully.",
+            schema=AuthorSerializer(),
+        ),
+        404: openapi.Response(
+            description="Follower not found.",
+            schema=openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "detail": openapi.Schema(type=openapi.TYPE_STRING, description="Error message")
+                },
+            ),
+        ),
+        401: "Unauthorized",
+    },
+    tags=["Followers"],
+)
+@swagger_auto_schema(
+    method="put",
+    operation_summary="Add a specific follower",
+    operation_description="""
+    Use this endpoint to add a specific follower to an author's list of followers.
+
+    **When to use:**
+    - Use this endpoint when you want to accept a follow request and add the `foreign_author` as a follower of the specified `author`.
+    - The `foreign_author_fqid` identifies the follower being added.
+
+    **How to use:**
+    - Send a `PUT` request to this endpoint with the `author_serial` and `foreign_author_fqid` in the URL path.
+    - The `foreign_author` will be added to the author's followers.
+
+    **Why use or not use:**
+    - This endpoint should be used when you want to allow an author to accept a follow request and add a follower.
+    - Do not use if the author does not exist, or if the foreign author is already following the author.
+    - Ensure that the user is authenticated as only authenticated users can perform this operation.
+    """,
+    manual_parameters=[
+        openapi.Parameter(
+            "author_serial",
+            openapi.IN_PATH,
+            description="UUID of the author whose followers are being modified",
+            type=openapi.TYPE_STRING,
+            required=True,
+        ),
+        openapi.Parameter(
+            "foreign_author_fqid",
+            openapi.IN_PATH,
+            description="URL-encoded ID of the follower to add",
+            type=openapi.TYPE_STRING,
+            required=True,
+        ),
+    ],
+    request_body=None,
+    responses={
+        201: openapi.Response(
+            description="Follower added successfully.",
+        ),
+        400: openapi.Response(
+            description="Bad request or already following.",
+            schema=openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "error": openapi.Schema(type=openapi.TYPE_STRING, description="Error message")
+                },
+            ),
+        ),
+        401: "Unauthorized",
+    },
+    tags=["Followers"],
+)
+@swagger_auto_schema(
+    method="delete",
+    operation_summary="Remove a specific follower",
+    operation_description="""
+    Use this endpoint to remove a specific follower from an author's list of followers.
+
+    **When to use:**
+    - Use this endpoint when you want to remove a follower from an author's list.
+    - The `foreign_author_fqid` identifies the follower to be removed.
+
+    **How to use:**
+    - Send a `DELETE` request to this endpoint with the `author_serial` and `foreign_author_fqid` in the URL path.
+    - The `foreign_author` will be removed from the author's followers.
+
+    **Why use or not use:**
+    - This endpoint should be used when an author wants to remove a follower from their list.
+    - Do not use this endpoint if the foreign author is not a follower of the author.
+    - Ensure that the user is authenticated to perform this operation.
+    """,
+    manual_parameters=[
+        openapi.Parameter(
+            "author_serial",
+            openapi.IN_PATH,
+            description="UUID of the author whose followers are being modified",
+            type=openapi.TYPE_STRING,
+            required=True,
+        ),
+        openapi.Parameter(
+            "foreign_author_fqid",
+            openapi.IN_PATH,
+            description="URL-encoded ID of the follower to remove",
+            type=openapi.TYPE_STRING,
+            required=True,
+        ),
+    ],
+    request_body=None,
+    responses={
+        204: openapi.Response(
+            description="Follower removed successfully.",
+        ),
+        404: openapi.Response(
+            description="Follower not found.",
+            schema=openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "detail": openapi.Schema(type=openapi.TYPE_STRING, description="Error message")
+                },
+            ),
+        ),
+        401: "Unauthorized",
+    },
+    tags=["Followers"],
+)
 @api_view(['GET', 'PUT', 'DELETE'])
 @permission_classes([IsAuthenticated])
 def specific_follower_handler(request, author_serial, foreign_author_fqid):
@@ -2613,6 +2976,8 @@ def specific_follower_handler(request, author_serial, foreign_author_fqid):
             {'error': str(e)}, 
             status=status.HTTP_400_BAD_REQUEST
         )
+        
+        
 @swagger_auto_schema(
     method="get",
     operation_summary="Get Authors Following",
@@ -3178,8 +3543,51 @@ class PublicPostsView(APIView):
             )
 
 
+@swagger_auto_schema(
+    method="get",
+    operation_summary="Verify the connection for the Node user",
+    operation_description="""
+    Use this endpoint to verify the connection for a Node user. It returns a success message along with the user's connection details.
 
+    **When to use:**
+    - Use this endpoint when you need to verify the connection of a Node user.
+    - The response will confirm the connection status and provide details about the authenticated user.
 
+    **How to use:**
+    - Send a `GET` request to this endpoint.
+    - The response will indicate the connection status and return the user's URL if available, or the user’s identifier.
+
+    **Why use or not use:**
+    - This endpoint is useful when checking if the Node user is successfully connected or authenticated.
+    - Do not use if the user is not authenticated or doesn't have a valid Node connection.
+    """,
+    request_body=None,
+    responses={
+        200: openapi.Response(
+            description="Connection successfully verified.",
+            schema=openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "status": openapi.Schema(type=openapi.TYPE_STRING, description="Status of the request"),
+                    "message": openapi.Schema(type=openapi.TYPE_STRING, description="Success message"),
+                    "node": openapi.Schema(type=openapi.TYPE_STRING, description="URL or identifier of the authenticated user"),
+                },
+            ),
+        ),
+        401: "Unauthorized - The user must be authenticated.",
+        400: openapi.Response(
+            description="Error occurred during the connection verification.",
+            schema=openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "status": openapi.Schema(type=openapi.TYPE_STRING, description="Error status"),
+                    "message": openapi.Schema(type=openapi.TYPE_STRING, description="Error message"),
+                },
+            ),
+        ),
+    },
+    tags=["Node Connection"],
+)
 @api_view(['GET'])
 @authentication_classes([NodeBasicAuthentication])
 @permission_classes([IsAuthenticatedOrNode])
@@ -3198,6 +3606,77 @@ def verify_node_connection(request):
             "message": str(e)
         })
 
+
+@swagger_auto_schema(
+    method="get",
+    operation_summary="Test outgoing connections to remote nodes",
+    operation_description="""
+    Use this endpoint to test outgoing connections to remote nodes by making requests to their endpoints.
+
+    **When to use:**
+    - Use this endpoint when you want to test if the outgoing connections from your system to remote nodes are functioning.
+    - This is particularly useful for verifying the availability and connectivity of remote nodes linked to your system.
+
+    **How to use:**
+    - Send a `GET` request to this endpoint.
+    - The endpoint will check the connectivity to all active remote nodes and provide the results of the connection tests.
+
+    **Why use or not use:**
+    - This endpoint is useful for administrators or systems integrators who need to ensure that all remote nodes are reachable and that the outgoing connections to those nodes work.
+    - Do not use if there are no active remote nodes in the database or if the remote node endpoints are not configured properly.
+    """,
+    request_body=None,
+    responses={
+        200: openapi.Response(
+            description="Test completed successfully. Returns the results of the connection tests.",
+            schema=openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "status": openapi.Schema(type=openapi.TYPE_STRING, description="Status of the overall operation"),
+                    "test_results": openapi.Schema(
+                        type=openapi.TYPE_ARRAY,
+                        items=openapi.Schema(
+                            type=openapi.TYPE_OBJECT,
+                            properties={
+                                "node_url": openapi.Schema(type=openapi.TYPE_STRING, description="URL of the remote node"),
+                                "outgoing_test": openapi.Schema(
+                                    type=openapi.TYPE_OBJECT,
+                                    properties={
+                                        "status": openapi.Schema(type=openapi.TYPE_STRING, description="Status of the outgoing test"),
+                                        "status_code": openapi.Schema(type=openapi.TYPE_INTEGER, description="HTTP status code of the response"),
+                                        "response": openapi.Schema(type=openapi.TYPE_STRING, description="Response body or error message from the remote node"),
+                                    }
+                                ),
+                            }
+                        ),
+                    ),
+                },
+            ),
+        ),
+        404: openapi.Response(
+            description="No remote nodes found in database.",
+            schema=openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "status": openapi.Schema(type=openapi.TYPE_STRING, description="Error status"),
+                    "message": openapi.Schema(type=openapi.TYPE_STRING, description="Error message"),
+                },
+            ),
+        ),
+        500: openapi.Response(
+            description="Internal server error during the test.",
+            schema=openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "status": openapi.Schema(type=openapi.TYPE_STRING, description="Error status"),
+                    "message": openapi.Schema(type=openapi.TYPE_STRING, description="Error message"),
+                    "type": openapi.Schema(type=openapi.TYPE_STRING, description="Error type (exception name)"),
+                },
+            ),
+        ),
+    },
+    tags=["Node Connection"],
+)
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def test_node_connection(request):
@@ -3249,6 +3728,158 @@ def test_node_connection(request):
             "type": str(type(e))
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+
+@swagger_auto_schema(
+    method="get",
+    operation_summary="Retrieve the inbox contents for a given author",
+    operation_description="""
+    Use this endpoint to retrieve the inbox contents of a specific author identified by their UUID.
+
+    **When to use:**
+    - Use this endpoint to get the inbox data for an author, which includes posts, likes, comments, and follow requests.
+    - It is useful for checking activities related to a specific author.
+
+    **How to use:**
+    - Send a `GET` request to this endpoint with the `author_serial` as part of the URL.
+    - The inbox contents for the specified author will be returned.
+
+    **Why use or not use:**
+    - This endpoint should be used when you need to retrieve the activities for a specific author.
+    - Do not use this endpoint if you are not authenticated or if the author UUID does not exist.
+    """,
+    responses={
+        200: openapi.Response(
+            description="Inbox retrieved successfully.",
+            schema=InboxSerializer()
+        ),
+        404: openapi.Response(
+            description="Author not found.",
+            schema=openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "detail": openapi.Schema(type=openapi.TYPE_STRING, description="Error message")
+                }
+            )
+        ),
+        401: "Unauthorized",
+    },
+    tags=["Inbox"],
+)
+@swagger_auto_schema(
+    method="post",
+    operation_summary="Add activity to the author's inbox",
+    operation_description="""
+    Use this endpoint to add activities such as posts, likes, comments, and follow requests to an author's inbox.
+
+    **When to use:**
+    - Use this endpoint to add activities like posts, likes, comments, or follow requests to the author's inbox.
+    - The request body must specify the type of activity (`post`, `like`, `comment`, or `follow`).
+
+    **How to use:**
+    - Send a `POST` request to this endpoint with the `author_serial` as part of the URL.
+    - The request body should include the activity type and necessary data (e.g., post content, target UUID for follow request).
+    - Depending on the activity type, the corresponding action will be performed (e.g., creating a post, processing a follow request).
+
+    **Why use or not use:**
+    - This endpoint should be used when you want to add activities to an author's inbox, such as posts or follow requests.
+    - Do not use if the activity type is unsupported or if the required data (e.g., `author_id`, `content`, etc.) is missing.
+    """,
+    request_body=openapi.Schema(
+        type=openapi.TYPE_OBJECT,
+        properties={
+            "type": openapi.Schema(type=openapi.TYPE_STRING, description="Type of activity (e.g., post, like, comment, follow)"),
+            "author_id": openapi.Schema(type=openapi.TYPE_STRING, description="UUID of the author performing the activity (used for posts and follow requests)"),
+            "author": openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "host": openapi.Schema(type=openapi.TYPE_STRING, description="Host URL of the author performing the activity"),
+                }
+            ),
+            "content": openapi.Schema(type=openapi.TYPE_STRING, description="Content of the activity (e.g., post content)"),
+            "visibility": openapi.Schema(type=openapi.TYPE_STRING, description="Visibility of the post (optional)"),
+            "title": openapi.Schema(type=openapi.TYPE_STRING, description="Title of the post (optional)"),
+            "description": openapi.Schema(type=openapi.TYPE_STRING, description="Description of the post (optional)"),
+            "contentType": openapi.Schema(type=openapi.TYPE_STRING, description="Content type of the post (optional)"),
+            "image": openapi.Schema(type=openapi.TYPE_STRING, description="Image URL for the post (optional)"),
+            "object": openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "id": openapi.Schema(type=openapi.TYPE_STRING, description="UUID of the target user (used for follow requests)"),
+                }
+            ),
+        },
+        required=["type"],
+    ),
+    responses={
+        201: openapi.Response(
+            description="Activity added to inbox successfully.",
+            schema=openapi.Schema(type=openapi.TYPE_OBJECT, properties={
+                "message": openapi.Schema(type=openapi.TYPE_STRING, description="Success message")
+            }),
+        ),
+        400: openapi.Response(
+            description="Invalid input data or unsupported activity type.",
+            schema=openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "error": openapi.Schema(type=openapi.TYPE_STRING, description="Error message")
+                }
+            )
+        ),
+        404: openapi.Response(
+            description="Author not found.",
+            schema=openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "detail": openapi.Schema(type=openapi.TYPE_STRING, description="Error message")
+                }
+            )
+        ),
+        401: "Unauthorized",
+    },
+    tags=["Inbox"],
+)
+@swagger_auto_schema(
+    method="delete",
+    operation_summary="Clear all activities from the author's inbox",
+    operation_description="""
+    Use this endpoint to clear all activities from a given author's inbox.
+
+    **When to use:**
+    - Use this endpoint to clear all posts, likes, comments, and follow requests from the inbox of the specified author.
+    - This is useful for managing inbox contents or clearing outdated activities.
+
+    **How to use:**
+    - Send a `DELETE` request to this endpoint with the `author_serial` as part of the URL.
+    - This will clear all activities from the author's inbox.
+
+    **Why use or not use:**
+    - This endpoint should be used when you want to reset or clear the inbox of an author.
+    - Do not use if you want to retain the inbox contents.
+    """,
+    responses={
+        204: openapi.Response(
+            description="Inbox cleared successfully.",
+            schema=openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "message": openapi.Schema(type=openapi.TYPE_STRING, description="Success message")
+                }
+            ),
+        ),
+        404: openapi.Response(
+            description="Author not found.",
+            schema=openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "detail": openapi.Schema(type=openapi.TYPE_STRING, description="Error message")
+                }
+            )
+        ),
+        401: "Unauthorized",
+    },
+    tags=["Inbox"],
+)
 @csrf_exempt
 @api_view(['POST', 'GET', 'DELETE'])
 @permission_classes([IsAuthenticated])
@@ -3369,6 +4000,7 @@ def inbox_handler(request, author_serial):
         inbox.follow_requests.clear()
         print(f"Inbox for author {author_serial} has been cleared.")
         return Response({'message': 'Inbox cleared.'}, status=status.HTTP_204_NO_CONTENT)
+    
 def create_local_post(request, post):
     """
     Processes a post activity by creating a local post via the API.
@@ -3442,6 +4074,75 @@ def process_follow_request(request, follow_request):
         print(f"Error processing follow request: {e}")
         return Response({'error': 'Failed to process follow request.'}, status=status.HTTP_400_BAD_REQUEST)
     
+    
+@swagger_auto_schema(
+    method="get",
+    operation_summary="Sync remote authors from active remote nodes",
+    operation_description="""
+    Use this endpoint to synchronize authors from active remote nodes.
+
+    **When to use:**
+    - Use this endpoint to fetch authors from connected remote nodes and sync them with your local database.
+    - This is useful when you want to keep the list of authors in your local system up to date with remote nodes.
+
+    **How to use:**
+    - Send a `GET` request to this endpoint to start the synchronization process.
+    - The system will attempt to fetch all authors from the active remote nodes and add them to the local database.
+    - The response will include the synchronization status and any errors encountered during the process.
+
+    **Why use or not use:**
+    - This endpoint should be used when you need to update the list of remote authors in your local system.
+    - If no remote nodes are active or if the network is unreachable, the synchronization will fail.
+    """,
+    responses={
+        200: openapi.Response(
+            description="Authors synchronized successfully.",
+            schema=openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "status": openapi.Schema(type=openapi.TYPE_STRING, description="Sync status"),
+                    "sync_results": openapi.Schema(
+                        type=openapi.TYPE_ARRAY,
+                        items=openapi.Schema(
+                            type=openapi.TYPE_OBJECT,
+                            properties={
+                                "node_url": openapi.Schema(type=openapi.TYPE_STRING, description="Remote node URL"),
+                                "authors_synced": openapi.Schema(type=openapi.TYPE_INTEGER, description="Number of authors successfully synced"),
+                                "errors": openapi.Schema(
+                                    type=openapi.TYPE_ARRAY,
+                                    items=openapi.Schema(type=openapi.TYPE_STRING, description="Error messages")
+                                ),
+                            }
+                        ),
+                    ),
+                }
+            )
+        ),
+        404: openapi.Response(
+            description="No remote nodes found in the database.",
+            schema=openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "status": openapi.Schema(type=openapi.TYPE_STRING, description="Error status"),
+                    "message": openapi.Schema(type=openapi.TYPE_STRING, description="Error message")
+                }
+            )
+        ),
+        500: openapi.Response(
+            description="Internal server error during sync.",
+            schema=openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "status": openapi.Schema(type=openapi.TYPE_STRING, description="Error status"),
+                    "message": openapi.Schema(type=openapi.TYPE_STRING, description="Error message"),
+                    "type": openapi.Schema(type=openapi.TYPE_STRING, description="Error type")
+                }
+            )
+        ),
+        401: "Unauthorized",
+    },
+    tags=["Sync"],
+)
 @csrf_exempt
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
