@@ -3038,8 +3038,6 @@ def sync_remote_authors(request):
                                 'email': '',  # Email might not be available
                                 'is_active': False,  # Remote authors are not local users
                             }
-
-                            print("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", author_id)
                             author, created = Author.objects.update_or_create(
                                 id=author_id,
                                 defaults=author_defaults
@@ -3072,3 +3070,20 @@ def sync_remote_authors(request):
             "message": str(e),
             "type": str(type(e).__name__)
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+
+    # views.py
+
+
+@api_view(['GET'])
+def connected_nodes(request):
+    nodes = ToWhichItsConnected.objects.all()
+    data = [
+        {
+            'url': node.url,
+            'username': node.username,
+            'password': node.password,
+        }
+        for node in nodes
+    ]
+    return Response(data)

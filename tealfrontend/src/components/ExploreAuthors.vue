@@ -84,7 +84,7 @@
           </button>
           <button
             v-else
-            @click.stop="sendFollowRequest(author)"
+            @click.stop="sendFollowRequest(author.id)"
             class="follow-button"
           >
             <i class="fas fa-user-plus"></i> Follow
@@ -233,6 +233,52 @@ export default {
       console.log("This is the authorID: ", authorId);
       try {
         const targetUuid = authorId.split("/").pop();
+        const targethost = authorId.split('/authors/')[0];
+        console.log("this is the host: ", targethost);
+
+        // Fetch the list of connected nodes
+        const response = await axios.get('/connected-nodes/', {
+          headers: { Authorization: `Token ${this.token}` },
+        });
+        const connectedNodes = response.data;
+
+        const targetNode = connectedNodes.find(node => node.url === targethost);
+        // if (targetNode) {
+      //     // If the target host is found, send the follow request with credentials
+      //     await axios.post(
+      //       `${targethost}/authors/${targetUuid}/send_follow_request/`,
+      //       null,
+      //       {
+      //         headers: {
+      //           Authorization: `Token ${this.token}`,
+      //           'Node-Username': targetNode.username,
+      //           'Node-Password': targetNode.password,
+      //         },
+      //       }
+      //     );
+
+      //     this.showNotification(
+      //       "Follow request sent successfully!",
+      //       "success",
+      //       "fas fa-user-plus"
+      //     );
+      //     this.pendingRequests.push(authorId);
+      //     this.fetchAuthors();
+      //   } else {
+      //     this.showNotification(
+      //       "Target host is not connected",
+      //       "error",
+      //       "fas fa-exclamation-circle"
+      //     );
+      //   }
+      // } catch (error) {
+      //   this.showNotification(
+      //     "Failed to send follow request",
+      //     "error",
+      //     "fas fa-exclamation-circle"
+      //   );
+      //   console.error("Error sending follow request:", error);
+      // }
         await axios.post(
           `/authors/${targetUuid}/send_follow_request/`,
           null,
