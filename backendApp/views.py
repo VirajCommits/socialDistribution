@@ -978,6 +978,13 @@ def accept_follow_request(request, author_uuid):
             {"detail": "This author is already following you."},
             status=status.HTTP_400_BAD_REQUEST,
         )
+    post_data = construct_posts_data(current_author)
+    print(post_data , requesting_author.host , current_author.host)
+    if requesting_author.host != current_author.host:
+        # post_data = construct_posts_data(current_author)
+
+        # Send the constructed object to the remote node
+        send_data_to_remote_node(requesting_author.host, post_data)
 
     # Accept the request
     follow_request.accepted = True
@@ -999,7 +1006,42 @@ def accept_follow_request(request, author_uuid):
     )
 
     return Response({"detail": "Follow request accepted."}, status=status.HTTP_200_OK)
+def send_data_to_remote_node(url, data):
+    """
+    Send data to the remote node with authentication using the ToWhichItsConnected model.
+    """
+    # Find the remote node that matches the base URL
+    matched_node = None
+    for node in ToWhichItsConnected.objects.filter(active=True):
+        if url.startswith(node.url):  # Check if the base URL matches
+            matched_node = node
+            break
 
+    if not matched_node:
+        raise ValueError("No matching remote node found for the provided URL.")
+
+    # Extract credentials from the matched node
+    username = matched_node.username
+    password = matched_node.password
+
+    if not username or not password:
+        raise ValueError(f"Username or password not found for node {matched_node.url}.")
+
+    # Set up headers with Basic Authentication
+    headers = {
+        'Authorization': f'Basic {username}:{password}',  # Use basic auth format
+    }
+
+    new_url = url + "inbox/"
+
+    try:
+        # Send the POST request to the remote node
+        response = requests.post(new_url, json=data, headers=headers)
+        response.raise_for_status()
+    except requests.RequestException as e:
+        raise RuntimeError(f"Failed to send data to {matched_node.url}: {e}")
+
+    return response
 
 @swagger_auto_schema(
     method="POST",
@@ -2814,6 +2856,245 @@ def inbox_handler(request, author_serial):
         item_type = data.get('type', '').lower()
 
         try:
+            if item_type == "posts":
+                # Handle multiple posts
+                posts_data = data.get('src', [])
+                for post_data in posts_data:
+                    # Process each post individually
+                    # First, get or create the author
+                    author_data = post_data.get('author', {})
+                    author_id = author_data.get('id')
+                    if not author_id:
+                        continue  # Skip posts without author ID
+
+                    # Parse author UUID from the author_id URL
+                    author_uuid = author_id.rstrip('/').split('/')[-1]
+
+                    # Get or create the author
+                    author, created = Author.objects.get_or_create(
+                        uuid=author_uuid,
+                        defaults={
+                            'displayName': author_data.get('displayName', ''),
+                            'host': author_data.get('host', ''),
+                            'page': author_data.get('page', ''),
+                            'github': author_data.get('github', ''),
+                            'profileImage': author_data.get('profileImage', ''),
+                        }
+                    )
+
+                    # If the author exists, update their info
+                    if not created:
+                        author.displayName = author_data.get('displayName', author.displayName)
+                        author.host = author_data.get('host', author.host)
+                        author.page = author_data.get('page', author.page)
+                        author.github = author_data.get('github', author.github)
+                        author.profileImage = author_data.get('profileImage', author.profileImage)
+                        author.save()
+
+                    # Now, process the post
+                    post_id = post_data.get('id')
+                    if not post_id:
+                        continue  # Skip posts without ID
+
+                    # Parse post UUID from the post_id URL
+                    post_uuid = post_id.rstrip('/').split('/')[-1]
+
+                    # Get or create the post
+                    post, post_created = Post.objects.get_or_create(
+                        id=post_uuid,
+                        defaults={
+                            'author': author,
+                            'title': post_data.get('title', ''),
+                            'description': post_data.get('description', ''),
+                            'contentType': post_data.get('contentType', 'text/plain'),
+                            'content': post_data.get('content', ''),
+                            'published': post_data.get('published', timezone.now()),
+                            'visibility': post_data.get('visibility', 'PUBLIC'),
+                            'page': post_data.get('page', ''),
+                        }
+                    )
+
+                    # If the post exists, update its info
+                    if not post_created:
+                        post.title = post_data.get('title', post.title)
+                        post.description = post_data.get('description', post.description)
+                        post.contentType = post_data.get('contentType', post.contentType)
+                        post.content = post_data.get('content', post.content)
+                        post.published = post_data.get('published', post.published)
+                        post.visibility = post_data.get('visibility', post.visibility)
+                        post.page = post_data.get('page', post.page)
+                        post.save()
+
+                    # Now handle comments
+                    comments_data = post_data.get('comments', {}).get('src', [])
+                    for comment_data in comments_data:
+                        # Process each comment
+                        comment_author_data = comment_data.get('author', {})
+                        comment_author_id = comment_author_data.get('id')
+                        if not comment_author_id:
+                            continue  # Skip comments without author ID
+
+                        # Parse comment author UUID
+                        comment_author_uuid = comment_author_id.rstrip('/').split('/')[-1]
+
+                        # Get or create the comment author
+                        comment_author, ca_created = Author.objects.get_or_create(
+                            uuid=comment_author_uuid,
+                            defaults={
+                                'displayName': comment_author_data.get('displayName', ''),
+                                'host': comment_author_data.get('host', ''),
+                                'page': comment_author_data.get('page', ''),
+                                'github': comment_author_data.get('github', ''),
+                                'profileImage': comment_author_data.get('profileImage', ''),
+                            }
+                        )
+
+                        # If the author exists, update their info
+                        if not ca_created:
+                            comment_author.displayName = comment_author_data.get('displayName', comment_author.displayName)
+                            comment_author.host = comment_author_data.get('host', comment_author.host)
+                            comment_author.page = comment_author_data.get('page', comment_author.page)
+                            comment_author.github = comment_author_data.get('github', comment_author.github)
+                            comment_author.profileImage = comment_author_data.get('profileImage', comment_author.profileImage)
+                            comment_author.save()
+
+                        # Process the comment
+                        comment_id = comment_data.get('id')
+                        if not comment_id:
+                            continue  # Skip comments without ID
+
+                        # Parse comment UUID
+                        comment_uuid = comment_id.rstrip('/').split('/')[-1]
+
+                        # Get or create the comment
+                        comment, comment_created = Comment.objects.get_or_create(
+                            id=comment_uuid,
+                            defaults={
+                                'post': post,
+                                'author': comment_author,
+                                'content': comment_data.get('comment', ''),
+                                'contentType': comment_data.get('contentType', 'text/plain'),
+                                'published': comment_data.get('published', timezone.now()),
+                            }
+                        )
+
+                        # If the comment exists, update its info
+                        if not comment_created:
+                            comment.content = comment_data.get('comment', comment.content)
+                            comment.contentType = comment_data.get('contentType', comment.contentType)
+                            comment.published = comment_data.get('published', comment.published)
+                            comment.save()
+
+                        # Handle likes on comments
+                        comment_likes_data = comment_data.get('likes', {}).get('src', [])
+                        for like_data in comment_likes_data:
+                            # Process each like
+                            like_author_data = like_data.get('author', {})
+                            like_author_id = like_author_data.get('id')
+                            if not like_author_id:
+                                continue  # Skip likes without author ID
+
+                            # Parse like author UUID
+                            like_author_uuid = like_author_id.rstrip('/').split('/')[-1]
+
+                            # Get or create the like author
+                            like_author, la_created = Author.objects.get_or_create(
+                                uuid=like_author_uuid,
+                                defaults={
+                                    'displayName': like_author_data.get('displayName', ''),
+                                    'host': like_author_data.get('host', ''),
+                                    'page': like_author_data.get('page', ''),
+                                    'github': like_author_data.get('github', ''),
+                                    'profileImage': like_author_data.get('profileImage', ''),
+                                }
+                            )
+
+                            if not la_created:
+                                like_author.displayName = like_author_data.get('displayName', like_author.displayName)
+                                like_author.host = like_author_data.get('host', like_author.host)
+                                like_author.page = like_author_data.get('page', like_author.page)
+                                like_author.github = like_author_data.get('github', like_author.github)
+                                like_author.profileImage = like_author_data.get('profileImage', like_author.profileImage)
+                                like_author.save()
+
+                            # Process the like
+                            like_id = like_data.get('id')
+                            if not like_id:
+                                continue  # Skip likes without ID
+
+                            # Parse like UUID
+                            like_uuid = like_id.rstrip('/').split('/')[-1]
+
+                            # Get or create the like
+                            like, like_created = Like.objects.get_or_create(
+                                id=like_uuid,
+                                defaults={
+                                    'author': like_author,
+                                    'comment': comment,
+                                    'published': like_data.get('published', timezone.now()),
+                                }
+                            )
+
+                            if not like_created:
+                                like.published = like_data.get('published', like.published)
+                                like.save()
+
+                    # Now handle likes on posts
+                    likes_data = post_data.get('likes', {}).get('src', [])
+                    for like_data in likes_data:
+                        # Process each like
+                        like_author_data = like_data.get('author', {})
+                        like_author_id = like_author_data.get('id')
+                        if not like_author_id:
+                            continue  # Skip likes without author ID
+
+                        # Parse like author UUID
+                        like_author_uuid = like_author_id.rstrip('/').split('/')[-1]
+
+                        # Get or create the like author
+                        like_author, la_created = Author.objects.get_or_create(
+                            uuid=like_author_uuid,
+                            defaults={
+                                'displayName': like_author_data.get('displayName', ''),
+                                'host': like_author_data.get('host', ''),
+                                'page': like_author_data.get('page', ''),
+                                'github': like_author_data.get('github', ''),
+                                'profileImage': like_author_data.get('profileImage', ''),
+                            }
+                        )
+
+                        if not la_created:
+                            like_author.displayName = like_author_data.get('displayName', like_author.displayName)
+                            like_author.host = like_author_data.get('host', like_author.host)
+                            like_author.page = like_author_data.get('page', like_author.page)
+                            like_author.github = like_author_data.get('github', like_author.github)
+                            like_author.profileImage = like_author_data.get('profileImage', like_author.profileImage)
+                            like_author.save()
+
+                        # Process the like
+                        like_id = like_data.get('id')
+                        if not like_id:
+                            continue  # Skip likes without ID
+
+                        # Parse like UUID
+                        like_uuid = like_id.rstrip('/').split('/')[-1]
+
+                        # Get or create the like
+                        like, like_created = Like.objects.get_or_create(
+                            id=like_uuid,
+                            defaults={
+                                'author': like_author,
+                                'post': post,
+                                'published': like_data.get('published', timezone.now()),
+                            }
+                        )
+
+                        if not like_created:
+                            like.published = like_data.get('published', like.published)
+                            like.save()
+
+                return Response({'message': 'Posts added to inbox and created locally.'}, status=status.HTTP_201_CREATED)
+
             if item_type == 'post':
                 # to create a post, basically call this url: service/api/authors/<path:author_serial>/posts/
                 # i need the author_serial from data
@@ -3072,3 +3353,140 @@ def sync_remote_authors(request):
             "message": str(e),
             "type": str(type(e).__name__)
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+def construct_posts_data(author):
+    # Get all public and friends-only posts of the author
+    posts = Post.objects.filter(author=author, visibility__in=['PUBLIC', 'FRIENDS']).order_by('-published')
+
+    posts_data = {
+        "type": "posts",
+        "page_number": 1,
+        "size": len(posts),
+        "count": posts.count(),
+        "src": []
+    }
+
+    for post in posts:
+        post_data = {
+            "type": "post",
+            "title": post.title,
+            "id": f"{post.author.host}authors/{post.author.uuid}/posts/{post.id}",
+            "page": f"{post.author.page}/posts/{post.id}",
+            "description": post.description,
+            "contentType": post.contentType,
+            "content": post.content,
+            "author": {
+                "type": "author",
+                "id": f"{post.author.host}authors/{post.author.uuid}",
+                "host": post.author.host,
+                "displayName": post.author.displayName,
+                "page": post.author.page,
+                "github": post.author.github,
+                "profileImage": post.author.profileImage,
+            },
+            "published": post.published.isoformat(),
+            "visibility": post.visibility,
+            "comments": construct_comments_data(post),
+            "likes": construct_likes_data(post),
+        }
+        posts_data["src"].append(post_data)
+
+    return posts_data
+def construct_comments_data(post):
+    comments = Comment.objects.filter(post=post).order_by('-published')[:5]
+    comments_data = {
+        "type": "comments",
+        "page": f"{post.author.page}/posts/{post.id}",
+        "id": f"{post.author.host}authors/{post.author.uuid}/posts/{post.id}/comments",
+        "page_number": 1,
+        "size": 5,
+        "count": post.comments.count(),
+        "src": []
+    }
+
+    for comment in comments:
+        comment_data = {
+            "type": "comment",
+            "author": {
+                "type": "author",
+                "id": f"{comment.author.host}authors/{comment.author.uuid}",
+                "page": comment.author.page,
+                "host": comment.author.host,
+                "displayName": comment.author.displayName,
+                "github": comment.author.github,
+                "profileImage": comment.author.profileImage
+            },
+            "comment": comment.content,
+            "contentType": comment.contentType,
+            "published": comment.published.isoformat(),
+            "id": f"{comment.post.author.host}authors/{comment.post.author.uuid}/comments/{comment.id}",
+            "post": f"{post.author.host}authors/{post.author.uuid}/posts/{post.id}",
+            "page": f"{comment.author.page}/posts/{post.id}",
+            "likes": construct_comment_likes_data(comment),
+        }
+        comments_data["src"].append(comment_data)
+
+    return comments_data
+def construct_likes_data(post):
+    likes = Like.objects.filter(post=post).order_by('-published')[:5]
+    likes_data = {
+        "type": "likes",
+        "page": f"{post.author.page}/posts/{post.id}",
+        "id": f"{post.author.host}authors/{post.author.uuid}/posts/{post.id}/likes",
+        "page_number": 1,
+        "size": 5,
+        "count": post.likes.count(),
+        "src": []
+    }
+
+    for like in likes:
+        like_data = {
+            "type": "like",
+            "author": {
+                "type": "author",
+                "id": f"{like.author.host}authors/{like.author.uuid}",
+                "page": like.author.page,
+                "host": like.author.host,
+                "displayName": like.author.displayName,
+                "github": like.author.github,
+                "profileImage": like.author.profileImage
+            },
+            "published": like.published.isoformat(),
+            "id": f"{like.author.host}authors/{like.author.uuid}/liked/{like.id}",
+            "object": f"{post.author.page}/posts/{post.id}"
+        }
+        likes_data["src"].append(like_data)
+
+    return likes_data
+def construct_comment_likes_data(comment):
+    likes = Like.objects.filter(comment=comment).order_by('-published')[:5]
+    likes_data = {
+        "type": "likes",
+        "id": f"{comment.post.author.host}authors/{comment.post.author.uuid}/comments/{comment.id}/likes",
+        "page": f"{comment.author.page}/comments/{comment.id}/likes",
+        "page_number": 1,
+        "size": 5,
+        "count": likes.count(),
+        "src": []
+    }
+
+    for like in likes:
+        like_data = {
+            "type": "like",
+            "author": {
+                "type": "author",
+                "id": f"{like.author.host}authors/{like.author.uuid}",
+                "page": like.author.page,
+                "host": like.author.host,
+                "displayName": like.author.displayName,
+                "github": like.author.github,
+                "profileImage": like.author.profileImage
+            },
+            "published": like.published.isoformat(),
+            "id": f"{like.author.host}authors/{like.author.uuid}/liked/{like.id}",
+            "object": f"{comment.post.author.page}/comments/{comment.id}"
+        }
+        likes_data["src"].append(like_data)
+
+    return likes_data

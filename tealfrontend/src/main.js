@@ -8,7 +8,7 @@ import axios from 'axios';
 // const baseURL = process.env.VUE_APP_API_BASE_URL || 'http://localhost:8000/service/api';
 const isProduction = window.location.hostname.includes('herokuapp.com');
 const baseURL = isProduction
-  ? 'https://social-sanket-603a86c4b610.herokuapp.com/service/api'
+  ? 'https://social-distribution-1-3adb84f120d9.herokuapp.com/service/api'
   : 'http://localhost:8000/service/api';
 
 // Axios configuration
@@ -16,7 +16,6 @@ axios.defaults.headers.common['Content-Type'] = 'application/json';
 axios.defaults.withCredentials = true;
 axios.defaults.baseURL = baseURL;
 
-console.log('Environment:', process.env.NODE_ENV === 'production' ? 'Production' : 'Development');
 console.log('Environment:', process.env.NODE_ENV === 'production' ? 'Production' : 'Development');
 console.log('Using API URL:', baseURL);
 
