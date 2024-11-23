@@ -269,7 +269,7 @@ export default {
 
         if (targetNode) {
           // Define the endpoint
-          const endpoint = `/service/api/authors/${targetUuid}/sendRemoteRequest/`;
+          const endpoint = `/authors/${targetUuid}/sendRemoteRequest/`;
           console.log('Sending follow request to remote node:', {
             endpoint,
             credentials: {
