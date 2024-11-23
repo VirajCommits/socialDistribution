@@ -193,7 +193,7 @@ urlpatterns = [
 
     path(
         'service/api/authors/<str:author_serial>/sendRemoteRequest/', 
-        views.inbox_handler, 
+        views.send_follow_request_to_remote_authors, 
         name='inbox'
     ),
 
