@@ -282,7 +282,10 @@ export default {
               headers: {
                 'node-username': targetNode.username,
                 'node-password': targetNode.password,
-              },
+              },transformRequest: [(data, headers) => {
+                delete headers.common['Authorization'];
+                return JSON.stringify(data);
+              }]
             }
           );
 
