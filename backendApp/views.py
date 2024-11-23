@@ -3039,6 +3039,7 @@ def sync_remote_authors(request):
                                 'is_active': False,  # Remote authors are not local users
                             }
 
+                            print("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", author_id)
                             author, created = Author.objects.update_or_create(
                                 id=author_id,
                                 defaults=author_defaults
@@ -3062,6 +3063,7 @@ def sync_remote_authors(request):
         return Response({
             "status": "completed",
             "sync_results": results
+
         })
 
     except Exception as e:
