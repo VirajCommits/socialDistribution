@@ -2790,7 +2790,7 @@ def test_node_connection(request):
 
 @csrf_exempt
 @api_view(['POST', 'GET', 'DELETE'])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticatedOrNode])
 def inbox_handler(request, author_serial):
     """
     Handles inbox activities for a given author. Supports POST (to add activities),
@@ -2808,6 +2808,7 @@ def inbox_handler(request, author_serial):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     elif request.method == 'POST':
+        print("AAAAAAAAAAAAA")
         data = request.data
         item_type = data.get('type', '').lower()
 

@@ -115,11 +115,11 @@ urlpatterns = [
         views.stream_page,
         name="stream_page",
     ),
-    # path(
-    #     "service/api/authors/<str:author_id>/unfollow/",
-    #     views.unfollow_author,
-    #     name="unfollow_author",
-    # ),
+    path(
+        "service/api/authors/<str:author_id>/unfollow/",
+        views.unfollow_author,
+        name="unfollow_author",
+    ),
     path(
         "service/api/posts/<uuid:post_id>/",
         views.get_post_by_link,
