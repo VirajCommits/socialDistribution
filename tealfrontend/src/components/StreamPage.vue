@@ -231,7 +231,7 @@ export default {
         // Use environment variable or fallback for WebSocket URL
         const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const wsBaseUrl = process.env.NODE_ENV === 'production'
-          ? 'window.location.hostname'
+          ? window.location.hostname
           : 'localhost:8000';
         
         this.socket = new WebSocket(
