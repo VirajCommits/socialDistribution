@@ -3524,7 +3524,7 @@ def send_follow_request_to_remote_authors(request):
             }
 
             try:
-                print(request)
+                print("This is the incoming req: ================= " , request)
                 # Prepare the follow activity
                 follow_activity = {
                     "type": "follow",
@@ -3579,3 +3579,15 @@ def send_follow_request_to_remote_authors(request):
             "message": str(e),
             "type": str(type(e).__name__)
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+@api_view(['GET'])
+def connected_nodes(request):
+    nodes = ToWhichItsConnected.objects.all()
+    data = [
+        {
+            'url': node.url,
+            'username': node.username,
+            'password': node.password,
+        }
+        for node in nodes
+    ]
+    return Response(data)

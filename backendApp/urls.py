@@ -223,6 +223,7 @@ urlpatterns = [
         TemplateView.as_view(template_name="index.html"),
         name="post_detail",
     ),
+    path('service/api/connected-nodes/', views.connected_nodes, name='connected_nodes'),
     # Catch-all route for Vue frontend
     re_path(
         r"^(?!service/api|admin|swagger|static|media).*$",
