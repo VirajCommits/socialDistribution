@@ -3500,8 +3500,7 @@ def send_follow_request_to_remote_authors(request , author_serial):
     """
     try:
         # Extract author UUID from the request data
-        author_uuid = request.data.get('author_uuid')
-        if not author_uuid:
+        if not author_serial:
             return Response({"status": "error", "message": "Author UUID is required."}, status=status.HTTP_400_BAD_REQUEST)
 
         # Get the current user (the one sending the follow request)
@@ -3528,7 +3527,7 @@ def send_follow_request_to_remote_authors(request , author_serial):
                 # Prepare the follow activity
                 follow_activity = {
                     "type": "follow",
-                    "summary": f"{current_user.displayName} wants to follow {author_uuid}",
+                    "summary": f"{current_user.displayName} wants to follow {author_serial}",
                     "actor": {
                         "type": "author",
                         "id": current_user.id,
@@ -3540,7 +3539,7 @@ def send_follow_request_to_remote_authors(request , author_serial):
                     },
                     "object": {
                         "type": "author",
-                        "id": f"{node.url}authors/{author_uuid}"
+                        "id": f"{node.url}authors/{author_serial}"
                     }
                 }
 
@@ -3548,7 +3547,7 @@ def send_follow_request_to_remote_authors(request , author_serial):
                 import base64
                 credentials = base64.b64encode(f"{node.username}:{node.password}".encode()).decode()
                 response = requests.post(
-                    f"{node.url}/service/api/authors/{author_uuid}/inbox/",
+                    f"{node.url}/service/api/authors/{author_serial}/inbox/",
                     json=follow_activity,
                     headers={
                         'Authorization': f'Basic {credentials}',
