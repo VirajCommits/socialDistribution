@@ -3499,14 +3499,19 @@ def send_follow_request_to_remote_authors(request, author_serial):
     Send a follow request to an author on a connected remote node.
     """
     try:
-        # Extract author UUID from the request data
+        # Extract the follow activity from the request data
         print("Incoming request data: ", request.data)
-        author_uuid = request.data.get('object', {}).get('uuid')
-        if not author_uuid:
-            return Response({"status": "error", "message": "Author UUID is required."}, status=status.HTTP_400_BAD_REQUEST)
+        follow_activity = request.data
 
-        # Get the current user (the one sending the follow request)
-        current_user = request.user
+        # Validate required fields in the follow activity
+        actor = follow_activity.get('actor')
+        object_author = follow_activity.get('object')
+        if not actor or not object_author:
+            return Response({"status": "error", "message": "Both 'actor' and 'object' are required in the follow activity."}, status=status.HTTP_400_BAD_REQUEST)
+
+        author_uuid = object_author.get('uuid') or object_author.get('id').split('/')[-1]
+        if not author_uuid:
+            return Response({"status": "error", "message": "Author UUID is required in the 'object'."}, status=status.HTTP_400_BAD_REQUEST)
 
         # Get all active remote nodes
         remote_nodes = ToWhichItsConnected.objects.filter(active=True)
@@ -3526,30 +3531,15 @@ def send_follow_request_to_remote_authors(request, author_serial):
 
             try:
                 print("Preparing follow activity...")
-                # Prepare the follow activity
-                follow_activity = {
-                    "type": "follow",
-                    "summary": f"{current_user.displayName} wants to follow {request.data.get('object', {}).get('displayName')}",
-                    "actor": {
-                        "type": "author",
-                        "id": current_user.id,
-                        "host": current_user.host,
-                        "displayName": current_user.displayName,
-                        "github": current_user.github or "",
-                        "profileImage": current_user.profileImage or "",
-                        "page": current_user.page
-                    },
-                    "object": {
-                        "type": "author",
-                        "id": f"{node.url}authors/{author_uuid}"
-                    }
-                }
 
-                # Send the follow request to the remote node
+                # Update the 'object' field with the correct author URL for the target node
+                follow_activity['object']['id'] = f"{node.url}authors/{author_uuid}"
                 import base64
-                credentials = base64.b64encode(f"{node.username}:{node.password}".encode()).decode()
+
+                # Send the follow request to the remote node's inbox
+                credentials = base64.b64encode(f"{node.send_username}:{node.send_password}".encode()).decode()
                 response = requests.post(
-                    f"{node.url}/service/api/authors/{author_uuid}/inbox/",
+                    f"{node.url}service/api/authors/{author_uuid}/inbox/",
                     json=follow_activity,
                     headers={
                         'Authorization': f'Basic {credentials}',
@@ -3557,28 +3547,31 @@ def send_follow_request_to_remote_authors(request, author_serial):
                     }
                 )
 
-                if response.status_code == 200:
+                if response.status_code in [200, 201]:
                     node_result['follow_request_sent'] = True
                 else:
-                    error_message = f"Failed to send follow request to {node.url}: Status {response.status_code}"
+                    error_message = f"Failed to send follow request to {node.url}: Status {response.status_code}, Response: {response.text}"
                     node_result['errors'].append(error_message)
+                    print(error_message)
 
             except requests.RequestException as e:
                 error_message = f"Connection error with {node.url}: {e}"
                 node_result['errors'].append(error_message)
+                print(error_message)
 
             results.append(node_result)
 
         return Response({
             "status": "completed",
             "results": results
-        })
+        }, status=status.HTTP_200_OK)
 
     except Exception as e:
+        print("Exception occurred: ", str(e))
         return Response({
             "status": "error",
             "message": str(e),
-            "type": str(type(e).__name__)
+            "type": type(e).__name__
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 @api_view(['GET'])
 def connected_nodes(request):
