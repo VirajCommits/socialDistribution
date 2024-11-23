@@ -1,3 +1,4 @@
+import copy
 import uuid
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework_simplejwt.authentication import JWTAuthentication
@@ -3507,11 +3508,17 @@ def send_follow_request_to_remote_authors(request, author_serial):
         actor = follow_activity.get('actor')
         object_author = follow_activity.get('object')
         if not actor or not object_author:
-            return Response({"status": "error", "message": "Both 'actor' and 'object' are required in the follow activity."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({
+                "status": "error",
+                "message": "Both 'actor' and 'object' are required in the follow activity."
+            }, status=status.HTTP_400_BAD_REQUEST)
 
         author_uuid = object_author.get('uuid') or object_author.get('id').split('/')[-1]
         if not author_uuid:
-            return Response({"status": "error", "message": "Author UUID is required in the 'object'."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({
+                "status": "error",
+                "message": "Author UUID is required in the 'object'."
+            }, status=status.HTTP_400_BAD_REQUEST)
 
         # Get all active remote nodes
         remote_nodes = ToWhichItsConnected.objects.filter(active=True)
@@ -3530,24 +3537,29 @@ def send_follow_request_to_remote_authors(request, author_serial):
             }
 
             try:
-                print("Preparing follow activity...")
+                print("Preparing follow activity for node:", node.url)
+
+                # Make a deep copy of the follow activity to avoid mutating the original data
+                follow_activity_copy = copy.deepcopy(follow_activity)
 
                 # Update the 'object' field with the correct author URL for the target node
-                follow_activity['object']['id'] = f"{node.url}authors/{author_uuid}"
-                import base64
+                follow_activity_copy['object']['id'] = f"{node.url.rstrip('/')}/authors/{author_uuid}"
 
-                # Send the follow request to the remote node's inbox
-                credentials = base64.b64encode(f"{node.username}:{node.password}".encode()).decode()
-                response = requests.post(
-                    f"{node.url}/service/api/authors/{object_author.get('uuid')}/inbox/",
-                    json=follow_activity,
-                    headers={
-                        'Authorization': f'Bearer {credentials}',
-                        'Content-Type': 'application/json'
-                    }
+                # Update the 'object' field's host if necessary
+                follow_activity_copy['object']['host'] = node.url.rstrip('/')
+
+                # Define the endpoint for the target node's inbox
+                endpoint = f"/service/api/authors/{object_author.get('uuid')}/inbox/"
+
+                # Send the follow request to the remote node's inbox using make_node_request
+                response = make_node_request(
+                    node=node,
+                    endpoint=endpoint,
+                    method='POST',
+                    data=follow_activity_copy
                 )
 
-                print("***********************" , response)
+                print("Response from node:", response.status_code, response.text)
 
                 if response.status_code in [200, 201]:
                     node_result['follow_request_sent'] = True
@@ -3556,7 +3568,7 @@ def send_follow_request_to_remote_authors(request, author_serial):
                     node_result['errors'].append(error_message)
                     print(error_message)
 
-            except requests.RequestException as e:
+            except Exception as e:
                 error_message = f"Connection error with {node.url}: {e}"
                 node_result['errors'].append(error_message)
                 print(error_message)
