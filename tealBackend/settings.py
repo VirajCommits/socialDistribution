@@ -109,6 +109,21 @@ CSRF_TRUSTED_ORIGINS = [
     "http://127.0.0.1:8000",
 ]
 
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+    'node-password',
+    'node-username',
+]
+
+
 # WhiteNoise Configuration (remove non-standard settings)
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / 'staticfiles'

@@ -244,57 +244,60 @@ export default {
 
         const targetNode = connectedNodes.find(node => node.url === targethost);
         console.log("This is the target node: ", targetNode);
-        // if (targetNode) {
-      //     // If the target host is found, send the follow request with credentials
-      //     await axios.post(
-      //       `${targethost}/authors/${targetUuid}/send_follow_request/`,
-      //       null,
-      //       {
-      //         headers: {
-      //           Authorization: `Token ${this.token}`,
-      //           'Node-Username': targetNode.username,
-      //           'Node-Password': targetNode.password,
-      //         },
-      //       }
-      //     );
+        if (targetNode) {
+          const endpoint = `${targethost}/service/api/authors/${targetUuid}/send_follow_request/`;
+          console.log('Sending follow request to remote node:', {
+            endpoint,
+            credentials: {
+              username: targetNode.username,
+              password: '********' // masked for security
+            }
+          });
+          // If the target host is found, send the follow request with credentials
+          await axios.post(
+            `${targethost}/service/api/authors/${targetUuid}/send_follow_request/`,
+            null,
+            {
+              headers: {
+                'node-username': targetNode.username,
+                'node-password': targetNode.password,
+              },
+            }
+          );
 
-      //     this.showNotification(
-      //       "Follow request sent successfully!",
-      //       "success",
-      //       "fas fa-user-plus"
-      //     );
-      //     this.pendingRequests.push(authorId);
-      //     this.fetchAuthors();
-      //   } else {
-      //     this.showNotification(
-      //       "Target host is not connected",
-      //       "error",
-      //       "fas fa-exclamation-circle"
-      //     );
-      //   }
-      // } catch (error) {
-      //   this.showNotification(
-      //     "Failed to send follow request",
-      //     "error",
-      //     "fas fa-exclamation-circle"
-      //   );
-      //   console.error("Error sending follow request:", error);
-      // }
-        await axios.post(
-          `/authors/${targetUuid}/send_follow_request/`,
-          null,
-          {
-            headers: { Authorization: `Token ${this.token}` },
+          this.showNotification(
+            "Follow request sent successfully!",
+            "success",
+            "fas fa-user-plus"
+          );
+          this.pendingRequests.push(authorId);
+          this.fetchAuthors();
+        } else {
+              try{
+                await axios.post(
+                `/authors/${targetUuid}/send_follow_request/`,
+                null,
+                {
+                  headers: { Authorization: `Token ${this.token}` },
+                }
+              );
+
+              this.showNotification(
+                "Follow request sent successfully!",
+                "success",
+                "fas fa-user-plus"
+              );
+              this.pendingRequests.push(authorId);
+              this.fetchAuthors();
+          } catch (error) {
+            this.showNotification(
+              "Failed to send follow request",
+              "error",
+              "fas fa-exclamation-circle"
+            );
+            console.error("Error sending follow request:", error);
           }
-        );
-
-        this.showNotification(
-          "Follow request sent successfully!",
-          "success",
-          "fas fa-user-plus"
-        );
-        this.pendingRequests.push(authorId);
-        this.fetchAuthors();
+        }
       } catch (error) {
         this.showNotification(
           "Failed to send follow request",
