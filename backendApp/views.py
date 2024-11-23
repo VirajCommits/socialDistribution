@@ -3542,7 +3542,7 @@ def send_follow_request_to_remote_authors(request, author_serial):
                     f"{node.url}/service/api/authors/{object_author.get('uuid')}/inbox/",
                     json=follow_activity,
                     headers={
-                        'Authorization': f'Basic {credentials}',
+                        'Authorization': f'Bearer {credentials}',
                         'Content-Type': 'application/json'
                     }
                 )
