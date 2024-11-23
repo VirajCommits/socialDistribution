@@ -1,3 +1,4 @@
+<!-- src/components/CommentSection.vue -->
 <template>
   <div class="comment-section">
     <h4 class="section-title">Comments ({{ comments.length }})</h4>
@@ -28,12 +29,21 @@
             <span class="comment-author">{{ comment.author.displayName }}</span>
           </div>
 
-          <!-- Comment Text and Time -->
+          <!-- Comment Text -->
           <div class="comment-details">
             <p class="comment-text">{{ comment.content }}</p>
           </div>
+
+          <!-- Like Button for Each Comment -->
+          <LikeButton :commentId="comment.id" />
         </li>
       </ul>
+    </div>
+
+    <!-- Success Message -->
+    <div v-if="successMessage" class="success-message">
+      <i class="fas fa-check-circle"></i>
+      {{ successMessage }}
     </div>
 
     <!-- Error Message -->
@@ -59,6 +69,7 @@
 
 <script>
 import axios from "axios";
+import LikeButton from "./LikeButton.vue";
 
 export default {
   name: "CommentSection",
@@ -68,25 +79,59 @@ export default {
       required: true,
     },
   },
+  components: {
+    LikeButton,
+  },
   data() {
     return {
       comments: [],
       newComment: "",
       loading: true,
       errorMessage: "",
+      successMessage: "",
       // Default avatar in case the commenter hasn't set one
       defaultAvatar:
         "https://i.pinimg.com/originals/f1/0f/f7/f10ff70a7155e5ab666bcdd1b45b726d.jpg",
+      user: null,
+      authID: "",
     };
   },
   mounted() {
+    this.initializeUser();
     this.fetchComments();
   },
   methods: {
+    /**
+     * Initializes user information from localStorage.
+     * Extracts the current user's ID for further operations.
+     */
+    initializeUser() {
+      try {
+        this.user = JSON.parse(localStorage.getItem("user"));
+        if (this.user && this.user.id) {
+          this.authID = this.user.id.split("/").pop();
+        } else {
+          throw new Error("User information not found");
+        }
+      } catch (error) {
+        console.error("Error initializing user:", error);
+        this.errorMessage = "Failed to retrieve user information.";
+      }
+    },
+
+    /**
+     * Fetches comments associated with the given post ID.
+     * Populates the comments array with fetched data.
+     */
+    // Fetch comments for the given post ID
     async fetchComments() {
       try {
-        const apiUrl = `/posts/${this.postId}/comments/`;
-        const response = await axios.get(apiUrl);
+        const apiUrl = `/posts/${encodeURIComponent(this.postId)}/comments/`;
+        const response = await axios.get(apiUrl, {
+          headers: {
+            Authorization: `Token ${localStorage.getItem("token")}`,
+          },
+        });
         this.comments = response.data || [];
         this.loading = false;
       } catch (error) {
@@ -95,51 +140,251 @@ export default {
         this.loading = false;
       }
     },
+    
+
+    /**
+     * Submits a new comment.
+     * After successfully creating the comment, it distributes the comment to relevant inboxes.
+     */
     async submitComment() {
       if (!this.newComment.trim()) return;
 
       try {
-        // Retrieve the author ID of the logged-in user from local storage
-        const currentAuthor = JSON.parse(localStorage.getItem("user"));
-        const currentAuthorId = currentAuthor ? currentAuthor.id : null;
-
-        if (!currentAuthorId) {
+        // Ensure the user is authenticated
+        if (!this.authID) {
           this.errorMessage = "User not authenticated.";
           return;
         }
 
-        const apiUrl = `/posts/${this.postId}/comment/`;
+        // Prepare the comment payload
+        const apiUrl = `/posts/${encodeURIComponent(this.postId)}/comment/`;
         const payload = {
-          content: this.newComment,
+          content: this.newComment.trim(),
           contentType: "text/plain",
-          author_id: currentAuthorId, // Include the author ID
+          author_id: this.authID, // Include the author ID
         };
 
         // Make the POST request to submit the comment
-        await axios.post(apiUrl, payload, {
+        const response = await axios.post(apiUrl, payload, {
           headers: {
             "Content-Type": "application/json",
             Authorization: `Token ${localStorage.getItem("token")}`, // Include the authentication token
           },
         });
 
-        this.newComment = ""; // Clear the input field
-        this.fetchComments(); // Refresh comments after submission
+        // Clear the input field and fetch updated comments
+        this.newComment = "";
+        this.fetchComments();
+
+        // Distribute the comment via inbox
+        await this.distributeComment(response.data);
       } catch (error) {
         console.error("Error submitting comment:", error.response || error);
         this.errorMessage = "An error occurred while submitting the comment.";
       }
     },
+
     /**
-     * Formats the timestamp to a more readable format.
-     * @param {String} timestamp - The original timestamp.
-     * @returns {String} - The formatted timestamp.
+     * Distributes the newly created comment to relevant authors' inboxes.
+     * @param {Object} commentData - The data of the newly created comment.
      */
+    async distributeComment(commentData) {
+      try {
+        // Fetch the post details to get the author's information and visibility
+        const postApiUrl = `/posts/${encodeURIComponent(this.postId)}/`;
+        console.log("<<<<<<<<<<<<>>>>>>>>>>>>>>>>>" , postApiUrl)
+        const postResponse = await axios.get(postApiUrl, {
+          headers: {
+            Authorization: `Token ${localStorage.getItem("token")}`,
+          },
+        });
+        const post = postResponse.data;
+
+        if (!post) {
+          console.warn("Post details not found. Skipping comment distribution.");
+          return;
+        }
+
+        const postAuthorId = post.author.id.split("/").pop();
+        const postVisibility = post.visibility || "PUBLIC";
+
+        // Fetch all authors (or fetch only relevant authors based on visibility)
+        const authorsResponse = await axios.get("/authors/", {
+          headers: {
+            Authorization: `Token ${localStorage.getItem("token")}`,
+          },
+        });
+        const authors = authorsResponse.data;
+
+        // Current user's ID
+        const currentAuthorId = this.authID;
+
+        // Track which authors have received the notification to prevent duplicates
+        const processedAuthors = new Set([currentAuthorId]); // Initialize with current author
+
+        // Determine the list of authors to send the comment to based on post visibility
+        let targetAuthors = [];
+
+        console.log("COMMENT SECTION -------------- ")
+
+        switch (postVisibility) {
+            case "PUBLIC": {
+                // Visible to everyone except the current author
+                targetAuthors = authors.filter(
+                    (author) => author.id.split("/").pop() !== currentAuthorId
+                );
+                break;
+            }
+            case "FRIENDS": {
+                try {
+                    console.log("Checking FRIENDS visibility");
+                    const currentUser = JSON.parse(localStorage.getItem('user'));
+                    
+                    // First, check if the current user is a follower of the post author
+                    const postAuthorFollowers = await this.getFollowers(postAuthorId);
+                    const isFollower = postAuthorFollowers.some(
+                        follower => follower.uuid === currentUser.uuid
+                    );
+                    
+                    // Then check if the post author follows the current user
+                    const currentUserFollowers = await this.getFollowers(currentUser.uuid);
+                    const isFollowed = currentUserFollowers.some(
+                        follower => follower.uuid === postAuthorId
+                    );
+                    
+                    console.log('Is follower:', isFollower);
+                    console.log('Is followed:', isFollowed);
+                    
+                    // Only allow access if there's a mutual follow relationship
+                    if (!isFollower || !isFollowed) {
+                        console.log('Not a mutual friend - access denied');
+                        throw new Error('You must be friends with the author to view this post');
+                    }
+                    
+                    // If we get here, they are friends, so include in targetAuthors
+                    targetAuthors = [currentUser];
+                    
+                } catch (error) {
+                    console.error('Error in FRIENDS visibility check:', error);
+                    throw error;
+                }
+                break;
+            }
+            case "UNLISTED": {
+                // Visible to all followers of the post author
+                targetAuthors = await this.getFollowers(postAuthorId);
+                break;
+            }
+            default: {
+                // Default to PUBLIC if visibility is undefined
+                targetAuthors = authors.filter(
+                    (author) => author.id.split("/").pop() !== currentAuthorId
+                );
+                break;
+            }
+        }
+
+        // Distribute the comment to the target authors
+        for (const author of targetAuthors) {
+          const authorId = author.id.split("/").pop();
+          if (!processedAuthors.has(authorId)) {
+            await this.sendCommentToInbox(authorId, commentData, post);
+            processedAuthors.add(authorId);
+          }
+        }
+
+        console.log("Comment distribution completed.");
+      } catch (error) {
+        console.error("Error distributing comment:", error);
+        // Optionally, set an error message or handle it as needed
+      }
+    },
+
+    /**
+     * Sends the comment to a specific author's inbox.
+     * @param {String} authorId - The UUID of the target author.
+     * @param {Object} commentData - The data of the comment.
+     * @param {Object} postData - The data of the post the comment belongs to.
+     */
+    async sendCommentToInbox(authorId, commentData, postData) {
+      try {
+        const inboxUrl = `/authors/${authorId}/inbox/`;
+        const token = localStorage.getItem("token");
+
+        const payload = {
+          type: "comment",
+          id: commentData.id,
+          content: commentData.content,
+          contentType: commentData.contentType,
+          published: commentData.published || new Date().toISOString(),
+          author: {
+            type: "author",
+            id: this.user.id,
+            host: this.user.host,
+            displayName: this.user.displayName,
+            page: this.user.page,
+            github: this.user.github,
+            profileImage: this.user.profileImage,
+          },
+          post: {
+            id: postData.id,
+            title: postData.title,
+            description: postData.description,
+            contentType: postData.contentType,
+            content: postData.content,
+            published: postData.published,
+            visibility: postData.visibility,
+            author: postData.author,
+          },
+        };
+
+        console.log(`Sending comment to inbox of author ${authorId}:`, payload);
+
+        await axios.post(inboxUrl, payload, {
+          headers: {
+            Authorization: `Token ${token}`,
+            "Content-Type": "application/json",
+          },
+          withCredentials: true,
+        });
+      } catch (error) {
+        console.error(`Error sending comment to author ${authorId}'s inbox:`, error);
+        throw error; // Re-throw to handle in distributeComment
+      }
+    },
+
+    /**
+     * Fetches the followers of a given author.
+     * Used when the post visibility is set to FRIENDS.
+     * @param {String} authorId - The UUID of the author whose followers are to be fetched.
+     * @returns {Array} - An array of follower authors.
+     */
+    async getFollowers(authorId) {
+      try {
+        const followersApiUrl = `/authors/${encodeURIComponent(authorId)}/followers/`;
+        const response = await axios.get(followersApiUrl, {
+          headers: {
+            Authorization: `Token ${localStorage.getItem("token")}`,
+          },
+        });
+        return response.data || [];
+      } catch (error) {
+        console.error("Error fetching followers:", error);
+        return [];
+      }
+    },
+    async getFollowing(authorId) {
+        try {
+            const response = await axios.get(`/authors/${authorId}/following/`);
+            return response.data;
+        } catch (error) {
+            console.error(`Error getting following for author ${authorId}:`, error);
+            return [];
+        }
+    }
   },
 };
 </script>
-
-
 
 <style scoped>
 /* Comment Section Container */
@@ -220,7 +465,7 @@ export default {
 .comment-details {
   display: flex;
   flex-direction: column;
-  align-items: center; /* Center-aligns the comment text and time */
+  align-items: flex-start; /* Aligns text to the left */
   width: 100%;
 }
 
@@ -228,15 +473,25 @@ export default {
   font-size: 0.95rem;
   color: #333333;
   margin: 0.5rem 0;
-  text-align: center; /* Center-aligns the comment text */
+  text-align: left; /* Aligns text to the left */
   max-width: 400px; /* Limits the width for better readability */
   width: 100%; /* Ensures the text takes the available width */
 }
 
-.comment-time {
-  font-size: 0.75rem;
-  color: #999999;
-  text-align: center;
+/* Success Message */
+.success-message {
+  display: flex;
+  align-items: center;
+  background-color: #dff0d8;
+  color: #3c763d;
+  padding: 0.75rem 1rem;
+  border: 1px solid #d6e9c6;
+  border-radius: 8px;
+  margin-top: 1rem;
+}
+
+.success-message i {
+  margin-right: 0.5rem;
 }
 
 /* Error Message */
@@ -246,6 +501,7 @@ export default {
   background-color: #ffe5e5;
   color: #cc0000;
   padding: 0.75rem 1rem;
+  border: 1px solid #e74c3c;
   border-radius: 8px;
   margin-top: 1rem;
 }

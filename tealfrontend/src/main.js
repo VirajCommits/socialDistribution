@@ -4,18 +4,19 @@ import App from './App.vue';
 import router from './router/index.js';
 import axios from 'axios';
 
-// Determine environment using window.location instead of NODE_ENV for consistency
+// Get the base URL from the environment variable or default to localhost
+// const baseURL = process.env.VUE_APP_API_BASE_URL || 'http://localhost:8000/service/api';
 const isProduction = window.location.hostname.includes('herokuapp.com');
 const baseURL = isProduction
-  ? 'https://teal-pranav-0e8aa7849ad7.herokuapp.com/service/api'
-  : 'http://localhost:8000/service/api';
+  ? 'https://teal-rakshit-a972530cc317.herokuapp.com/service/api'
+  : 'http://127.0.0.1:8000/service/api';
 
 // Axios configuration
 axios.defaults.headers.common['Content-Type'] = 'application/json';
 axios.defaults.withCredentials = true;
 axios.defaults.baseURL = baseURL;
-
-console.log('Environment:', isProduction ? 'Production' : 'Development');
+console.log("This is the actual env:", process.env.NODE_ENV);
+console.log('Environment:', process.env.NODE_ENV === 'production' ? 'Production' : 'Development');
 console.log('Using API URL:', baseURL);
 
 // Create the Vue app
@@ -46,9 +47,9 @@ axios.interceptors.response.use(
       switch (error.response.status) {
         case 401:
           console.warn('Authentication error - redirecting to login');
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-          router.push('/login');
+          // localStorage.removeItem('token');
+          // localStorage.removeItem('user');
+          // router.push('/login');
           break;
         case 403:
           console.error('Authorization error:', error.response.data);

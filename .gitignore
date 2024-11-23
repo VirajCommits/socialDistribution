@@ -106,7 +106,8 @@ venv/
 ENV/ 
 env.bak/ 
 venv.bak/ 
-
+fernet.key
+fernet.key
 # mkdocs documentation 
 /site 
 
@@ -274,7 +275,7 @@ dist
 *.min.js.map
 *.db
 # static/
-# staticfiles/
+staticfiles/
 
 staticfiles/
 node_modules/

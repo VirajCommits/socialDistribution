@@ -2,20 +2,24 @@ from django.utils import timezone
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 import uuid
+from urllib.parse import urlparse
+from cryptography.fernet import Fernet
+from django.conf import settings
 
 
 class Author(AbstractUser):
     type = models.CharField(max_length=6, default="author", editable=False)
     uuid = models.UUIDField(unique=True, editable=False, default=uuid.uuid4)
     id = models.URLField(primary_key=True, max_length=500)
-    host = models.URLField(default="https://teal-rakshit-a972530cc317.herokuapp.com/")
+    host = models.URLField(default="http://127.0.0.1:8000/")
     displayName = models.CharField(max_length=255)
     github = models.URLField(blank=True)
     is_approved = models.BooleanField(default=False)
     profileImage = models.URLField(blank=True, max_length=500)
     page = models.URLField(max_length=500)
     followers = models.ManyToManyField(
-        'self', symmetrical=False, related_name='following', blank=True)
+        "self", symmetrical=False, related_name="following", blank=True
+    )
 
     def __str__(self):
         return self.displayName or self.username
@@ -36,8 +40,20 @@ class Author(AbstractUser):
 
     def is_friend_with(self, other_author):
         """Check if this author and other_author are mutual followers (friends)"""
-        return (self.followers.filter(id=other_author.id).exists() and 
-                other_author.followers.filter(id=self.id).exists())
+        return (
+            self.followers.filter(id=other_author.id).exists()
+            and other_author.followers.filter(id=self.id).exists()
+        )
+
+    @property
+    def github_username(self):
+        if self.github:
+            # Parse the GitHub URL to get the path and extract the username
+            path_parts = urlparse(self.github).path.strip("/").split("/")
+            if path_parts:  # Ensure there is a username in the path
+                return path_parts[-1]  # The username should be the last part of the URL
+        return None
+
     
     def get_full_data(self):
         """Return the author data in the format required by the API"""
@@ -83,18 +99,19 @@ class Post(models.Model):
     contentType = models.CharField(max_length=50, choices=CONTENT_TYPE_CHOICES)
     content = models.TextField(blank=True, null=True)
     image = models.ImageField(upload_to="post_images/", blank=True, null=True)
-    author = models.ForeignKey(
-        Author, on_delete=models.CASCADE, related_name="posts")
+    author = models.ForeignKey(Author, on_delete=models.CASCADE, related_name="posts")
     published = models.DateTimeField()
     visibility = models.CharField(max_length=10, choices=VISIBILITY_CHOICES)
     edited_at = models.DateTimeField(auto_now=True)
     reposted_by = models.ManyToManyField(
-        Author, related_name='reposted_posts', blank=True)
+        Author, related_name="reposted_posts", blank=True
+    )
     repost_count = models.PositiveIntegerField(default=0)
     is_repost = models.BooleanField(default=False)
     original_post = models.ForeignKey(
-        'self', null=True, blank=True, related_name='reposts', on_delete=models.CASCADE
+        "self", null=True, blank=True, related_name="reposts", on_delete=models.CASCADE
     )
+    # is_github_post = models.BooleanField(default=False)
 
     def __str__(self):
         return self.title
@@ -111,7 +128,7 @@ class Post(models.Model):
         if not self.published:
             self.published = timezone.now()
         super(Post, self).save(*args, **kwargs)
-        
+
     def repost(self, author):
         self.reposted_by.add(author)
         self.save()
@@ -121,14 +138,15 @@ class Post(models.Model):
 
 
 class FollowRequest(models.Model):
-    uuid = models.UUIDField(
-        primary_key=True, default=uuid.uuid4, editable=False)
-    type = models.CharField(max_length=10, default='follow')
+    uuid = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    type = models.CharField(max_length=10, default="follow")
     summary = models.CharField(max_length=256, blank=True)
     actor = models.ForeignKey(
-        Author, related_name='sent_follow_requests', on_delete=models.CASCADE)
+        Author, related_name="sent_follow_requests", on_delete=models.CASCADE
+    )
     object = models.ForeignKey(
-        Author, related_name='received_follow_requests', on_delete=models.CASCADE)
+        Author, related_name="received_follow_requests", on_delete=models.CASCADE
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     accepted = models.BooleanField(default=False)
 
@@ -138,12 +156,10 @@ class FollowRequest(models.Model):
 
 class Comment(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    post = models.ForeignKey(
-        Post, on_delete=models.CASCADE, related_name="comments")
+    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name="comments")
     author = models.ForeignKey(Author, on_delete=models.CASCADE)
     content = models.TextField()
-    contentType = models.CharField(
-        max_length=50, choices=Post.CONTENT_TYPE_CHOICES)
+    contentType = models.CharField(max_length=50, choices=Post.CONTENT_TYPE_CHOICES)
     published = models.DateTimeField(default=timezone.now)
 
     def __str__(self):
@@ -154,11 +170,32 @@ class Like(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     author = models.ForeignKey(Author, on_delete=models.CASCADE)
     post = models.ForeignKey(
-        Post, on_delete=models.CASCADE, related_name="likes")
+        Post, on_delete=models.CASCADE, related_name="likes", null=True, blank=True
+    )
+    comment = models.ForeignKey(
+        Comment, on_delete=models.CASCADE, related_name="likes", null=True, blank=True
+    )
     published = models.DateTimeField(default=timezone.now)
+    def __str__(self):
+        return f"Like by {self.author.displayName} on {self.post.title if self.post else self.comment.id}"
+
+
+
+class InboxItem(models.Model):
+    INBOX_ITEM_TYPES = [
+        ('post', 'Post'),
+        ('follow', 'Follow'),
+        ('like', 'Like'),
+        ('comment', 'Comment'),
+    ]
+
+    author = models.ForeignKey(Author, on_delete=models.CASCADE, related_name='inbox_items') # the person who receives the inbox item
+    item_type = models.CharField(max_length=10, choices=INBOX_ITEM_TYPES) # whats the type:post , follow , like , comment
+    item = models.JSONField() # the actual data sent(in json format)
 
     def __str__(self):
-        return f"Like by {self.author.displayName} on {self.post.title}"
+        return f"InboxItem({self.item_type}) for {self.author}"
+
 
 class AdminSettings(models.Model):
     user_approval_required = models.BooleanField(default=True)
@@ -166,6 +203,48 @@ class AdminSettings(models.Model):
     def __str__(self):
         return f"User Approval Required: {self.user_approval_required}"
 
+
+class GitHubPost(models.Model):
+    author = models.ForeignKey(
+        Author, on_delete=models.CASCADE, related_name="github_posts"
+    )
+    activity_type = models.CharField(
+        max_length=50
+    )  # e.g., 'PushEvent', 'PullRequestEvent'
+    activity_data = models.JSONField()  # Store event data in JSON format
+    created_at = models.DateTimeField(auto_now_add=True)
+    github_event_id = models.CharField(
+        max_length=100, unique=True
+    )  # Ensure we don't repost the same event
+
+    def __str__(self):
+        return f"{self.author.displayName}'s GitHub {self.activity_type}"
+
+
+# class RemoteNode(models.Model):
+#     url = models.URLField(unique=True)
+#     username = models.CharField(max_length=255)
+#     _password = models.TextField()  # Store encrypted password
+#     connected = models.BooleanField(default=False)
+
+#     def set_password(self, raw_password):
+#         """Encrypt and save the password."""
+#         cipher = Fernet(settings.FERNET_KEY)
+#         self._password = cipher.encrypt(raw_password.encode()).decode()
+
+#     def get_password(self):
+#         """Decrypt and retrieve the password."""
+#         cipher = Fernet(settings.FERNET_KEY)
+#         return cipher.decrypt(self._password.encode()).decode()
+
+#     def save(self, *args, **kwargs):
+#         """Automatically encrypt the password if it's not encrypted before saving."""
+#         if self._password and not self._password.startswith("gAAAA"):
+#             self.set_password(self._password)
+#         super().save(*args, **kwargs)
+
+#     def __str__(self):
+#         return f"Remote Node at {self.url} (Connected: {self.connected})"
 
 class Inbox(models.Model):
     author = models.OneToOneField(
@@ -190,7 +269,9 @@ class Inbox(models.Model):
         elif isinstance(item, FollowRequest):
             self.follow_requests.add(item)
 
+
 class RemoteNode(models.Model):
+    
     url = models.URLField(unique=True)  # The base URL of the remote node
     username = models.CharField(max_length=255)  # Node's username
     password = models.CharField(max_length=255)  # Node's password (or token)
@@ -204,6 +285,6 @@ class ToWhichItsConnected(models.Model):
     username = models.CharField(max_length=255)  # Node's username
     password = models.CharField(max_length=255)  # Node's password (or token)
     active = models.BooleanField(default=True)
-    
+
     def str(self):
         return self.url

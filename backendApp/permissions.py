@@ -17,9 +17,19 @@ class AllowAuthenticatedOrAllowAny(BasePermission):
 
 class IsAuthenticatedOrNode(permissions.BasePermission):
     def has_permission(self, request, view):
-        # Allow if user is authenticated normally
-        if request.user and request.user.is_authenticated:
+        # Log the request user for debugging
+        print("request user:", request.user)
+        
+        # Check if the user is a RemoteNode
+        if isinstance(request.user, RemoteNode):
+            print("Authenticated as RemoteNode")
             return True
-            
-        # Allow if request comes from authenticated node
-        return isinstance(request.user, RemoteNode)
+        
+        # Check if the user is a regular authenticated user
+        if hasattr(request.user, 'is_authenticated') and request.user.is_authenticated:
+            print("Authenticated as regular user")
+            return True
+        
+        # If neither, deny access
+        print("Access denied")
+        return False

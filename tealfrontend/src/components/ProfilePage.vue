@@ -239,10 +239,7 @@ export default {
     async fetchStats() {
       try {
         // Debug logs
-        console.log('User data:', this.user);
-        console.log('User UUID:', this.user.uuid);
         const url = `/authors/${this.user.uuid}/stats/`;
-        console.log('Requesting URL:', url);
         
         const response = await axios.get(url, {
           headers: {
@@ -766,6 +763,46 @@ export default {
   align-items: center;
 }
 
+.modal-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  color: #374151;
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  color: #374151;
+}
+
+.modal-body {
+  padding: 3rem 1.5rem;
+  min-height: 300px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  text-align: center;
+}
+
+.empty-icon {
+  font-size: 4rem;
+  color: #d1d5db;
+}
+
+.empty-state p {
+  margin: 0;
+  font-size: 1.1rem;
+  color: #6b7280;
+}
+
 .close-button {
   background: none;
   border: none;
@@ -900,7 +937,33 @@ export default {
 .info-label {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 0.5rem;
+  width: 100%;
+}
+
+.info-card {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+}
+
+.info-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+.info-header {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  position: relative;
 }
 
 .info-icon {
@@ -1007,5 +1070,38 @@ export default {
 
 .cancel-button:hover {
   background-color: #d1d5db;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  text-align: center;
+  color: #6b7280;
+}
+
+.empty-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  color: #d1d5db;
+}
+
+.empty-state p {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.modal-body {
+  min-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.loading-spinner {
+  font-size: 2rem;
+  color: #3b82f6;
 }
 </style>
