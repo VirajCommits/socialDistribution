@@ -243,6 +243,7 @@ export default {
         const connectedNodes = response.data;
 
         const targetNode = connectedNodes.find(node => node.url === targethost);
+        console.log("This is the target node: ", targetNode);
         // if (targetNode) {
       //     // If the target host is found, send the follow request with credentials
       //     await axios.post(
