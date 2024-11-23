@@ -84,7 +84,7 @@
           </button>
           <button
             v-else
-            @click.stop="sendFollowRequest(author.id)"
+            @click.stop="sendFollowRequest(author)"
             class="follow-button"
           >
             <i class="fas fa-user-plus"></i> Follow
@@ -230,6 +230,7 @@ export default {
       }
     },
     async sendFollowRequest(authorId) {
+      console.log("This is the authorID: ", authorId);
       try {
         const targetUuid = authorId.split("/").pop();
         await axios.post(
