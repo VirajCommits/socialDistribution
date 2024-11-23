@@ -503,8 +503,8 @@ export default {
 
           await axios.post(inboxEndpoint, unfollowActivity, {
             headers: {
-              'Node-Username': targetNode.username,
-              'Node-Password': targetNode.password,
+              'node-username': targetNode.username,
+              'node-password': targetNode.password,
             },
           });
         } else {
