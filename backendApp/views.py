@@ -2834,7 +2834,8 @@ def test_node_connection(request):
 
 @csrf_exempt
 @api_view(['POST', 'GET', 'DELETE'])
-@permission_classes([IsAuthenticated])
+@authentication_classes([NodeBasicAuthentication])
+@permission_classes([IsAuthenticatedOrNode])
 def inbox_handler(request, author_serial):
     """
     Handles inbox activities for a given author. Supports POST (to add activities),
@@ -3490,3 +3491,91 @@ def construct_comment_likes_data(comment):
         likes_data["src"].append(like_data)
 
     return likes_data
+@csrf_exempt
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def send_follow_request_to_remote_authors(request):
+    """
+    Send a follow request to an author on a connected remote node.
+    """
+    try:
+        # Extract author UUID from the request data
+        author_uuid = request.data.get('author_uuid')
+        if not author_uuid:
+            return Response({"status": "error", "message": "Author UUID is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Get the current user (the one sending the follow request)
+        current_user = request.user
+
+        # Get all active remote nodes
+        remote_nodes = ToWhichItsConnected.objects.filter(active=True)
+        if not remote_nodes:
+            return Response({
+                "status": "error",
+                "message": "No remote nodes found in the database. Please create one in the admin panel."
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        results = []
+        for node in remote_nodes:
+            node_result = {
+                "node_url": node.url,
+                "follow_request_sent": False,
+                "errors": []
+            }
+
+            try:
+                print(request)
+                # Prepare the follow activity
+                follow_activity = {
+                    "type": "follow",
+                    "summary": f"{current_user.displayName} wants to follow {author_uuid}",
+                    "actor": {
+                        "type": "author",
+                        "id": current_user.id,
+                        "host": current_user.host,
+                        "displayName": current_user.displayName,
+                        "github": current_user.github or "",
+                        "profileImage": current_user.profileImage or "",
+                        "page": current_user.page
+                    },
+                    "object": {
+                        "type": "author",
+                        "id": f"{node.url}authors/{author_uuid}"
+                    }
+                }
+
+                # Send the follow request to the remote node
+                import base64
+                credentials = base64.b64encode(f"{node.username}:{node.password}".encode()).decode()
+                response = requests.post(
+                    f"{node.url}/service/api/authors/{author_uuid}/inbox/",
+                    json=follow_activity,
+                    headers={
+                        'Authorization': f'Basic {credentials}',
+                        'Content-Type': 'application/json'
+                    }
+                )
+
+                if response.status_code == 200:
+                    node_result['follow_request_sent'] = True
+                else:
+                    error_message = f"Failed to send follow request to {node.url}: Status {response.status_code}"
+                    node_result['errors'].append(error_message)
+
+            except requests.RequestException as e:
+                error_message = f"Connection error with {node.url}: {e}"
+                node_result['errors'].append(error_message)
+
+            results.append(node_result)
+
+        return Response({
+            "status": "completed",
+            "results": results
+        })
+
+    except Exception as e:
+        return Response({
+            "status": "error",
+            "message": str(e),
+            "type": str(type(e).__name__)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

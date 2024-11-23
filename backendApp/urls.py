@@ -192,6 +192,13 @@ urlpatterns = [
     ),
 
     path(
+        'service/api/authors/<str:author_serial>/sendRemoteRequest/', 
+        views.inbox_handler, 
+        name='inbox'
+    ),
+
+
+    path(
     "service/api/authors/<path:author_serial>/followers/",
     views.followers_handler,
     name="followers_handler"

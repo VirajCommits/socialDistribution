@@ -230,23 +230,96 @@ export default {
       }
     },
     async sendFollowRequest(authorId) {
+      console.log("This is the authorID: ", authorId);
       try {
         const targetUuid = authorId.split("/").pop();
-        await axios.post(
-          `/authors/${targetUuid}/send_follow_request/`,
-          null,
-          {
-            headers: { Authorization: `Token ${this.token}` },
-          }
-        );
+        const targethost = authorId.split('/authors/')[0];
+        console.log("this is the host: ", targethost);
 
-        this.showNotification(
-          "Follow request sent successfully!",
-          "success",
-          "fas fa-user-plus"
-        );
-        this.pendingRequests.push(authorId);
-        this.fetchAuthors();
+        // Fetch the list of connected nodes
+        const response = await axios.get('/connected-nodes/', {
+          headers: { Authorization: `Token ${this.token}` },
+        });
+        const connectedNodes = response.data;
+
+        const targetNode = connectedNodes.find(node => node.url === targethost);
+        console.log("This is the target node: ", targetNode);
+        if (targetNode) {
+          const endpoint = `${targethost}/service/api/authors/${targetUuid}/inbox/`;
+          console.log('Sending follow request to remote node:', {
+            endpoint,
+            credentials: {
+              username: targetNode.username,
+              password: targetNode.password // masked for security
+            }
+          });
+          
+          const user = JSON.parse(localStorage.getItem("user"));
+          console.log("This is the user: ", user);
+          
+          // Get the target author's full data from the authors array
+          const targetAuthor = this.authors.find(author => author.id === authorId);
+          
+          const followActivity = {
+            type: "follow",
+            summary: `${user.displayName} wants to follow ${targetAuthor.displayName}`,
+            actor: {
+              type: "author",
+              id: user.id,
+              host: user.host,
+              displayName: user.displayName,
+              github: user.github || "",
+              profileImage: user.profileImage || "",
+              page: user.page
+            },
+            object: targetAuthor  // The target author already has all required fields from get_full_data()
+          };
+        
+          // If the target host is found, send the follow request with credentials
+          await axios.post(
+            `${targethost}/service/api/authors/${targetUuid}/sendRemoteRequest/`,
+            followActivity,
+            {
+              headers: {
+                 Authorization: `Token ${this.token}`,
+                'Content-Type': 'application/json'
+              }
+            }
+          );
+
+          this.showNotification(
+            "Follow request sent successfully!",
+            "success",
+            "fas fa-user-plus"
+          );
+          this.pendingRequests.push(authorId);
+          this.fetchAuthors();
+        } else {
+              try{
+                await axios.post(
+                `/authors/${targetUuid}/send_follow_request/`,
+                null,
+                {
+                  headers: { Authorization: `Token ${this.token}` },
+                }
+              );
+
+              this.showNotification(
+                "Follow request sent successfully!",
+                "success",
+                "fas fa-user-plus"
+              );
+              this.pendingRequests.push(authorId);
+              this.fetchAuthors();
+          } catch (error) {
+            this.showNotification(
+              "Failed to send follow request",
+              "error",
+              "fas fa-exclamation-circle"
+            );
+            console.error("Error sending follow request:", error);
+          }
+        }
       } catch (error) {
         this.showNotification(
           "Failed to send follow request",
