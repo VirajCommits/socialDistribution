@@ -245,14 +245,14 @@ export default {
         const targetNode = connectedNodes.find(node => node.url === targethost);
         console.log("This is the target node: ", targetNode);
         if (targetNode) {
-          const endpoint = `${targethost}/service/api/authors/${targetUuid}/inbox/`;
-          console.log('Sending follow request to remote node:', {
-            endpoint,
-            credentials: {
-              username: targetNode.username,
-              password: targetNode.password // masked for security
-            }
-          });
+          // // const endpoint = `${targethost}/service/api/authors/${targetUuid}/inbox/`;
+          // console.log('Sending follow request to remote node:', {
+          //   endpoint,
+          //   credentials: {
+          //     username: targetNode.username,
+          //     password: targetNode.password // masked for security
+          //   }
+          // });
           
           const user = JSON.parse(localStorage.getItem("user"));
           console.log("This is the user: ", user);
