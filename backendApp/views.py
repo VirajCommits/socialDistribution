@@ -2790,8 +2790,9 @@ def test_node_connection(request):
 
 @csrf_exempt
 @api_view(['POST', 'GET', 'DELETE'])
-@authentication_classes([NodeBasicAuthentication])
+# @authentication_classes([NodeBasicAuthentication])
 # @permission_classes([IsAuthenticatedOrNode])
+@permission_classes([AllowAny])
 def inbox_handler(request, author_serial):
     """
     Handles inbox activities for a given author. Supports POST (to add activities),
