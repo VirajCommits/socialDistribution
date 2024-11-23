@@ -3500,6 +3500,7 @@ def send_follow_request_to_remote_authors(request , author_serial):
     """
     try:
         # Extract author UUID from the request data
+        author_serial = request.object.uuid
         if not author_serial:
             return Response({"status": "error", "message": "Author UUID is required."}, status=status.HTTP_400_BAD_REQUEST)
 
