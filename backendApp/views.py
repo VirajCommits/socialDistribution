@@ -3520,65 +3520,58 @@ def send_follow_request_to_remote_authors(request, author_serial):
                 "message": "Author UUID is required in the 'object'."
             }, status=status.HTTP_400_BAD_REQUEST)
 
-        # Get all active remote nodes
-        remote_nodes = ToWhichItsConnected.objects.filter(active=True)
-        if not remote_nodes:
+        # Get the target host from object_author
+        target_host = object_author.get('host')
+        if not target_host:
+            # Extract the host from the 'id' field if 'host' is not provided
+            target_host = '/'.join(object_author.get('id').split('/')[:3])
+        target_host = target_host.rstrip('/')
+
+        # Get the remote node corresponding to the target host
+        try:
+            node = ToWhichItsConnected.objects.get(url__contains=target_host, active=True)
+        except ToWhichItsConnected.DoesNotExist:
             return Response({
                 "status": "error",
-                "message": "No remote nodes found in the database. Please create one in the admin panel."
+                "message": f"No active remote node found for host {target_host}"
             }, status=status.HTTP_404_NOT_FOUND)
 
-        results = []
-        for node in remote_nodes:
-            node_result = {
-                "node_url": node.url,
-                "follow_request_sent": False,
-                "errors": []
-            }
+        print("Preparing follow activity for node:", node.url)
 
-            try:
-                print("Preparing follow activity for node:", node.url)
+        # Make a deep copy of the follow activity to avoid mutating the original data
+        follow_activity_copy = copy.deepcopy(follow_activity)
 
-                # Make a deep copy of the follow activity to avoid mutating the original data
-                follow_activity_copy = copy.deepcopy(follow_activity)
+        # Update the 'object' field with the correct author URL for the target node
+        follow_activity_copy['object']['id'] = f"{node.url.rstrip('/')}/authors/{author_uuid}"
 
-                # Update the 'object' field with the correct author URL for the target node
-                follow_activity_copy['object']['id'] = f"{node.url.rstrip('/')}/authors/{author_uuid}"
+        # Update the 'object' field's host if necessary
+        follow_activity_copy['object']['host'] = node.url.rstrip('/')
 
-                # Update the 'object' field's host if necessary
-                follow_activity_copy['object']['host'] = node.url.rstrip('/')
+        # Define the endpoint for the target node's inbox
+        endpoint = f"/service/api/authors/{author_uuid}/inbox/"
 
-                # Define the endpoint for the target node's inbox
-                endpoint = f"/service/api/authors/{object_author.get('uuid')}/inbox/"
+        # Send the follow request to the remote node's inbox using make_node_request
+        response = make_node_request(
+            node=node,
+            endpoint=endpoint,
+            method='POST',
+            data=follow_activity_copy
+        )
 
-                # Send the follow request to the remote node's inbox using make_node_request
-                response = make_node_request(
-                    base_url=node.url.rstrip('/'),
-                    endpoint=endpoint,
-                    method='POST',
-                    data=follow_activity_copy
-                )
+        print("Response from node:", response.status_code, response.text)
 
-                print("Response from node:", response.status_code, response.text)
-
-                if response.status_code in [200, 201]:
-                    node_result['follow_request_sent'] = True
-                else:
-                    error_message = f"Failed to send follow request to {node.url}: Status {response.status_code}, Response: {response.text}"
-                    node_result['errors'].append(error_message)
-                    print(error_message)
-
-            except Exception as e:
-                error_message = f"Connection error with {node.url}: {e}"
-                node_result['errors'].append(error_message)
-                print(error_message)
-
-            results.append(node_result)
-
-        return Response({
-            "status": "completed",
-            "results": results
-        }, status=status.HTTP_200_OK)
+        if response.status_code in [200, 201]:
+            return Response({
+                "status": "completed",
+                "message": "Follow request sent successfully."
+            }, status=status.HTTP_200_OK)
+        else:
+            error_message = f"Failed to send follow request to {node.url}: Status {response.status_code}, Response: {response.text}"
+            print(error_message)
+            return Response({
+                "status": "error",
+                "message": error_message
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     except Exception as e:
         print("Exception occurred: ", str(e))
