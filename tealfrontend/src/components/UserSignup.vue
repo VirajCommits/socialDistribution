@@ -310,7 +310,7 @@ export default {
       
       try {
         const response = await axios.post(
-          "/signup/",
+          "service/api/signup/",
           {
             username: this.username,
             email: this.email,
