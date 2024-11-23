@@ -8,7 +8,7 @@ import axios from 'axios';
 // const baseURL = process.env.VUE_APP_API_BASE_URL || 'http://localhost:8000/service/api';
 const isProduction = window.location.hostname.includes('herokuapp.com');
 const baseURL = isProduction
-  ? 'https://teal-rakshit-a972530cc317.herokuapp.com/service/api'
+  ? 'https://teal-pranav-0e8aa7849ad7.herokuapp.com/'
   : 'http://127.0.0.1:8000/service/api';
 
 // Axios configuration
