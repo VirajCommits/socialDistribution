@@ -2064,7 +2064,7 @@ def get_pending_requests(request):
     **Why use or not use:**
     - Use this endpoint if you need to cancel a follow request you have sent and retract your follow attempt before it is accepted.
     - This endpoint should not be used for managing incoming follow requests or removing accepted follow requests.
-""",
+    """,
     manual_parameters=[
         openapi.Parameter(
             "author_uuid",
