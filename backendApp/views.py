@@ -1445,10 +1445,10 @@ def stream_page(request, author_id):
     },
     tags=["Authentication"],
 )
+
 @csrf_exempt
 @api_view(["POST"])
 @permission_classes([AllowAny])
-
 def signup(request):
     serializer = AuthorSerializer(data=request.data)
     if serializer.is_valid():
