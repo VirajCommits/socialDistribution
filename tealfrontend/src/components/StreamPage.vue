@@ -89,7 +89,7 @@
       <div v-else class="posts-feed">
         <div v-for="post in visiblePosts" :key="post.id" class="post-card">
           <div class="post-header">
-            <div class="author-info">
+            <div class="author-info" @click="navigateToProfile(post.author.uuid)">
               <i class="fas fa-user-circle"></i>
               <span>{{ post.author.displayName }}</span>
             </div>
@@ -200,8 +200,11 @@ export default {
     }
   },
   methods: {
-    copyToClipboard(post) {
-      // Existing method
+  navigateToProfile(authorId) {
+      this.$router.push({ name: "PublicProfile", params: { authorId } });
+    },
+  copyToClipboard(post) {
+      // Construct a simpler URL for the post
       const postUrl = `${window.location.origin}/posts/${post.id}`;
 
       navigator.clipboard
@@ -228,7 +231,7 @@ export default {
         // Use environment variable or fallback for WebSocket URL
         const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const wsBaseUrl = process.env.NODE_ENV === 'production'
-          ? window.location.hostname + ":8000"
+          ? window.location.hostname
           : 'localhost:8000';
         // const wsBaseUrl = window.location.hostname
         

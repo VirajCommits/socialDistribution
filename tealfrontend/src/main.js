@@ -4,7 +4,8 @@ import App from './App.vue';
 import router from './router/index.js';
 import axios from 'axios';
 
-// Determine environment using window.location instead of NODE_ENV for consistency
+// Get the base URL from the environment variable or default to localhost
+// const baseURL = process.env.VUE_APP_API_BASE_URL || 'http://localhost:8000/service/api';
 const isProduction = window.location.hostname.includes('herokuapp.com');
 const baseURL = isProduction
   ? 'https://teal-rakshit-a972530cc317.herokuapp.com/service/api'

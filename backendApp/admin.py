@@ -7,7 +7,8 @@ from .models import (
     Comment,
     Like,
     RemoteNode,
-    ToWhichItsConnected
+    ToWhichItsConnected,
+    GitHubPost,
 )
 
 
@@ -70,12 +71,26 @@ class LikeAdmin(admin.ModelAdmin):
     readonly_fields = ("id", "published")
 
 
-# @admin.register(GitHubPost)
-# class GitHubPostAdmin(admin.ModelAdmin):
-#     list_display = ("author", "activity_type", "created_at", "github_event_id")
-#     search_fields = ("author__displayName", "activity_type", "github_event_id")
-#     list_filter = ("created_at",)
-#     readonly_fields = ("created_at",)
+
+@admin.register(RemoteNode)
+class RemoteNodeAdmin(admin.ModelAdmin):
+    list_display = ['url', 'username']
+    list_filter = ['active']
+    search_fields = ['url', 'username']
+
+@admin.register(ToWhichItsConnected)
+class ToWhichItsConnected(admin.ModelAdmin):
+    list_display = ['url', 'username']
+    list_filter = ['active']
+    search_fields = ['url', 'username']
+
+
+@admin.register(GitHubPost)
+class GitHubPostAdmin(admin.ModelAdmin):
+    list_display = ("author", "activity_type", "created_at", "github_event_id")
+    search_fields = ("author__displayName", "activity_type", "github_event_id")
+    list_filter = ("created_at",)
+    readonly_fields = ("created_at",)
 
 
 # class RemoteNodeAdmin(admin.ModelAdmin):
@@ -93,15 +108,3 @@ class LikeAdmin(admin.ModelAdmin):
 
 # # Register the model with the customized admin class
 # admin.site.register(RemoteNode, RemoteNodeAdmin)
-
-@admin.register(RemoteNode)
-class RemoteNodeAdmin(admin.ModelAdmin):
-    list_display = ['url', 'username']
-    list_filter = ['active']
-    search_fields = ['url', 'username']
-
-@admin.register(ToWhichItsConnected)
-class ToWhichItsConnected(admin.ModelAdmin):
-    list_display = ['url', 'username']
-    list_filter = ['active']
-    search_fields = ['url', 'username']

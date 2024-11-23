@@ -100,7 +100,7 @@ export default {
         console.log("Reached here!")
 
         // Call the sync posts endpoint
-        await this.syncPosts(accessToken);
+        await this.syncAuthors(accessToken);
 
         // Redirect to the stream page
         this.$router.push("/stream");
@@ -110,10 +110,10 @@ export default {
         this.isLoading = false;
       }
     },
-    async syncPosts(accessToken) {
+    async syncAuthors(accessToken) {
       console.log("SYNCING POSTS!")
       try {
-        const syncResponse = await axios.get("sync_public_posts/", {
+        const syncResponse = await axios.get("sync_remote_authors/", {
           headers: {
             'Authorization': `Bearer ${accessToken}`,
           },

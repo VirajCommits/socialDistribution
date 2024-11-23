@@ -9,6 +9,8 @@ from rest_framework import permissions
 
 # from .views import TestRemoteNodeConnectionView
 
+# from .views import TestRemoteNodeConnectionView
+
 schema_view = get_schema_view(
     openapi.Info(
         title="Your API Title",
@@ -164,6 +166,26 @@ urlpatterns = [
         name="update_author_profile",
     ),
     path(
+        "service/api/authors/<uuid:author_uuid>/public/",
+        views.PublicAuthorProfileView.as_view(),
+        name="public-author-profile",
+    ),
+    path(
+        "service/api/authors/<uuid:author_uuid>/stats/public/",
+        views.PublicAuthorStatsView.as_view(),
+        name="public-author-stats",
+    ),
+    path(
+        "service/api/authors/<uuid:author_uuid>/post/public/",
+        views.PublicPostsView.as_view(),
+        name="public-author-posts",
+    ),
+    # path(
+    #     "nodes/<int:pk>/test_connection/",
+    #     TestRemoteNodeConnectionView.as_view(),
+    #     name="test_connection",
+    # ),
+    path(
         'service/api/authors/<str:author_serial>/inbox/', 
         views.inbox_handler, 
         name='inbox'
@@ -183,9 +205,9 @@ urlpatterns = [
         "stream", TemplateView.as_view(template_name="index.html"), name="stream"
     ),
     path(
-        "service/api/sync_public_posts/",
-        views.sync_public_posts,
-        name="sync_public_posts",
+        "service/api/sync_remote_authors/",
+        views.sync_remote_authors,
+        name="sync_remote_authors",
     ),
     path('test-node-connection/', views.test_node_connection, name=' '),
     path('verify-connection/', views.verify_node_connection, name='verify_node_connection'),

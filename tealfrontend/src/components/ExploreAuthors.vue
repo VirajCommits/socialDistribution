@@ -16,7 +16,14 @@
       </p>
 
       <div v-if="authors.length" class="authors-grid">
-        <div v-for="author in authors" :key="author.id" class="author-card">
+        <div
+          v-for="author in authors"
+          :key="author.id"
+          class="author-card"
+          @click="navigateToProfile(author.uuid)"
+          style="cursor: pointer;"
+        >
+
           <div class="author-content">
             <div class="author-avatar">
               <img
@@ -51,38 +58,40 @@
                 </span>
               </div>
             </div>
-            <button
-              v-if="isFriend(author)"
-              @click="handleUnfollow(author)"
-              class="friend-button"
-            >
-              <i class="fas fa-user-friends"></i>
-              {{ isRemoteAuthor(author) ? 'Remote Friend' : 'Friend' }}
-            </button>
-            <button
-              v-else-if="isFollowing(author)"
-              @click="handleUnfollow(author)"
-              class="following-button"
-            >
-              <i class="fas fa-user-check"></i> Following
-            </button>
-            <button
-              v-else-if="hasPendingRequest(author)"
-              @click="handlePendingRequest(author)"
-              class="pending-button"
-            >
-              <i class="fas fa-clock"></i> Request Pending
-            </button>
-            <button
-              v-else
-              @click="sendFollowRequest(author)"
-              class="follow-button"
-            >
-              <i class="fas fa-user-plus"></i> Follow
-            </button>
           </div>
+
+          <!-- Follow/Unfollow Buttons -->
+          <button
+            v-if="isFriend(author)"
+            @click.stop="handleUnfollow(author)"
+            class="friend-button"
+          >
+            <i class="fas fa-user-friends"></i> Friend
+          </button>
+          <button
+            v-else-if="isFollowing(author)"
+            @click.stop="handleUnfollow(author)"
+            class="following-button"
+          >
+            <i class="fas fa-user-check"></i> Following
+          </button>
+          <button
+            v-else-if="hasPendingRequest(author)"
+            @click.stop="handlePendingRequest(author)"
+            class="pending-button"
+          >
+            <i class="fas fa-clock"></i> Request Pending
+          </button>
+          <button
+            v-else
+            @click.stop="sendFollowRequest(author.id)"
+            class="follow-button"
+          >
+            <i class="fas fa-user-plus"></i> Follow
+          </button>
         </div>
       </div>
+
       <div v-else class="no-authors">
         <p>Nobody else here yet.</p>
       </div>
@@ -126,7 +135,6 @@ export default {
       pendingRequests: [],
       following: [],
       relationships: {},
-      authID: null,
       token: localStorage.getItem("token"),
       showUnfollowModal: false,
       selectedAuthor: null,
@@ -144,10 +152,6 @@ export default {
       this.$router.push("/login");
       return;
     }
-    const user = JSON.parse(localStorage.getItem("user"));
-    if (user && user.id) {
-      this.authID = user.id.split("/").pop(); // Extract the UUID from the user ID
-    }
   },
   async mounted() {
     if (this.token) {
@@ -158,6 +162,9 @@ export default {
     }
   },
   methods: {
+    navigateToProfile(authorId) {
+      this.$router.push({ name: "PublicProfile", params: { authorId } });
+    },
     async fetchAuthors() {
       if (!this.token) {
         this.showNotification(
@@ -170,19 +177,16 @@ export default {
       }
 
       try {
-        const response = await axios.get(
-          "/authors/",
-          {
-            headers: {
-              Authorization: `Bearer ${this.token}`,
-              "Content-Type": "application/json",
-            },
-          }
-        );
-        // this.authors = response.data;
-        this.authors = response.data.map(author => ({
-            ...author,
-            host: author.host || window.location.origin + '/'
+        const response = await axios.get("/authors/", {
+          headers: {
+            Authorization: `Token ${this.token}`,
+            "Content-Type": "application/json",
+          },
+        });
+        // Extract `username` from `author.id`
+        this.authors = response.data.map((author) => ({
+          ...author,
+          username: author.id.split("/").pop(),
         }));
         await this.fetchPendingRequests();
       } catch (error) {
@@ -210,20 +214,13 @@ export default {
       if (!this.token) return;
 
       try {
-        const response = await axios.get(
-          `/authors/${this.authID}/inbox/`,
-          {
-            headers: {
-              Authorization: `Token ${this.token}`,
-              "Content-Type": "application/json",
-            },
-          }
-        );
-        // console.log("Inbox response data:", response.data);
-        this.pendingRequests = response.data.items
-            .filter(item => item.type === 'follow')
-            .map(req => req.object.id);
-        console.log("Pending requests:", this.pendingRequests);
+        const response = await axios.get("/authors/pending_requests/", {
+          headers: {
+            Authorization: `Token ${this.token}`,
+            "Content-Type": "application/json",
+          },
+        });
+        this.pendingRequests = response.data.map((req) => req.object.id);
       } catch (error) {
         console.error("Error fetching pending requests:", error);
         if (error.response?.status === 401) {
@@ -232,64 +229,32 @@ export default {
         }
       }
     },
-    async sendFollowRequest(author) {
-    try {
-        
-        const user = JSON.parse(localStorage.getItem("user"));
-        const followRequest = {
-            type: "follow",
-            summary: `${user.displayName} wants to follow ${author.displayName}`,
-            actor: {
-                type: "author",
-                id: user.id,
-                host: user.host || window.location.origin + '/',
-                displayName: user.displayName,
-                github: user.github || "",
-                profileImage: user.profileImage || "",
-                page: `${user.host || window.location.origin + '/'}authors/${user.uuid}`
-            },
-            object: {
-                type: "author",
-                id: author.id,
-                host: author.host,
-                displayName: author.displayName,
-                github: author.github || "",
-                profileImage: author.profileImage || "",
-                page: author.page || `${author.host}authors/${author.uuid}`
-            }
-        };
-        console.log("aaaaaaaaaaaaaaaaaaaa: ", author.host)
-        const targetUrl = author.host && author.host !== window.location.origin + '/' ?
-            `${author.host}service/api/authors/${author.id.split('/').pop()}/inbox/` :
-            `/authors/${author.id.split("/").pop()}/inbox/`;
-
+    async sendFollowRequest(authorId) {
+      try {
+        const targetUuid = authorId.split("/").pop();
         await axios.post(
-            targetUrl,
-            followRequest,
-            {
-                headers: { 
-                    Authorization: `Bearer ${this.token}`,
-                    'Content-Type': 'application/json'
-                }
-            }
+          `/authors/${targetUuid}/send_follow_request/`,
+          null,
+          {
+            headers: { Authorization: `Token ${this.token}` },
+          }
         );
 
         this.showNotification(
-            "Follow request sent successfully!",
-            "success",
-            "fas fa-user-plus"
+          "Follow request sent successfully!",
+          "success",
+          "fas fa-user-plus"
         );
-        this.pendingRequests.push(author.id);
-        console.log("requests: ", this.pendingRequests);
-        await this.fetchAuthors();
-          } catch (error) {
-              this.showNotification(
-                  "Failed to send follow request",
-                  "error",
-                  "fas fa-exclamation-circle"
-              );
-              console.error("Error sending follow request:", error);
-        }
+        this.pendingRequests.push(authorId);
+        this.fetchAuthors();
+      } catch (error) {
+        this.showNotification(
+          "Failed to send follow request",
+          "error",
+          "fas fa-exclamation-circle"
+        );
+        console.error("Error sending follow request:", error);
+      }
     },
     async handlePendingRequest(author) {
       try {
@@ -320,116 +285,32 @@ export default {
       }
     },
     async fetchRelationshipStatus(author) {
-        try {
-            const authorUUID = author.id.split("/").pop();
-            const response = await axios.get(
-                `/authors/${authorUUID}/relationship/`,
-                {
-                    headers: { Authorization: `Token ${this.token}` }
-                }
-            );
-            this.relationships[author.id] = response.data;
-        } catch (error) {
-            console.error("Error fetching relationship status:", error);
-        }
-    },
-
-    // async fetchAllRelationships() {
-    //     for (const author of this.authors) {
-    //         await this.fetchRelationshipStatus(author);
-    //     }
-    // },
-    async fetchAllRelationships() {
-    try {
-        const user = JSON.parse(localStorage.getItem("user"));
-        this.relationships = {};  // Reset relationships
-
-        // Get followers
-        const followersResponse = await axios.get(
-            `/authors/${user.uuid}/followers/`,
-            { headers: { Authorization: `Token ${this.token}` } }
-        );
-        
-        // Get following
-        const followingResponse = await axios.get(
-            `/authors/${user.uuid}/following/`,
-            { headers: { Authorization: `Token ${this.token}` } }
-        );
-
-        // Add null check and ensure data structure exists
-        const followers = followersResponse.data.followers || [];
-        console.log("this is followers: ", followers)
-        const following = followingResponse.data || [];
-        console.log("this is following: ", following)
-
-        // Process all authors and their relationships
-        this.authors.forEach(author => {
-            const authorId = author.id;  // Full URL for remote authors
-            const isFollower = followers.some(
-                follower => follower.id === authorId
-            );
-            const isFollowing = following.some(
-                following => following.id === authorId
-            );
-
-            this.relationships[authorId] = {
-                is_following: isFollowing,
-                is_follower: isFollower,
-                is_friend: isFollower && isFollowing,
-                host: author.host || window.location.origin + '/',
-                pending: this.pendingRequests.includes(authorId)
-            };
-        });
-    } catch (error) {
-        console.error("Error fetching relationships:", error);
-        this.showNotification(
-            "Failed to fetch relationships",
-            "error",
-            "fas fa-exclamation-circle"
-        );
-    }
-},
-async checkIsFollower(authorId) {
-    try {
-        const user = JSON.parse(localStorage.getItem("user"));
+      try {
+        const authorUUID = author.id.split("/").pop();
         const response = await axios.get(
-            `/authors/${user.uuid}/followers/${encodeURIComponent(authorId)}/`,
-            {
-                headers: { Authorization: `Token ${this.token}` }
-            }
+          `/authors/${authorUUID}/relationship/`,
+          {
+            headers: { Authorization: `Token ${this.token}` },
+          }
         );
-        return response.status === 200;
-    } catch (error) {
-        if (error.response && error.response.status === 404) {
-            return false;
-        }
-        console.error("Error checking follower status:", error);
-        return false;
-    }
-  },
-
-    isRemoteAuthor(author) {
-        return author.host && author.host !== window.location.origin + '/';
+        this.relationships[author.id] = response.data;
+      } catch (error) {
+        console.error("Error fetching relationship status:", error);
+      }
     },
-    getAuthorId(author) {
-        return this.isRemoteAuthor(author) ? 
-            author.id : 
-            author.id.split('/').pop();
-    },
-    getAuthorHost(author) {
-        return author.host || window.location.origin + '/';
+    async fetchAllRelationships() {
+      for (const author of this.authors) {
+        await this.fetchRelationshipStatus(author);
+      }
     },
     isFriend(author) {
-        return this.relationships[author.id]?.is_friend || false;
+      return this.relationships[author.id]?.is_friend || false;
     },
     isFollowing(author) {
-        return this.relationships[author.id]?.is_following || false;
+      return this.relationships[author.id]?.is_following || false;
     },
     hasPendingRequest(author) {
-      console.log("author : ", author);
-      console.log("haspedignauthour: ", author.id);
-      console.log("pending requests: ", this.pendingRequests);
-      return this.pendingRequests.includes(author.id.split("/").pop());
+      return this.pendingRequests.includes(author.id);
     },
     startPolling() {
       this.pollInterval = setInterval(() => {
@@ -445,13 +326,13 @@ async checkIsFollower(authorId) {
     setupWebSocket() {
       const uuid = localStorage.getItem("uuid");
       if (!uuid) {
-        console.log('No UUID found, skipping WebSocket setup');
+        console.log("No UUID found, skipping WebSocket setup");
         return;
       }
 
       // Check if we're in production
-      const isProduction = window.location.hostname.includes('herokuapp.com');
-      
+      const isProduction = window.location.hostname.includes("herokuapp.com");
+
       // Set up the WebSocket URL based on environment
       const wsProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
       const wsHost = isProduction 
@@ -459,21 +340,21 @@ async checkIsFollower(authorId) {
         : 'localhost:8000';                          // Development host
       
       const wsUrl = `${wsProtocol}://${wsHost}/ws/notifications/${uuid}/`;
-      
-      console.log('Setting up WebSocket connection to:', wsUrl);
-      
+
+      console.log("Setting up WebSocket connection to:", wsUrl);
+
       const ws = new WebSocket(wsUrl);
 
       // WebSocket event handlers
       ws.onopen = () => {
-        console.log('WebSocket connected successfully');
+        console.log("WebSocket connected successfully");
       };
 
       ws.onmessage = async (event) => {
         try {
           const data = JSON.parse(event.data);
-          console.log('Received WebSocket message:', data);
-          
+          console.log("Received WebSocket message:", data);
+
           if (data.type === "follow_request_notification") {
             await this.fetchAuthors();
             await this.fetchAllRelationships();
@@ -484,22 +365,24 @@ async checkIsFollower(authorId) {
             }
           }
         } catch (error) {
-          console.error('Error processing WebSocket message:', error);
+          console.error("Error processing WebSocket message:", error);
         }
       };
 
       ws.onerror = (error) => {
-        console.error('WebSocket error:', error);
+        console.error("WebSocket error:", error);
       };
 
       ws.onclose = () => {
-        console.log('WebSocket connection closed, attempting to reconnect...');
+        console.log(
+          "WebSocket connection closed, attempting to reconnect..."
+        );
         setTimeout(() => this.setupWebSocket(), 1000);
       };
 
       this.ws = ws;
     },
-    beforeDestroy() {
+    beforeUnmount() {
       if (this.ws) {
         this.ws.close();
       }
@@ -510,61 +393,41 @@ async checkIsFollower(authorId) {
       this.showUnfollowModal = true;
     },
     async confirmUnfollow() {
-    try {
-        const user = JSON.parse(localStorage.getItem("user"));
-        const unfollowRequest = {
-            type: "unfollow",
-            summary: `${user.displayName} unfollowed ${this.selectedAuthor.displayName}`,
-            actor: {
-                type: "author",
-                id: user.id,
-                host: user.host || window.location.origin + '/',
-                displayName: user.displayName
-            },
-            object: {
-                type: "author",
-                id: this.selectedAuthor.id,
-                host: this.selectedAuthor.host,
-                displayName: this.selectedAuthor.displayName
-            }
-        };
-
-        const targetUuid = this.selectedAuthor.id.split("/").pop();
-        const response = await axios.post(
-            `/authors/${targetUuid}/inbox/`,
-            unfollowRequest,
-            {
-                headers: { 
-                    Authorization: `Token ${this.token}`,
-                    'Content-Type': 'application/json'
-                }
-            }
+      try {
+        const authorUUID = this.selectedAuthor.id.split("/").pop();
+        await axios.delete(
+          `/authors/${authorUUID}/unfollow/`,
+          null,
+          {
+            headers: { Authorization: `Token ${this.token}` },
+          }
         );
 
-        if (response.status === 200) {
-            this.showNotification(
-                "Successfully unfollowed author",
-                "success",
-                "fas fa-user-minus"
-            );
-            this.following = this.following.filter(
-                (id) => id !== this.selectedAuthor.id
-            );
-            this.showUnfollowModal = false;
-            this.selectedAuthor = null;
-            await this.fetchAuthors();
-            await this.fetchAllRelationships();
-        }
-    } catch (error) {
         this.showNotification(
-            "Failed to unfollow author",
-            "error",
-            "fas fa-exclamation-circle"
+          "Successfully unfollowed author",
+          "success",
+          "fas fa-user-minus"
+        );
+        this.following = this.following.filter(
+          (id) => id !== this.selectedAuthor.id
+        );
+        this.showUnfollowModal = false;
+        this.selectedAuthor = null;
+        this.fetchAuthors();
+      } catch (error) {
+        this.showNotification(
+          "Failed to unfollow author",
+          "error",
+          "fas fa-exclamation-circle"
         );
         console.error("Error unfollowing author:", error);
-    }
-  },
-    showNotification(message, type = "success", icon = "fas fa-check-circle") {
+      }
+    },
+    showNotification(
+      message,
+      type = "success",
+      icon = "fas fa-check-circle"
+    ) {
       this.notification = {
         show: true,
         message,

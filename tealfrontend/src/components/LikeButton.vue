@@ -223,4 +223,17 @@ export default {
     font-size: 1rem;
   }
 }
+
+/* Error Message Styles (Optional Enhancement) */
+.error-message {
+  color: #ff6b6b;
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+}
+
+.error-message i {
+  margin-right: 0.3rem;
+}
 </style>

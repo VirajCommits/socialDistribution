@@ -8,6 +8,7 @@ from django.utils import timezone
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 import requests
+import requests
 from .models import AdminSettings
 from .serializers import (
     PostSerializer,
@@ -15,9 +16,9 @@ from .serializers import (
     LikeSerializer,
     FollowRequestSerializer,
     AuthorSerializer,
-    InboxSerializer
+    InboxSerializer,PublicAuthorSerializer,
 )
-from .models import Author, Post, Comment, Like, FollowRequest, Inbox , ToWhichItsConnected
+from .models import Author, Post, Comment, Like, FollowRequest, Inbox , ToWhichItsConnected,GitHubPost
 
 from .authentication import NodeBasicAuthentication
 from .permissions import IsAuthenticatedOrNode
@@ -2605,29 +2606,29 @@ def get_post_by_link(request, post_id):
 GITHUB_API_URL = "https://api.github.com/users/{}/events/public"
 
 
-# def fetch_and_create_github_posts():
-#     authors = Author.objects.filter(github__isnull=False)
-#     for author in authors:
-#         github_username = author.github.split("/")[-1]
-#         if github_username:
-#             response = requests.get(GITHUB_API_URL.format(github_username))
-#             if response.status_code == 200:
-#                 events = response.json()
-#                 for event in events:
-#                     if not GitHubPost.objects.filter(
-#                         github_event_id=event["id"]
-#                     ).exists():
-#                         github_post = GitHubPost.objects.create(
-#                             author=author,
-#                             activity_type=event["type"],
-#                             activity_data=event,
-#                             github_event_id=event["id"],
-#                         )
-#                         create_public_post_from_github_activity(author, github_post)
-#             else:
-#                 print(
-#                     f"Failed to fetch events for {github_username}: {response.status_code}"
-#                 )
+def fetch_and_create_github_posts():
+    authors = Author.objects.filter(github__isnull=False)
+    for author in authors:
+        github_username = author.github.split("/")[-1]
+        if github_username:
+            response = requests.get(GITHUB_API_URL.format(github_username))
+            if response.status_code == 200:
+                events = response.json()
+                for event in events:
+                    if not GitHubPost.objects.filter(
+                        github_event_id=event["id"]
+                    ).exists():
+                        github_post = GitHubPost.objects.create(
+                            author=author,
+                            activity_type=event["type"],
+                            activity_data=event,
+                            github_event_id=event["id"],
+                        )
+                        create_public_post_from_github_activity(author, github_post)
+            else:
+                print(
+                    f"Failed to fetch events for {github_username}: {response.status_code}"
+                )
 
 
 def create_public_post_from_github_activity(author, github_post):
@@ -2640,11 +2641,82 @@ def create_public_post_from_github_activity(author, github_post):
         title=title,
         description=f"GitHub activity: {event_type}",
         contentType="text/plain",
-        content=content,
+        content="",
         author=author,
         published=timezone.now(),
         visibility="PUBLIC",
     )
+
+
+# class TestRemoteNodeConnectionView(APIView):
+#     def post(self, request, pk):
+#         try:
+#             node = RemoteNode.objects.get(pk=pk)
+#             success = connect_to_remote_node(node)
+#             return Response({"connected": success}, status=status.HTTP_200_OK)
+#         except RemoteNode.DoesNotExist:
+#             return Response(
+#                 {"error": "Node not found"}, status=status.HTTP_404_NOT_FOUND
+#             )
+
+
+class PublicAuthorProfileView(APIView):
+    # permission_classes = []  # Allow all users to access this view
+
+    def get(self, request, author_uuid):
+        try:
+            # Fetch the author using UUID
+            author = Author.objects.get(uuid=author_uuid)
+            serializer = PublicAuthorSerializer(author)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Author.DoesNotExist:
+            return Response(
+                {"detail": "Author not found."}, status=status.HTTP_404_NOT_FOUND
+            )
+
+
+class PublicAuthorStatsView(APIView):
+    # permission_classes = []  # Allow all users to access this view
+
+    def get(self, request, author_uuid):
+        try:
+            # Fetch the author using UUID
+            author = Author.objects.get(uuid=author_uuid)
+            stats = {
+                "followers": author.followers.count(),
+                "following": author.following.count(),
+                "friends": author.followers.filter(
+                    id__in=author.following.values("id")
+                ).count(),
+            }
+            return Response(stats, status=status.HTTP_200_OK)
+        except Author.DoesNotExist:
+            return Response(
+                {"detail": "Author not found."}, status=status.HTTP_404_NOT_FOUND
+            )
+
+
+class PublicPostsView(APIView):
+    def get(self, request, author_uuid):
+        try:
+            # Ensure author_uuid is properly handled as a UUID
+            posts = Post.objects.filter(
+                author__uuid=author_uuid, visibility="PUBLIC"
+            ).order_by("-published")
+            serializer = PostSerializer(posts, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Post.DoesNotExist:
+            return Response(
+                {"detail": "No public posts found for this author."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        except Exception as e:
+            return Response(
+                {"detail": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
 
 
 @api_view(['GET'])
@@ -2912,7 +2984,7 @@ def process_follow_request(request, follow_request):
 @csrf_exempt
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
-def sync_public_posts(request):
+def sync_remote_authors(request):
     try:
         # Get all active remote nodes
         remote_nodes = ToWhichItsConnected.objects.filter(active=True)
@@ -2927,7 +2999,6 @@ def sync_public_posts(request):
             node_result = {
                 "node_url": node.url,
                 "authors_synced": 0,
-                "posts_synced": 0,
                 "errors": []
             }
 
@@ -2954,12 +3025,16 @@ def sync_public_posts(request):
                             if not author_id:
                                 continue  # Skip if author ID is missing
 
+                            # Ensure username is unique
+                            # unique_username = f"{author_data.get('displayName', '').lower()}_{author_id.split('/')[-1][:8]}"
+
                             author_defaults = {
                                 'uuid': author_data.get('uuid'),
                                 'host': author_data.get('host', base_url),
                                 'displayName': author_data.get('displayName', ''),
                                 'github': author_data.get('github', ''),
                                 'profileImage': author_data.get('profileImage', ''),
+                                'username': author_data.get('username',''),  # Ensure unique usernames
                                 'email': '',  # Email might not be available
                                 'is_active': False,  # Remote authors are not local users
                             }
@@ -2969,57 +3044,6 @@ def sync_public_posts(request):
                                 defaults=author_defaults
                             )
                             node_result['authors_synced'] += 1
-
-                            # Now fetch posts for this author
-                            posts_endpoint = f"service/api/authors/{author.uuid}/posts/all/"
-                            posts_response = make_node_request(
-                                base_url=base_url,
-                                endpoint=posts_endpoint
-                            )
-
-                            if posts_response.status_code == 200:
-                                posts_data = posts_response.json()
-                                print(posts_data)
-                                remote_posts = posts_data.get('results', {}).get('items', posts_data.get('posts', []))
-
-                                # Iterate over posts and save them to the local database
-                                for post_data in remote_posts:
-                                    # Only process public posts
-                                    if post_data.get('visibility', '').upper() == 'PUBLIC':
-                                        try:
-                                            # Prepare post data
-                                            post_id = post_data.get('id')
-                                            if not post_id:
-                                                continue  # Skip if post ID is missing
-
-                                            post_defaults = {
-                                                'type': post_data.get('type', 'post'),
-                                                'title': post_data.get('title', ''),
-                                                'page': post_data.get('source', post_id),
-                                                'description': post_data.get('description', ''),
-                                                'contentType': post_data.get('contentType', ''),
-                                                'content': post_data.get('content', ''),
-                                                'published': post_data.get('published', timezone.now()),
-                                                'visibility': post_data.get('visibility', 'PUBLIC'),
-                                            }
-
-                                            # Get or create the post
-                                            post, created = Post.objects.update_or_create(
-                                                id=post_id,
-                                                defaults={**post_defaults, 'author': author},
-                                            )
-                                            node_result['posts_synced'] += 1
-
-                                        except Exception as e:
-                                            error_message = f"Error processing post {post_data.get('id')}: {e}"
-                                            node_result['errors'].append(error_message)
-                                            continue  # Skip to the next post
-                                    else:
-                                        # Skip non-public posts
-                                        continue
-                            else:
-                                error_message = f"Failed to fetch posts for author {author_id}: Status {posts_response.status_code}"
-                                node_result['errors'].append(error_message)
 
                         except Exception as e:
                             error_message = f"Error processing author {author_data.get('id')}: {e}"

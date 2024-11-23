@@ -9,6 +9,7 @@ import EditPost from '../components/EditPost.vue';
 import ExploreAuthors from '../components/ExploreAuthors.vue';
 // Import your PostDetail component if needed
 import PostDetail from '../components/PostDetail.vue';
+import PublicProfilePage from '../components/PublicProfilePage.vue';
 
 const routes = [
   { path: '/login', component: UserLogin },
@@ -26,6 +27,14 @@ const routes = [
     component: EditPost,
     props: true,
   },
+  {
+    path: "/authors/:authorId/public",
+    name: "PublicProfile",
+    component: PublicProfilePage,
+    props: true,
+  },
+
+
   {
     path: '/swagger',
     beforeEnter() {
