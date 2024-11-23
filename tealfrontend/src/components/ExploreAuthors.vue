@@ -284,7 +284,7 @@ export default {
                 'node-password': targetNode.password,
               },transformRequest: [(data, headers) => {
                 console.log('Headers before transform:', headers);
-                delete headers.common['Authorization'];
+                delete headers['Authorization'];
                 console.log('Headers after transform:', headers, data);
                 return JSON.stringify(data);
               }]
