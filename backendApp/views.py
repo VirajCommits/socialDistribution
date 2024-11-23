@@ -3494,15 +3494,15 @@ def construct_comment_likes_data(comment):
 @csrf_exempt
 @api_view(['POST'])
 @permission_classes([AllowAny])
-def send_follow_request_to_remote_authors(request , author_serial):
+def send_follow_request_to_remote_authors(request, author_serial):
     """
     Send a follow request to an author on a connected remote node.
     """
     try:
         # Extract author UUID from the request data
-        print("HAAANNNNN ---------------- " , request)
-        author_serial = request['object']['uuid']
-        if not author_serial:
+        print("Incoming request data: ", request.data)
+        author_uuid = request.data.get('object', {}).get('uuid')
+        if not author_uuid:
             return Response({"status": "error", "message": "Author UUID is required."}, status=status.HTTP_400_BAD_REQUEST)
 
         # Get the current user (the one sending the follow request)
@@ -3525,11 +3525,11 @@ def send_follow_request_to_remote_authors(request , author_serial):
             }
 
             try:
-                print("This is the incoming req: ================= " , request)
+                print("Preparing follow activity...")
                 # Prepare the follow activity
                 follow_activity = {
                     "type": "follow",
-                    "summary": f"{current_user.displayName} wants to follow {author_serial}",
+                    "summary": f"{current_user.displayName} wants to follow {request.data.get('object', {}).get('displayName')}",
                     "actor": {
                         "type": "author",
                         "id": current_user.id,
@@ -3541,7 +3541,7 @@ def send_follow_request_to_remote_authors(request , author_serial):
                     },
                     "object": {
                         "type": "author",
-                        "id": f"{node.url}authors/{author_serial}"
+                        "id": f"{node.url}authors/{author_uuid}"
                     }
                 }
 
@@ -3549,7 +3549,7 @@ def send_follow_request_to_remote_authors(request , author_serial):
                 import base64
                 credentials = base64.b64encode(f"{node.username}:{node.password}".encode()).decode()
                 response = requests.post(
-                    f"{node.url}/service/api/authors/{author_serial}/inbox/",
+                    f"{node.url}/service/api/authors/{author_uuid}/inbox/",
                     json=follow_activity,
                     headers={
                         'Authorization': f'Basic {credentials}',
