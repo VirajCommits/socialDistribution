@@ -276,7 +276,7 @@ export default {
           };
 
           const credentials = btoa(`${targetNode.username}:${targetNode.password}`);
-        
+          console.log("These are the credentials: ", credentials);
           // If the target host is found, send the follow request with credentials
           await axios.post(
             `${targethost}/service/api/authors/${targetUuid}/inbox/`,
