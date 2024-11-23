@@ -274,15 +274,18 @@ export default {
             },
             object: targetAuthor  // The target author already has all required fields from get_full_data()
           };
+
+          const credentials = btoa(`${targetNode.username}:${targetNode.password}`);
+        
           // If the target host is found, send the follow request with credentials
           await axios.post(
             `${targethost}/service/api/authors/${targetUuid}/inbox/`,
             followActivity,
             {
               headers: {
-                'node-username': targetNode.username,
-                'node-password': targetNode.password,
-              },
+                'Authorization': `Basic ${credentials}`,
+                'Content-Type': 'application/json'
+              }
             }
           );
 
