@@ -2839,7 +2839,7 @@ def inbox_handler(request, author_serial):
                     post_data['image'] = data['image']  # Assuming the image is included in the data
 
                 response = requests.post(api_url, json=post_data, headers={
-                    'Authorization': f"Token {data.get('token')}",  # Ensure this line is correctly indented
+                    'Authorization': f"Bearer {data.get('token')}",  # Ensure this line is correctly indented
                     'Content-Type': 'application/json'
                 })
 
