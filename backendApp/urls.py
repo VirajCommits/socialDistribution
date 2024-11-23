@@ -194,7 +194,7 @@ urlpatterns = [
     path(
         'service/api/authors/<str:author_serial>/sendRemoteRequest/', 
         views.send_follow_request_to_remote_authors, 
-        name='inbox'
+        name='send_follow_request_to_remote_authors'
     ),
 
 

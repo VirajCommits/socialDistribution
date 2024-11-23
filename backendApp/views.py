@@ -3493,7 +3493,7 @@ def construct_comment_likes_data(comment):
     return likes_data
 @csrf_exempt
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])
 def send_follow_request_to_remote_authors(request):
     """
     Send a follow request to an author on a connected remote node.
