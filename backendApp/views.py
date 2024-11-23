@@ -3539,7 +3539,7 @@ def send_follow_request_to_remote_authors(request, author_serial):
                 # Send the follow request to the remote node's inbox
                 credentials = base64.b64encode(f"{node.username}:{node.password}".encode()).decode()
                 response = requests.post(
-                    f"{node.url}service/api/authors/{author_uuid}/inbox/",
+                    f"{node.url}service/api/authors/{object_author.uuid}/inbox/",
                     json=follow_activity,
                     headers={
                         'Authorization': f'Basic {credentials}',
