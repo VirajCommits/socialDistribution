@@ -3123,9 +3123,6 @@ def inbox_handler(request, author_serial):
                 api_url = f"{hostname}api/authors/{auth_serial}/posts/"
                 print("complete url:" , api_url)
 
-                # Parse post UUID from the post_id URL
-                post_uuid = post_id.rstrip('/').split('/')[-1]
-
                 # Get or create the post
                 post, post_created = Post.objects.get_or_create(
                     id=post_uuid,
