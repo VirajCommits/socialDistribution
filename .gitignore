@@ -284,3 +284,10 @@ __pycache__/
 db.sqlite3
 
 !backendApp/static/vue/
+
+
+
+
+# Ignore CSS and JS build artifacts
+backendApp/static/vue/css/app.*.css
+backendApp/static/vue/js/app.*.js
