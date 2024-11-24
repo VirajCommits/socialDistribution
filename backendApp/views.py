@@ -987,7 +987,7 @@ def accept_follow_request(request, author_uuid):
         # post_data = construct_posts_data(current_author)
 
         # Send the constructed object to the remote node
-        send_data_to_remote_node(requesting_author.host, post_data)
+        send_data_to_remote_node(requesting_author.host, post_data , requesting_author.uuid)
 
     # Accept the request
     follow_request.accepted = True
@@ -1009,7 +1009,7 @@ def accept_follow_request(request, author_uuid):
     )
 
     return Response({"detail": "Follow request accepted."}, status=status.HTTP_200_OK)
-def send_data_to_remote_node(url, data):
+def send_data_to_remote_node(url, data , uuid):
     """
     Send data to the remote node with authentication using the ToWhichItsConnected model.
     """
@@ -1023,28 +1023,20 @@ def send_data_to_remote_node(url, data):
     if not matched_node:
         raise ValueError("No matching remote node found for the provided URL.")
 
-    # Extract credentials from the matched node
-    username = matched_node.username
-    password = matched_node.password
+    # The endpoint is 'inbox/'
+    print("This is the data i got:(Viraj) " , data)
+    endpoint = 'authors/${uuid}/inbox/'
 
-    if not username or not password:
-        raise ValueError(f"Username or password not found for node {matched_node.url}.")
-
-    # Set up headers with Basic Authentication
-    headers = {
-        'Authorization': f'Basic {username}:{password}',  # Use basic auth format
-    }
-
-    new_url = url + "inbox/"
-
-    try:
-        # Send the POST request to the remote node
-        response = requests.post(new_url, json=data, headers=headers)
-        response.raise_for_status()
-    except requests.RequestException as e:
-        raise RuntimeError(f"Failed to send data to {matched_node.url}: {e}")
+    # Send the POST request via make_node_request
+    response = make_node_request(
+        base_url=matched_node.url,
+        endpoint=endpoint,
+        method='POST',
+        data=data
+    )
 
     return response
+
 
 @swagger_auto_schema(
     method="POST",
