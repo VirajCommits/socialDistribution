@@ -2859,6 +2859,8 @@ def inbox_handler(request, author_serial):
 
         try:
             if item_type == "posts":
+
+                print("WE ARE INSIDE INBOX POSTS")
                 # Handle multiple posts
                 posts_data = data.get('src', [])
                 for post_data in posts_data:
