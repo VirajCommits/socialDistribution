@@ -281,7 +281,10 @@ export default {
         const response = await axios.get('/connected-nodes/', {
           headers: { Authorization: `Token ${this.token}` },
         });
-        const connectedNodes = response.data;
+        const connectedNodes = response;
+        const connected_nodes = response.data;
+        console.log("CONNECTED NODES:" , connectedNodes)
+        console.log("CONNECTED NODES DATA:" , connected_nodes)
 
         const targetNode = connectedNodes.find(node => node.url === targethost);
         console.log("TARGET NODE:" , targetNode)
