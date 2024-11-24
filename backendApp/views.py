@@ -1985,44 +1985,32 @@ def check_relationship_status(request, author_uuid):
 @permission_classes([IsAuthenticated])
 def get_author_stats(request, author_uuid):
     try:
-        author = get_object_or_404(Author, uuid=author_uuid)
+        author = get_object_or_404(Author, uuid=author_serial)
         followers = author.followers.all()
-        following = author.following.all()
-        friends = author.followers.filter(id__in=author.following.values("id"))
-
-        return Response({
-            "stats": {
-                "followers_count": followers.count(),
-                "following_count": following.count(),
-                "friends_count": friends.count(),
-            },
-            "followers": [
-                {
-                    "id": follower.id,
-                    "uuid": follower.uuid,
-                    "displayName": follower.displayName,
-                    "host": follower.host
-                } for follower in followers
-            ],
-            "following": [
-                {
-                    "id": followed.id,
-                    "uuid": followed.uuid,
-                    "displayName": followed.displayName,
-                    "host": followed.host
-                } for followed in following
-            ],
-            "friends": [
-                {
-                    "id": friend.id,
-                    "uuid": friend.uuid,
-                    "displayName": friend.displayName,
-                    "host": friend.host
-                } for friend in friends
-            ]
-        })
-    except Author.DoesNotExist:
-        return Response({"error": "Author not found"}, status=404)
+        
+        # Format each follower according to the specification
+        formatted_followers = []
+        for follower in followers:
+            formatted_followers.append({
+                "type": "author",
+                "id": follower.id,
+                "host": follower.host,
+                "displayName": follower.displayName,
+                "page": follower.page,
+                "github": follower.github,
+                "profileImage": follower.profileImage
+            })
+        
+        response_data = {
+            "type": "followers",
+            "followers": formatted_followers
+        }
+        return Response(response_data)
+    except Exception as e:
+        return Response(
+            {'error': str(e)}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
 
 
 @swagger_auto_schema(
