@@ -284,6 +284,7 @@ export default {
         const connectedNodes = response.data;
 
         const targetNode = connectedNodes.find(node => node.url === targethost);
+        console.log("TARGET NODE:" , targetNode)
         const credentials = btoa(`${targetNode.username}:${targetNode.password}`);
         console.log(payload)
         await axios.post(inboxUrl, payload, {
