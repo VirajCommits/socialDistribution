@@ -36,6 +36,7 @@ def make_node_request(base_url, endpoint, method='GET', data=None):
             print("this response:" , response.json())
         elif method.upper() == 'POST':
             response = requests.post(full_url, json=data, headers=headers)
+            print("This post response:" , response.json())
         else:
             response = None
 
