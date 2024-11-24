@@ -2790,9 +2790,9 @@ def test_node_connection(request):
 
 @csrf_exempt
 @api_view(['POST', 'GET', 'DELETE'])
-@authentication_classes([NodeBasicAuthentication])
-@permission_classes([IsAuthenticatedOrNode])
-# @permission_classes([AllowAny])
+# @authentication_classes([NodeBasicAuthentication])
+# @permission_classes([IsAuthenticatedOrNode])
+@permission_classes([AllowAny])
 def inbox_handler(request, author_serial):
     """
     Handles inbox activities for a given author. Supports POST (to add activities),
@@ -2839,7 +2839,7 @@ def inbox_handler(request, author_serial):
                     post_data['image'] = data['image']  # Assuming the image is included in the data
 
                 response = requests.post(api_url, json=post_data, headers={
-                    'Authorization': f"Bearer {data.get('token')}",  # Ensure this line is correctly indented
+                    'Authorization': f"Token {data.get('token')}",  # Ensure this line is correctly indented
                     'Content-Type': 'application/json'
                 })
 
