@@ -7,7 +7,7 @@ def make_node_request(base_url, endpoint, method='GET', data=None):
     """
     Make authenticated request to another node using ToWhichItsConnected credentials
     @param base_url: The base URL of the target node (e.g., 'https://other-team.herokuapp.com/')
-    @param endpoint: The API endpoint (e.g., 'service/api/authors/')
+    @param endpoint: The API endpoint (e.g., 'api/authors/')
     """
     try:
         

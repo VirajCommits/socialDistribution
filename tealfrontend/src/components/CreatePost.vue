@@ -198,16 +198,21 @@ export default {
           },
         });
         const authors = authorsResponse.data;
+        console.log("AUTHORS IN CREATE POST:" , authors , this.user.id)
         const currentAuthorId = this.user.id.split("/").pop();
+        console.log("Current auth id:" , currentAuthorId)
 
         // Track which authors have received the notification
         const processedAuthors = new Set([currentAuthorId]); // Initialize with current author
+        console.log(processedAuthors)
 
         switch (this.form.visibility) {
           case "PUBLIC": {
             // Only send notifications to other authors' inboxes
-            console.log("These are all the authors:" , authors)
-            for (const author of authors) {
+
+            const followers = await this.getFollowers(currentAuthorId);
+            console.log("Followers are:" , followers)
+            for (const author of followers) {
               const authorId = author.id.split("/").pop(-1);
               
               if (
@@ -215,7 +220,7 @@ export default {
                 !processedAuthors.has(authorId)
               ) {
                 console.log("auth id:" , authorId)
-                await this.sendNotificationToInbox(authorId, postData);
+                await this.sendNotificationToInbox(authorId, postData, author.host);
                 processedAuthors.add(authorId);
               }
             }
@@ -249,10 +254,10 @@ export default {
         console.error("Error distributing post:", error);
       }
     },
-    async sendNotificationToInbox(authorId, postData) {
+    async sendNotificationToInbox(authorId, postData, host) {
       try {
-        const inboxUrl = `/authors/${authorId}/inbox/`;
-        const token = localStorage.getItem("token");
+        console.log("This is the host:" , host)
+        const inboxUrl = `${host}api/authors/${authorId}/inbox/`;
         console.log("POST DATA:" , postData , inboxUrl)
 
         const payload = {
@@ -276,10 +281,25 @@ export default {
           published: new Date().toISOString(),
           visibility: this.form.visibility,
         };
+
+        const targethost = authorId.split('/authors/')[0];
+        const response = await axios.get('/connected-nodes/', {
+          headers: { Authorization: `Token ${this.token}` },
+        });
+        const connectedNodes = response;
+        const connected_nodes = response.data;
+        console.log("CONNECTED NODES:" , connectedNodes)
+        console.log("CONNECTED NODES DATA:" , connected_nodes)
+        console.log("TARGET HOST:" , targethost)
+
+        console.log("HOST:" , host)
+        const targetNode = connected_nodes.find(node => node.url+'/' === host);
+        console.log("TARGET NODE:" , targetNode)
+        const credentials = btoa(`${targetNode.username}:${targetNode.password}`);
         console.log(payload)
         await axios.post(inboxUrl, payload, {
           headers: {
-            Authorization: `Token ${token}`,
+            Authorization: `Basic ${credentials}`,
             "Content-Type": "application/json",
           },
           withCredentials: true,
@@ -292,6 +312,7 @@ export default {
     async getFollowers(authorId) {
     try {
         const response = await axios.get(`/authors/${authorId}/followers/`);
+        console.log("Followers response:" , response)
         return response.data;
     } catch (error) {
         console.error(`Error getting followers for author ${authorId}:`, error);
