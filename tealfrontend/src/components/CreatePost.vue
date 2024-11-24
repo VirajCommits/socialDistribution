@@ -198,11 +198,13 @@ export default {
           },
         });
         const authors = authorsResponse.data;
-        console.log("AUTHORS IN CREATE POST:" , authors)
+        console.log("AUTHORS IN CREATE POST:" , authors , this.user.id)
         const currentAuthorId = this.user.id.split("/").pop();
+        console.log("Current auth id:" , currentAuthorId)
 
         // Track which authors have received the notification
         const processedAuthors = new Set([currentAuthorId]); // Initialize with current author
+        console.log(processedAuthors)
 
         switch (this.form.visibility) {
           case "PUBLIC": {
@@ -253,8 +255,8 @@ export default {
     },
     async sendNotificationToInbox(authorId, postData, host) {
       try {
+        console.log("This is the host:" , host)
         const inboxUrl = `${host}api/authors/${authorId}/inbox/`;
-
         console.log("POST DATA:" , postData , inboxUrl)
 
         const payload = {
