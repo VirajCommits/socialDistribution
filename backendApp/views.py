@@ -3146,6 +3146,8 @@ def inbox_handler(request, author_serial):
                 pass
 
             elif item_type == 'comment':
+                data = request.data
+                print("DATA IN INBOX COMMENT: ============" , data)
                 print("WE ARE INSIDE INBOX COMMENT")
                 pass
 
