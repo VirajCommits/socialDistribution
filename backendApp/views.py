@@ -169,6 +169,10 @@ def create_post(request, author_serial):
       }
     }
     """
+
+    print(
+        "creating ....... "
+    )
     author_serial = unquote(author_serial)
 
     data = request.data.copy()
@@ -3139,6 +3143,8 @@ def inbox_handler(request, author_serial):
                 # Check if there is an image to upload
                 if 'image' in data:
                     post_data['image'] = data['image']  # Assuming the image is included in the data
+
+                print("Llllllllll:" , post_data)
 
                 response = requests.post(api_url, json=post_data, headers={
                     'Authorization': f"Token {data.get('token')}",  # Ensure this line is correctly indented
