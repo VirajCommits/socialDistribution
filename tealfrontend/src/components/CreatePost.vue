@@ -253,7 +253,7 @@ export default {
     },
     async sendNotificationToInbox(authorId, postData, host) {
       try {
-        const inboxUrl = `${host}/api/authors/${authorId}/inbox/`;
+        const inboxUrl = `${host}api/authors/${authorId}/inbox/`;
 
         console.log("POST DATA:" , postData , inboxUrl)
 
