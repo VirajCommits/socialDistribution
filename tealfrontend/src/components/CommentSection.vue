@@ -309,7 +309,6 @@ export default {
     async sendCommentToInbox(authorId, commentData, postData) {
       try {
         const inboxUrl = `/authors/${authorId}/inbox/`;
-        const token = localStorage.getItem("token");
 
         const payload = {
           type: "comment",
@@ -340,9 +339,24 @@ export default {
 
         console.log(`Sending comment to inbox of author ${authorId}:`, payload);
 
+        const targethost = authorId.split('/authors/')[0];
+        const response = await axios.get('/connected-nodes/', {
+          headers: { Authorization: `Token ${this.token}` },
+        });
+        const connectedNodes = response;
+        const connected_nodes = response.data;
+        console.log("CONNECTED NODES IN COMMENT SECTION:" , connectedNodes)
+        console.log("CONNECTED NODES DATA IN COMMENT SECTION:" , connected_nodes)
+        console.log("TARGET HOST IN COMMENT SECTION:" , targethost)
+
+        console.log("HOST IN COMMENT SECTION:" , targethost)
+        const targetNode = connected_nodes.find(node => node.url+'/' === targethost);
+        console.log("TARGET NODE IN COMMENT SECTION:" , targetNode)
+        const credentials = btoa(`${targetNode.username}:${targetNode.password}`);
+
         await axios.post(inboxUrl, payload, {
           headers: {
-            Authorization: `Token ${token}`,
+            Authorization: `Basic ${credentials}`,
             "Content-Type": "application/json",
           },
           withCredentials: true,
