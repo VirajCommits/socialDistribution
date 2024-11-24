@@ -215,6 +215,7 @@ export default {
           },
         });
         const authors = authorsResponse.data;
+        console.log("AUTHORS IN COMMENT SECTION:===========" , authors)
 
         // Current user's ID
         const currentAuthorId = this.authID;
@@ -230,9 +231,16 @@ export default {
         switch (postVisibility) {
             case "PUBLIC": {
                 // Visible to everyone except the current author
-                targetAuthors = authors.filter(
-                    (author) => author.id.split("/").pop() !== currentAuthorId
+                const ourHost = this.user.host;
+    
+                // Filter out authors who:
+                // 1. Are not the current author
+                // 2. Don't have the same host as our user
+                targetAuthors = authors.filter(author => 
+                    author.uuid !== currentAuthorId && 
+                    author.host !== ourHost
                 );
+                console.log("TARGET AUTHORS IN COMMENT SECTION:" , targetAuthors)
                 break;
             }
             case "FRIENDS": {
@@ -284,11 +292,14 @@ export default {
             }
         }
 
+        console.log("TARGET AUTHORS IN COMMENT SECTION before for loop:" , targetAuthors)
         // Distribute the comment to the target authors
         for (const author of targetAuthors) {
+          console.log("AUTHOR IN COMMENT SECTION:" , author)
+          const targethost = author.id.split('/authors/')[0];
           const authorId = author.id.split("/").pop();
           if (!processedAuthors.has(authorId)) {
-            await this.sendCommentToInbox(authorId, commentData, post);
+            await this.sendCommentToInbox(authorId, commentData, post, targethost);
             processedAuthors.add(authorId);
           }
         }
@@ -306,10 +317,10 @@ export default {
      * @param {Object} commentData - The data of the comment.
      * @param {Object} postData - The data of the post the comment belongs to.
      */
-    async sendCommentToInbox(authorId, commentData, postData) {
+    async sendCommentToInbox(authorId, commentData, postData, targethost) {
       try {
-        const inboxUrl = `/authors/${authorId}/inbox/`;
-        const token = localStorage.getItem("token");
+        console.log("SENDING COMMENT TO INBOX IN COMMENT SECTION:" , authorId, commentData, postData, targethost)
+        const inboxUrl = `${targethost}/service/api/authors/${authorId}/inbox/`;
 
         const payload = {
           type: "comment",
@@ -340,9 +351,23 @@ export default {
 
         console.log(`Sending comment to inbox of author ${authorId}:`, payload);
 
+        const response = await axios.get('/connected-nodes/', {
+          headers: { Authorization: `Token ${this.token}` },
+        });
+        const connectedNodes = response;
+        const connected_nodes = response.data;
+        console.log("CONNECTED NODES IN COMMENT SECTION:" , connectedNodes)
+        console.log("CONNECTED NODES DATA IN COMMENT SECTION:" , connected_nodes)
+        console.log("TARGET HOST IN COMMENT SECTION:" , targethost)
+
+        console.log("HOST IN COMMENT SECTION:" , targethost)
+        const targetNode = connected_nodes.find(node => node.url === targethost);
+        console.log("TARGET NODE IN COMMENT SECTION:" , targetNode)
+        const credentials = btoa(`${targetNode.username}:${targetNode.password}`);
+
         await axios.post(inboxUrl, payload, {
           headers: {
-            Authorization: `Token ${token}`,
+            Authorization: `Basic ${credentials}`,
             "Content-Type": "application/json",
           },
           withCredentials: true,
