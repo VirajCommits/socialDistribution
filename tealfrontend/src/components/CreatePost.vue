@@ -215,7 +215,7 @@ export default {
                 !processedAuthors.has(authorId)
               ) {
                 console.log("auth id:" , authorId)
-                await this.sendNotificationToInbox(authorId, postData);
+                await this.sendNotificationToInbox(authorId, postData, author.host);
                 processedAuthors.add(authorId);
               }
             }
@@ -249,9 +249,9 @@ export default {
         console.error("Error distributing post:", error);
       }
     },
-    async sendNotificationToInbox(authorId, postData) {
+    async sendNotificationToInbox(authorId, postData, host) {
       try {
-        const inboxUrl = `/authors/${authorId}/inbox/`;
+        const inboxUrl = `${host}/service/api/authors/${authorId}/inbox/`;
         const token = localStorage.getItem("token");
         console.log("POST DATA:" , postData , inboxUrl)
 
