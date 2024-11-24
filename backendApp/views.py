@@ -3140,45 +3140,44 @@ def inbox_handler(request, author_serial):
             elif item_type == 'follow':
                 # Handle Follow Activity
                 print("Handling follow request.")
+                    # Extract actor and object data
+                actor_data = data.get('actor', {})
+                object_data = data.get('object', {})
 
-                # Get the target author's UUID from the request data
-                target_uuid = data.get('object', {}).get('id')
-                if not target_uuid:
-                    return Response({'error': 'Target UUID for follow is missing.'}, status=status.HTTP_400_BAD_REQUEST)
+                # Get or create the actor (follower)
+                actor_id = actor_data.get('id')
+                actor_uuid = actor_id.rstrip('/').split('/')[-1]
+                actor, created = Author.objects.get_or_create(
+                    uuid=actor_uuid,
+                    defaults={
+                        'displayName': actor_data.get('displayName', ''),
+                        'host': actor_data.get('host', ''),
+                        'page': actor_data.get('url', ''),
+                        'github': actor_data.get('github', ''),
+                        'profileImage': actor_data.get('profileImage', ''),
+                    }
+                )
 
-                django_request = request._request  # Get the underlying Django HttpRequest
+                # Get or create the object (target author)
+                object_id = object_data.get('id')
+                object_uuid = object_id.rstrip('/').split('/')[-1]
+                target_author, created = Author.objects.get_or_create(
+                    uuid=object_uuid,
+                    defaults={
+                        'displayName': object_data.get('displayName', ''),
+                        'host': object_data.get('host', ''),
+                        'page': object_data.get('page', ''),
+                        'github': object_data.get('github', ''),
+                        'profileImage': object_data.get('profileImage', ''),
+                    }
+                )
 
-                # Call the existing send_follow_request function
-                response = send_follow_request(django_request, target_uuid)
-
-                if response.status_code == status.HTTP_201_CREATED:
-                    print("Follow request created successfully.")
-
-                    # Get the most recent follow request
-                    follow_request = FollowRequest.objects.filter(
-                        actor=request.user,
-                        object=author,
-                        accepted=False
-                    ).latest('created_at')
-
-                    print(f"Adding follow request {follow_request.id} to inbox.")
-                    # Add to inbox if not already added
-                    if not inbox.follow_requests.filter(id=follow_request.id).exists():
-                        inbox.follow_requests.add(follow_request)
-                        print(f"Follow request {follow_request.id} added to inbox of author {author_serial}.")
-                    else:
-                        print(f"Follow request {follow_request.id} already in inbox of author {author_serial}.")
-
-                    # **Process the follow request by calling the local API endpoint**
-                    response = process_follow_request(request, follow_request)
-                    if response.status_code != status.HTTP_200_OK:
-                        return Response({'error': 'Failed to process follow request locally.'}, status=status.HTTP_400_BAD_REQUEST)
-
-                    return Response({'message': 'Follow request added to inbox and processed locally.'}, status=status.HTTP_201_CREATED)
-
-                # If there was an error, return the original response
-                print(f"send_follow_request response status: {response.status_code}")
-                return response
+                # Create a follow request
+                follow_request, created = FollowRequest.objects.get_or_create(
+                    actor=actor,
+                    object=target_author,
+                    defaults={'summary': data.get('summary', '')}
+                )
 
             else:
                 # Unsupported activity type
