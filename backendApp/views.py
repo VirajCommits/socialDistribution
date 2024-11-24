@@ -3339,7 +3339,7 @@ def sync_remote_authors(request):
                                 'profileImage': author_data.get('profileImage', ''),
                                 'username': author_data.get('username',''),  # Ensure unique usernames
                                 'email': '',  # Email might not be available
-                                'is_active': False,  # Remote authors are not local users
+                                'is_active': True,  # Remote authors are not local users
                             }
                             author, created = Author.objects.update_or_create(
                                 id=author_id,
