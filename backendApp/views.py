@@ -202,9 +202,13 @@ def create_post(request, author_serial):
 
     serializer = PostSerializer(data=data)
 
+    print("YES CR4EATING POSTS")
+
     if serializer.is_valid():
         post = serializer.save()
         response_serializer = PostSerializer(post)
+        print("POSTS CREATED SUCCESFULLY")
+
         return Response(response_serializer.data, status=status.HTTP_201_CREATED)
     else:
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -3114,7 +3118,7 @@ def inbox_handler(request, author_serial):
                 return Response({'message': 'Posts added to inbox and created locally.'}, status=status.HTTP_201_CREATED)
 
             if item_type == 'post':
-                # to create a post, basically call this url: service/api/authors/<path:author_serial>/posts/
+                # to create a post, basically call this url: api/authors/<path:author_serial>/posts/
                 # i need the author_serial from data
                 auth_serial = data.get("author_id")
                 hostname = data["author"]["host"]
