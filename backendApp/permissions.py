@@ -27,5 +27,6 @@ class IsAuthenticatedOrNode(permissions.BasePermission):
         # Then check for regular authenticated user
         if hasattr(request.user, 'is_authenticated'):
             return request.user.is_authenticated
+        print("DONT HAVE AUTH ")
             
         return False
