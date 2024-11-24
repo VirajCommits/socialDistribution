@@ -994,6 +994,7 @@ def accept_follow_request(request, author_uuid):
 
         print("DATA SENT TO REMOTE NODE: ============================== ")
 
+
     # Accept the request
     follow_request.accepted = True
     follow_request.save()
@@ -3101,13 +3102,35 @@ def inbox_handler(request, author_serial):
 
                 return Response({'message': 'Posts added to inbox and created locally.'}, status=status.HTTP_201_CREATED)
 
-            elif item_type == 'post':
-                # Handle single post
-                success = handle_single_post(data)
-                if success:
-                    return Response({'message': 'Post added to inbox and created locally.'}, status=status.HTTP_201_CREATED)
-                else:
-                    return Response({'error': 'Failed to process the post.'}, status=status.HTTP_400_BAD_REQUEST)
+            if item_type == 'post':
+                # to create a post, basically call this url: service/api/authors/<path:author_serial>/posts/
+                # i need the author_serial from data
+                auth_serial = data.get("author_id")
+                hostname = data["author"]["host"]
+                print("THIS IS THE HOSTNAME: " , hostname , auth_serial)
+
+                api_url = f"{hostname}service/api/authors/{auth_serial}/posts/"
+                print("complete url:" , api_url)
+
+                # Prepare the body for creating a post
+                post_data = {
+                    'title': data.get('title'),
+                    'description': data.get('description', ''),
+                    'contentType': data.get('contentType', 'text/plain'),
+                    'visibility': data.get('visibility', 'PUBLIC'),
+                    'content': data.get('content', ''),
+                }
+
+                # Check if there is an image to upload
+                if 'image' in data:
+                    post_data['image'] = data['image']  # Assuming the image is included in the data
+
+                response = requests.post(api_url, json=post_data, headers={
+                    'Authorization': f"Token {data.get('token')}",  # Ensure this line is correctly indented
+                    'Content-Type': 'application/json'
+                })
+
+                return Response({'message': 'Post added to inbox and created locally.'}, status=status.HTTP_201_CREATED)
 
             elif item_type == 'like':
                 pass
@@ -3590,100 +3613,3 @@ def connected_nodes(request):
         for node in nodes
     ]
     return Response(data)
-
-
-def handle_single_post(post_data):
-    """
-    Processes a single post activity: saves the post, comments, likes,
-    and distributes the post to followers.
-    
-    @param post_data: Dictionary containing post activity data.
-    @return: Boolean indicating success or failure.
-    """
-    try:
-
-        # Validate the 'type' field
-        if post_data.get('type', '').lower() != 'post':
-            return False
-
-        # Define required fields for a 'post' activity
-        required_fields = [
-            'title', 'id', 'page', 'description',
-            'contentType', 'content', 'author',
-            'published', 'visibility'
-        ]
-
-        # Check for missing fields
-        missing_fields = [field for field in required_fields if field not in post_data]
-        if missing_fields:
-            return False
-
-        # Extract and process author information
-        author_data = post_data.get('author', {})
-        author_id = author_data.get('id')
-        if not author_id:
-            return False  # Cannot process without author ID
-
-        # Parse author UUID from the author_id URL
-        author_uuid = author_id.rstrip('/').split('/')[-1]
-
-        # Get or create the author
-        author, created = Author.objects.get_or_create(
-            uuid=author_uuid,
-            defaults={
-                'displayName': author_data.get('displayName', ''),
-                'host': author_data.get('host', ''),
-                'page': author_data.get('page', ''),
-                'github': author_data.get('github', ''),
-                'profileImage': author_data.get('profileImage', ''),
-            }
-        )
-
-        # If the author exists, update their info
-        if not created:
-            author.displayName = author_data.get('displayName', author.displayName)
-            author.host = author_data.get('host', author.host)
-            author.page = author_data.get('page', author.page)
-            author.github = author_data.get('github', author.github)
-            author.profileImage = author_data.get('profileImage', author.profileImage)
-            author.save()
-
-        # Process the post
-        post_id = post_data.get('id')
-        if not post_id:
-            return False  # Cannot process without post ID
-
-        # Parse post UUID from the post_id URL
-        post_uuid = post_id.rstrip('/').split('/')[-1]
-
-        # Get or create the post
-        post, post_created = Post.objects.get_or_create(
-            id=post_uuid,
-            defaults={
-                'author': author,
-                'title': post_data.get('title', ''),
-                'description': post_data.get('description', ''),
-                'contentType': post_data.get('contentType', 'text/plain'),
-                'content': post_data.get('content', ''),
-                'published': post_data.get('published', timezone.now()),
-                'visibility': post_data.get('visibility', 'PUBLIC'),
-                'page': post_data.get('page', ''),
-            }
-        )
-
-        # If the post exists, update its info
-        if not post_created:
-            post.title = post_data.get('title', post.title)
-            post.description = post_data.get('description', post.description)
-            post.contentType = post_data.get('contentType', post.contentType)
-            post.content = post_data.get('content', post.content)
-            post.published = post_data.get('published', post.published)
-            post.visibility = post_data.get('visibility', post.visibility)
-            post.page = post_data.get('page', post.page)
-            post.save()
-
-
-        return True
-
-    except Exception as e:
-        return False
