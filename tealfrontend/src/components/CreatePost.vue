@@ -216,7 +216,7 @@ export default {
                 !processedAuthors.has(authorId)
               ) {
                 console.log("auth id:" , authorId)
-                await this.sendNotificationToInbox(authorId, postData);
+                await this.sendNotificationToInbox(authorId, postData, author.host);
                 processedAuthors.add(authorId);
               }
             }
@@ -250,10 +250,10 @@ export default {
         console.error("Error distributing post:", error);
       }
     },
-    async sendNotificationToInbox(authorId, postData) {
+    async sendNotificationToInbox(authorId, postData, host) {
       try {
-        const inboxUrl = `service/api/authors/${authorId}/inbox/`;
-        const token = localStorage.getItem("token");
+        const inboxUrl = `${host}service/api/authors/${authorId}/inbox/`;
+
         console.log("POST DATA:" , postData , inboxUrl)
 
         const payload = {
@@ -277,10 +277,25 @@ export default {
           published: new Date().toISOString(),
           visibility: this.form.visibility,
         };
+
+        const targethost = authorId.split('/authors/')[0];
+        const response = await axios.get('/connected-nodes/', {
+          headers: { Authorization: `Token ${this.token}` },
+        });
+        const connectedNodes = response;
+        const connected_nodes = response.data;
+        console.log("CONNECTED NODES:" , connectedNodes)
+        console.log("CONNECTED NODES DATA:" , connected_nodes)
+        console.log("TARGET HOST:" , targethost)
+
+        console.log("HOST:" , host)
+        const targetNode = connected_nodes.find(node => node.url+'/' === host);
+        console.log("TARGET NODE:" , targetNode)
+        const credentials = btoa(`${targetNode.username}:${targetNode.password}`);
         console.log(payload)
         await axios.post(inboxUrl, payload, {
           headers: {
-            Authorization: `Token ${token}`,
+            Authorization: `Basic ${credentials}`,
             "Content-Type": "application/json",
           },
           withCredentials: true,

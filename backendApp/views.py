@@ -1987,21 +1987,31 @@ def check_relationship_status(request, author_uuid):
 def get_author_stats(request, author_uuid):
     try:
         author = get_object_or_404(Author, uuid=author_uuid)
-        followers_count = author.followers.count()
-        following_count = author.following.count()
-        friends_count = author.followers.filter(
-            id__in=author.following.values("id")
-        ).count()
-
+        followers = author.followers.all()
+        
+        # Format each follower according to the specification
+        formatted_followers = []
+        for follower in followers:
+            formatted_followers.append({
+                "type": "author",
+                "id": follower.id,
+                "host": follower.host,
+                "displayName": follower.displayName,
+                "page": follower.page,
+                "github": follower.github,
+                "profileImage": follower.profileImage
+            })
+        
+        response_data = {
+            "type": "followers",
+            "followers": formatted_followers
+        }
+        return Response(response_data)
+    except Exception as e:
         return Response(
-            {
-                "followers": followers_count,
-                "following": following_count,
-                "friends": friends_count,
-            }
+            {'error': str(e)}, 
+            status=status.HTTP_400_BAD_REQUEST
         )
-    except Author.DoesNotExist:
-        return Response({"error": "Author not found"}, status=404)
 
 
 @swagger_auto_schema(
@@ -2865,6 +2875,7 @@ def inbox_handler(request, author_serial):
 
                 print("WE ARE INSIDE INBOX POSTS")
                 # Handle multiple posts
+                print("Handling multiple posts.")
                 posts_data = data.get('src', [])
                 for post_data in posts_data:
                     # Process each post individually
