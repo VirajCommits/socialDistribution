@@ -311,7 +311,7 @@ export default {
     },
     async getFollowers(authorId) {
     try {
-        const response = await axios.get(`/authors/${authorId}/followers/`);
+        const response = await axios.get(`authors/${authorId}/followers/`);
         return response.data;
     } catch (error) {
         console.error(`Error getting followers for author ${authorId}:`, error);
