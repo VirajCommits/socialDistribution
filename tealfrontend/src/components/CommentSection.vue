@@ -231,8 +231,14 @@ export default {
         switch (postVisibility) {
             case "PUBLIC": {
                 // Visible to everyone except the current author
-                targetAuthors = authors.filter(
-                    (author) => author.uuid !== currentAuthorId
+                const ourHost = this.user.host;
+    
+                // Filter out authors who:
+                // 1. Are not the current author
+                // 2. Don't have the same host as our user
+                targetAuthors = authors.filter(author => 
+                    author.uuid !== currentAuthorId && 
+                    author.host !== ourHost
                 );
                 console.log("TARGET AUTHORS IN COMMENT SECTION:" , targetAuthors)
                 break;
@@ -286,6 +292,7 @@ export default {
             }
         }
 
+        console.log("TARGET AUTHORS IN COMMENT SECTION before for loop:" , targetAuthors)
         // Distribute the comment to the target authors
         for (const author of targetAuthors) {
           console.log("AUTHOR IN COMMENT SECTION:" , author)
