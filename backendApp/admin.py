@@ -75,13 +75,13 @@ class LikeAdmin(admin.ModelAdmin):
 @admin.register(RemoteNode)
 class RemoteNodeAdmin(admin.ModelAdmin):
     list_display = ['url', 'username']
-    list_filter = ['active']
+    list_filter = ['username']
     search_fields = ['url', 'username']
 
 @admin.register(ToWhichItsConnected)
 class ToWhichItsConnected(admin.ModelAdmin):
     list_display = ['url', 'username']
-    list_filter = ['active']
+    list_filter = ['username']
     search_fields = ['url', 'username']
 
 
