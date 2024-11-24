@@ -1030,7 +1030,7 @@ def send_data_to_remote_node(url, data , uuid):
 
     # The endpoint is 'inbox/'
     print("This is the data i got:(Viraj) " , data)
-    endpoint = f'service/api/authors/{uuid}/inbox/'
+    endpoint = f'api/authors/{uuid}/inbox/'
 
     # Send the POST request via make_node_request
     response = make_node_request(
@@ -2810,8 +2810,8 @@ def test_node_connection(request):
             try:
                  # Test outgoing connection (us -> them)
                 outgoing_url = f"{node.url}"
-                # endpoint = 'service/api/authors/931b3149-9101-4bb6-a78d-3350fdb70615/posts/all/'
-                endpoint = 'service/api/authors/931b3149-9101-4bb6-a78d-3350fdb70615/posts/all'
+                # endpoint = 'api/authors/931b3149-9101-4bb6-a78d-3350fdb70615/posts/all/'
+                endpoint = 'api/authors/931b3149-9101-4bb6-a78d-3350fdb70615/posts/all'
                 outgoing_response = make_node_request(base_url=outgoing_url, endpoint=endpoint)
                 
                 results.append({
@@ -3113,13 +3113,13 @@ def inbox_handler(request, author_serial):
                 return Response({'message': 'Posts added to inbox and created locally.'}, status=status.HTTP_201_CREATED)
 
             if item_type == 'post':
-                # to create a post, basically call this url: service/api/authors/<path:author_serial>/posts/
+                # to create a post, basically call this url: api/authors/<path:author_serial>/posts/
                 # i need the author_serial from data
                 auth_serial = data.get("author_id")
                 hostname = data["author"]["host"]
                 print("THIS IS THE HOSTNAME: " , hostname , auth_serial)
 
-                api_url = f"{hostname}service/api/authors/{auth_serial}/posts/"
+                api_url = f"{hostname}api/authors/{auth_serial}/posts/"
                 print("complete url:" , api_url)
 
                 # Prepare the body for creating a post
@@ -3365,7 +3365,7 @@ def sync_remote_authors(request):
             try:
                 # Fetch all authors from the remote node
                 base_url = node.url
-                endpoint = 'service/api/authors/'
+                endpoint = 'api/authors/'
 
                 response = make_node_request(
                     base_url=base_url,
@@ -3636,7 +3636,7 @@ def send_follow_request_to_remote_authors(request, author_serial):
         follow_activity_copy['object']['host'] = node.url.rstrip('/')
 
         # Define the endpoint for the target node's inbox
-        endpoint = f"/service/api/authors/{author_uuid}/inbox/"
+        endpoint = f"/api/authors/{author_uuid}/inbox/"
 
         # Send the follow request to the remote node's inbox using make_node_request
         response = make_node_request(

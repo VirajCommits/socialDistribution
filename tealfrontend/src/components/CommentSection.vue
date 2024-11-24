@@ -320,7 +320,7 @@ export default {
     async sendCommentToInbox(authorId, commentData, postData, targethost) {
       try {
         console.log("SENDING COMMENT TO INBOX IN COMMENT SECTION:" , authorId, commentData, postData, targethost)
-        const inboxUrl = `${targethost}/service/api/authors/${authorId}/inbox/`;
+        const inboxUrl = `${targethost}/api/authors/${authorId}/inbox/`;
 
         const payload = {
           type: "comment",
