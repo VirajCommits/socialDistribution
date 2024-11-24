@@ -986,7 +986,7 @@ def accept_follow_request(request, author_uuid):
     if requesting_author.host != current_author.host:
 
 
-        print("ACCEPTED NOW SENDING DATA")
+        print("ACCEPTED NOW SENDING DATA" , post_data)
         # post_data = construct_posts_data(current_author)
 
         # Send the constructed object to the remote node
