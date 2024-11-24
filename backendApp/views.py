@@ -1495,6 +1495,7 @@ def stream_page(request, author_id):
 
 @csrf_exempt
 @api_view(["POST"])
+@authentication_classes([])
 @permission_classes([AllowAny])
 def signup(request):
     serializer = AuthorSerializer(data=request.data)
