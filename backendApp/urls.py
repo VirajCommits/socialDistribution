@@ -192,6 +192,13 @@ urlpatterns = [
     ),
 
     path(
+        'service/api/authors/<str:author_serial>/sendRemoteRequest/', 
+        views.send_follow_request_to_remote_authors, 
+        name='send_follow_request_to_remote_authors'
+    ),
+
+
+    path(
     "service/api/authors/<path:author_serial>/followers/",
     views.followers_handler,
     name="followers_handler"
@@ -217,6 +224,7 @@ urlpatterns = [
         TemplateView.as_view(template_name="index.html"),
         name="post_detail",
     ),
+    path('service/api/connected-nodes/', views.connected_nodes, name='connected_nodes'),
     # Catch-all route for Vue frontend
     re_path(
         r"^(?!service/api|admin|swagger|static|media).*$",
