@@ -252,7 +252,7 @@ export default {
     },
     async sendNotificationToInbox(authorId, postData) {
       try {
-        const inboxUrl = `/authors/${authorId}/inbox/`;
+        const inboxUrl = `service/api/authors/${authorId}/inbox/`;
         const token = localStorage.getItem("token");
         console.log("POST DATA:" , postData , inboxUrl)
 
