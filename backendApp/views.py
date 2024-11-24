@@ -1986,19 +1986,41 @@ def check_relationship_status(request, author_uuid):
 def get_author_stats(request, author_uuid):
     try:
         author = get_object_or_404(Author, uuid=author_uuid)
-        followers_count = author.followers.count()
-        following_count = author.following.count()
-        friends_count = author.followers.filter(
-            id__in=author.following.values("id")
-        ).count()
+        followers = author.followers.all()
+        following = author.following.all()
+        friends = author.followers.filter(id__in=author.following.values("id"))
 
-        return Response(
-            {
-                "followers": followers_count,
-                "following": following_count,
-                "friends": friends_count,
-            }
-        )
+        return Response({
+            "stats": {
+                "followers_count": followers.count(),
+                "following_count": following.count(),
+                "friends_count": friends.count(),
+            },
+            "followers": [
+                {
+                    "id": follower.id,
+                    "uuid": follower.uuid,
+                    "displayName": follower.displayName,
+                    "host": follower.host
+                } for follower in followers
+            ],
+            "following": [
+                {
+                    "id": followed.id,
+                    "uuid": followed.uuid,
+                    "displayName": followed.displayName,
+                    "host": followed.host
+                } for followed in following
+            ],
+            "friends": [
+                {
+                    "id": friend.id,
+                    "uuid": friend.uuid,
+                    "displayName": friend.displayName,
+                    "host": friend.host
+                } for friend in friends
+            ]
+        })
     except Author.DoesNotExist:
         return Response({"error": "Author not found"}, status=404)
 
