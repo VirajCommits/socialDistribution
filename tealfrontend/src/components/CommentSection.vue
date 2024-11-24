@@ -286,9 +286,10 @@ export default {
 
         // Distribute the comment to the target authors
         for (const author of targetAuthors) {
+          const targethost = author.id.split('/authors/')[0];
           const authorId = author.id.split("/").pop();
           if (!processedAuthors.has(authorId)) {
-            await this.sendCommentToInbox(authorId, commentData, post);
+            await this.sendCommentToInbox(authorId, commentData, post, targethost);
             processedAuthors.add(authorId);
           }
         }
@@ -306,7 +307,7 @@ export default {
      * @param {Object} commentData - The data of the comment.
      * @param {Object} postData - The data of the post the comment belongs to.
      */
-    async sendCommentToInbox(authorId, commentData, postData) {
+    async sendCommentToInbox(authorId, commentData, postData, targethost) {
       try {
         const inboxUrl = `/authors/${authorId}/inbox/`;
 
@@ -339,7 +340,6 @@ export default {
 
         console.log(`Sending comment to inbox of author ${authorId}:`, payload);
 
-        const targethost = authorId.split('/authors/')[0];
         const response = await axios.get('/connected-nodes/', {
           headers: { Authorization: `Token ${this.token}` },
         });
