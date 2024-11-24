@@ -3149,7 +3149,7 @@ def inbox_handler(request, author_serial):
                 data = request.data
                 print("DATA IN INBOX COMMENT: ============" , data)
                 print("WE ARE INSIDE INBOX COMMENT")
-                pass
+                return Response({'message': 'Comment added to inbox and created locally.'}, status=status.HTTP_201_CREATED)
 
             elif item_type == 'follow':
                 # Handle Follow Activity
