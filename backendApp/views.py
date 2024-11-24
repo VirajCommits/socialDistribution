@@ -3171,6 +3171,10 @@ def inbox_handler(request, author_serial):
                     object=target_author,
                     defaults={'summary': data.get('summary', '')}
                 )
+                if created:
+                    return Response({"status": "success", "message": "Follow request sent successfully."}, status=status.HTTP_201_CREATED)
+                else:
+                    return Response({"status": "info", "message": "Follow request already exists."}, status=status.HTTP_200_OK)
 
             else:
                 # Unsupported activity type
