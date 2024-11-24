@@ -1025,7 +1025,7 @@ def send_data_to_remote_node(url, data , uuid):
 
     # The endpoint is 'inbox/'
     print("This is the data i got:(Viraj) " , data)
-    endpoint = 'authors/${uuid}/inbox/'
+    endpoint = 'service/api/authors/${uuid}/inbox/'
 
     # Send the POST request via make_node_request
     response = make_node_request(
