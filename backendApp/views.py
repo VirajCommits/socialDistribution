@@ -1251,8 +1251,8 @@ def get_follow_requests(request):
     tags=["Authors"],
 )
 @api_view(["GET"])
-@authentication_classes([JWTAuthentication, NodeBasicAuthentication])
-@permission_classes([IsAuthenticatedOrNode])
+@authentication_classes([JWTAuthentication])
+@permission_classes([])
 def get_all_authors(request):
     try:
         current_author = request.user
@@ -2766,7 +2766,7 @@ class PublicPostsView(APIView):
 
 @api_view(['GET'])
 @authentication_classes([NodeBasicAuthentication])
-@permission_classes([IsAuthenticatedOrNode])
+@permission_classes([])
 def verify_node_connection(request):
     try:
         # Log incoming request details

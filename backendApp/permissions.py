@@ -17,13 +17,16 @@ class AllowAuthenticatedOrAllowAny(BasePermission):
 
 class IsAuthenticatedOrNode(permissions.BasePermission):
     def has_permission(self, request, view):
-        print("YES!")
+        print("Checking permissions...")
+        
         # Allow if user is authenticated normally
-        if isinstance(request.user, RemoteNode):
+        if request.user.is_authenticated:
             return True
         
-        # Then check for regular authenticated user
-        if hasattr(request.user, 'is_authenticated'):
-            return request.user.is_authenticated
+        # Allow if the request is coming from a RemoteNode
+        # Assuming you have a way to identify the RemoteNode, e.g., through a specific header or attribute
+        # This part needs to be defined based on your application's logic
+        if hasattr(request, 'remote_node') and isinstance(request.remote_node, RemoteNode):
+            return True
             
         return False
