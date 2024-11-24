@@ -992,6 +992,8 @@ def accept_follow_request(request, author_uuid):
         # Send the constructed object to the remote node
         send_data_to_remote_node(requesting_author.host, post_data , requesting_author.uuid)
 
+        print("DATA SENT TO REMOTE NODE: ============================== ")
+
     # Accept the request
     follow_request.accepted = True
     follow_request.save()
