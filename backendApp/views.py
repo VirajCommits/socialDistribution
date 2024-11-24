@@ -984,10 +984,15 @@ def accept_follow_request(request, author_uuid):
     post_data = construct_posts_data(current_author)
     print(post_data , requesting_author.host , current_author.host)
     if requesting_author.host != current_author.host:
+
+
+        print("ACCEPTED NOW SENDING DATA" , post_data)
         # post_data = construct_posts_data(current_author)
 
         # Send the constructed object to the remote node
         send_data_to_remote_node(requesting_author.host, post_data , requesting_author.uuid)
+
+        print("DATA SENT TO REMOTE NODE: ============================== ")
 
     # Accept the request
     follow_request.accepted = True
@@ -1025,7 +1030,7 @@ def send_data_to_remote_node(url, data , uuid):
 
     # The endpoint is 'inbox/'
     print("This is the data i got:(Viraj) " , data)
-    endpoint = 'service/api/authors/${uuid}/inbox/'
+    endpoint = f'service/api/authors/{uuid}/inbox/'
 
     # Send the POST request via make_node_request
     response = make_node_request(
@@ -2856,6 +2861,8 @@ def inbox_handler(request, author_serial):
 
         try:
             if item_type == "posts":
+
+                print("WE ARE INSIDE INBOX POSTS")
                 # Handle multiple posts
                 print("Handling multiple posts.")
                 posts_data = data.get('src', [])
@@ -3172,7 +3179,6 @@ def inbox_handler(request, author_serial):
                     object=target_author,
                     defaults={'summary': data.get('summary', '')}
                 )
-
                 if created:
                     return Response({"status": "success", "message": "Follow request sent successfully."}, status=status.HTTP_201_CREATED)
                 else:

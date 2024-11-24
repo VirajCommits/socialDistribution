@@ -16,6 +16,7 @@ def make_node_request(base_url, endpoint, method='GET', data=None):
         node = ToWhichItsConnected.objects.get(url=base_url, active=True)
 
         print("&&&&&&&&&&" , node.username , node.password)
+        print(data)
         
         # Create auth header with node's credentials
         credentials = base64.b64encode(
