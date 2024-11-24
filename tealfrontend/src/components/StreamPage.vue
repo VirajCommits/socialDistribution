@@ -231,8 +231,9 @@ export default {
         // Use environment variable or fallback for WebSocket URL
         const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const wsBaseUrl = process.env.NODE_ENV === 'production'
-          ? 'window.location.hostname'
+          ? window.location.hostname 
           : 'localhost:8000';
+        // const wsBaseUrl = window.location.hostname
         
         this.socket = new WebSocket(
           `${wsProtocol}//${wsBaseUrl}/ws/notifications/${uuid}/`
@@ -399,6 +400,25 @@ export default {
           console.error("Error accepting follow request:", error);
         });
     },
+    sendPostsToNode(followerUuid) {
+      axios
+        .post(
+          `/authors/${this.currentUserId}/send_posts_to_node/`,
+          { followerUuid },
+          {
+            headers: {
+              Authorization: `Token ${localStorage.getItem("token")}`,
+            },
+          }
+        )
+        .then((response) => {
+          console.log("Posts sent successfully:", response.data);
+        })
+        .catch((error) => {
+          console.error("Error sending posts to node:", error);
+        });
+    },
+
 
     declineFollowRequest(uuid) {
       axios
