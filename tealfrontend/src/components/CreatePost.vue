@@ -206,8 +206,9 @@ export default {
         switch (this.form.visibility) {
           case "PUBLIC": {
             // Only send notifications to other authors' inboxes
-            console.log("These are all the authors:" , authors)
-            for (const author of authors) {
+
+            const followers = await this.getFollowers(currentAuthorId);
+            for (const author of followers) {
               const authorId = author.id.split("/").pop(-1);
               
               if (
