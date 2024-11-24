@@ -993,7 +993,6 @@ def accept_follow_request(request, author_uuid):
         send_data_to_remote_node(requesting_author.host, post_data , requesting_author.uuid)
 
         print("DATA SENT TO REMOTE NODE: ============================== ")
-        return Response({"detail": "Follow request accepted."}, status=status.HTTP_200_OK)
 
     # Accept the request
     follow_request.accepted = True
