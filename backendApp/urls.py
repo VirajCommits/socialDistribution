@@ -115,11 +115,11 @@ urlpatterns = [
         views.stream_page,
         name="stream_page",
     ),
-    # path(
-    #     "service/api/authors/<str:author_id>/unfollow/",
-    #     views.unfollow_author,
-    #     name="unfollow_author",
-    # ),
+    path(
+        "service/api/authors/<str:author_id>/unfollow/",
+        views.unfollow_author,
+        name="unfollow_author",
+    ),
     path(
         "service/api/posts/<uuid:post_id>/",
         views.get_post_by_link,
@@ -216,7 +216,8 @@ urlpatterns = [
         views.sync_remote_authors,
         name="sync_remote_authors",
     ),
-    path('test-node-connection/', views.test_node_connection, name=' '),
+    
+    path('service/api/connected-nodes/', views.connected_nodes, name='connected_nodes'),
     path('verify-connection/', views.verify_node_connection, name='verify_node_connection'),
     path(
         "posts/<uuid:post_id>/",

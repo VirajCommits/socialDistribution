@@ -456,14 +456,56 @@ export default {
     },
     async confirmUnfollow() {
       try {
-        const authorUUID = this.selectedAuthor.id.split("/").pop();
-        await axios.delete(
-          `/authors/${authorUUID}/unfollow/`,
-          null,
-          {
-            headers: { Authorization: `Token ${this.token}` },
-          }
-        );
+        const authorId = this.selectedAuthor.id;
+        const targetUuid = authorId.split("/").pop();
+        const targethost = authorId.split('/authors/')[0];
+
+        // Fetch the list of connected nodes
+        const response = await axios.get('/connected-nodes/', {
+          headers: { Authorization: `Token ${this.token}` },
+        });
+        const connectedNodes = response.data;
+
+        const targetNode = connectedNodes.find(node => node.url === targethost);
+        if (targetNode) {
+          // For remote nodes, send to their inbox
+          const inboxEndpoint = `${targethost}/service/api/authors/${targetUuid}/inbox/`;
+          console.log('Sending unfollow request to remote inbox:', {
+            endpoint: inboxEndpoint,
+            credentials: {
+              username: targetNode.username,
+              password: '********' // masked for security
+            }
+          });
+
+          // Prepare the unfollow activity object
+          const unfollowActivity = {
+            type: "unfollow",
+            actor: {
+              id: localStorage.getItem("id"),
+              host: window.location.origin,
+              displayName: localStorage.getItem("displayName"),
+            },
+            object: {
+              id: authorId
+            }
+          };
+
+          await axios.post(inboxEndpoint, unfollowActivity, {
+            headers: {
+              'node-username': targetNode.username,
+              'node-password': targetNode.password,
+            },
+          });
+        } else {
+          // For local authors, use the existing endpoint
+          await axios.delete(
+            `/authors/${targetUuid}/unfollow/`,
+            {
+              headers: { Authorization: `Token ${this.token}` },
+            }
+          );
+        }
 
         this.showNotification(
           "Successfully unfollowed author",

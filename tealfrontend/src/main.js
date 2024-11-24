@@ -8,8 +8,8 @@ import axios from 'axios';
 // const baseURL = process.env.VUE_APP_API_BASE_URL || 'http://localhost:8000/service/api';
 const isProduction = window.location.hostname.includes('herokuapp.com');
 const baseURL = isProduction
-  ? 'https://social-distribution-1-3adb84f120d9.herokuapp.com/service/api'
-  : 'http://localhost:8000/service/api';
+  ? 'https://teal-rakshit-a972530cc317.herokuapp.com/service/api'
+  : 'http://127.0.0.1:8000/service/api';
 
 // Axios configuration
 axios.defaults.headers.common['Content-Type'] = 'application/json';
