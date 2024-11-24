@@ -34,14 +34,6 @@
           <p>Friends</p>
         </div>
       </div>
-      <button
-        class="follow-button"
-        :class="{ pending: isPending, following: isFollowing }"
-        @click="handleFollowAction"
-        :disabled="isPending"
-      >
-        {{ followButtonText }}
-      </button>
     </div>
 
     <!-- Public Posts Section -->
@@ -110,9 +102,6 @@ export default {
         following: 0,
         friends: 0,
       },
-      isFollowing: false,
-      isPending: false,
-      token: localStorage.getItem("token"),
       defaultProfileImage: "https://i.pinimg.com/originals/f1/0f/f7/f10ff70a7155e5ab666bcdd1b45b726d.jpg",
       publicPosts: [],
       loadingPosts: true,
@@ -123,7 +112,6 @@ export default {
     await this.fetchPublicProfile(authorUuid);
     await this.fetchStats(authorUuid);
     await this.fetchPublicPosts(authorUuid);
-    await this.checkFollowStatus(authorUuid);
   },
   methods: {
     extractUuid(authorId) {
@@ -156,51 +144,6 @@ export default {
         this.loadingPosts = false;
       }
     },
-    async checkFollowStatus(authorUuid) {
-      try {
-        const response = await axios.get(`/authors/${authorUuid}/relationship/`, {
-          headers: { Authorization: `Token ${this.token}` },
-        });
-
-        const relationship = response.data;
-        this.isFollowing = relationship.is_following;
-        this.isPending = relationship.is_pending;
-      } catch (error) {
-        console.error("Error checking follow status:", error);
-      }
-    },
-    async handleFollowAction() {
-      const authorUuid = this.extractUuid(this.authorId);
-
-      try {
-        if (this.isFollowing) {
-          // Unfollow action
-          await axios.delete(`/authors/${authorUuid}/unfollow/`, {
-            headers: { Authorization: `Token ${this.token}` },
-          });
-          this.isFollowing = false;
-          this.stats.followers--;
-          this.showNotification("Successfully unfollowed the user", "success");
-        } else if (!this.isPending) {
-          // Follow action
-          await axios.post(
-            `/authors/${authorUuid}/send_follow_request/`,
-            null,
-            {
-              headers: { Authorization: `Token ${this.token}` },
-            }
-          );
-          this.isPending = true;
-          this.showNotification("Follow request sent!", "success");
-        }
-      } catch (error) {
-        this.showNotification(
-          "Failed to process follow/unfollow action",
-          "error"
-        );
-        console.error("Error handling follow action:", error);
-      }
-    },
     showNotification(message, type = "success") {
       // Placeholder for notification system (console for now)
       console.log(type.toUpperCase() + ": " + message);
@@ -218,13 +161,6 @@ export default {
     },
     goBack() {
       this.$router.go(-1);
-    },
-  },
-  computed: {
-    followButtonText() {
-      if (this.isFollowing) return "Unfollow";
-      if (this.isPending) return "Pending...";
-      return "Follow";
     },
   },
 };
