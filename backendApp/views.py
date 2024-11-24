@@ -3242,6 +3242,8 @@ def inbox_handler(request, author_serial):
                 return Response({'message': 'Post added to inbox and created locally.'}, status=status.HTTP_201_CREATED)
 
             elif item_type == 'like':
+                print("WE ARE INSIDE THE LIKE SECTION ...IMPLEMENT THE INBOX!")
+                return Response({'message': 'Comment added to inbox and created locally.'}, status=status.HTTP_201_CREATED)
                 pass
 
             elif item_type == 'comment':
