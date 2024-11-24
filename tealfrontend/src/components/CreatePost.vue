@@ -252,7 +252,7 @@ export default {
     async sendNotificationToInbox(authorId, postData, host) {
       try {
         const inboxUrl = `${host}service/api/authors/${authorId}/inbox/`;
-        const token = localStorage.getItem("token");
+
         console.log("POST DATA:" , postData , inboxUrl)
 
         const payload = {
@@ -276,10 +276,19 @@ export default {
           published: new Date().toISOString(),
           visibility: this.form.visibility,
         };
+
+        const targethost = authorId.split('/authors/')[0];
+        const response = await axios.get('/connected-nodes/', {
+          headers: { Authorization: `Token ${this.token}` },
+        });
+        const connectedNodes = response.data;
+
+        const targetNode = connectedNodes.find(node => node.url === targethost);
+        const credentials = btoa(`${targetNode.username}:${targetNode.password}`);
         console.log(payload)
         await axios.post(inboxUrl, payload, {
           headers: {
-            Authorization: `Token ${token}`,
+            Authorization: `Basic ${credentials}`,
             "Content-Type": "application/json",
           },
           withCredentials: true,
