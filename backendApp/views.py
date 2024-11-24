@@ -987,7 +987,7 @@ def accept_follow_request(request, author_uuid):
         # post_data = construct_posts_data(current_author)
 
         # Send the constructed object to the remote node
-        send_data_to_remote_node(requesting_author.host, post_data)
+        send_data_to_remote_node(requesting_author.host, post_data , requesting_author.uuid)
 
     # Accept the request
     follow_request.accepted = True
@@ -1009,7 +1009,7 @@ def accept_follow_request(request, author_uuid):
     )
 
     return Response({"detail": "Follow request accepted."}, status=status.HTTP_200_OK)
-def send_data_to_remote_node(url, data):
+def send_data_to_remote_node(url, data , uuid):
     """
     Send data to the remote node with authentication using the ToWhichItsConnected model.
     """
@@ -1025,7 +1025,7 @@ def send_data_to_remote_node(url, data):
 
     # The endpoint is 'inbox/'
     print("This is the data i got:(Viraj) " , data)
-    endpoint = 'authors/${}/inbox/'
+    endpoint = 'authors/${uuid}/inbox/'
 
     # Send the POST request via make_node_request
     response = make_node_request(
