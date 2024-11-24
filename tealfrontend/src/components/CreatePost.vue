@@ -211,6 +211,7 @@ export default {
             // Only send notifications to other authors' inboxes
 
             const followers = await this.getFollowers(currentAuthorId);
+            console.log("Followers are:" , followers)
             for (const author of followers) {
               const authorId = author.id.split("/").pop(-1);
               
