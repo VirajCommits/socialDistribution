@@ -232,8 +232,9 @@ export default {
             case "PUBLIC": {
                 // Visible to everyone except the current author
                 targetAuthors = authors.filter(
-                    (author) => author.id.split("/").pop() !== currentAuthorId
+                    (author) => author.uuid !== currentAuthorId
                 );
+                console.log("TARGET AUTHORS IN COMMENT SECTION:" , targetAuthors)
                 break;
             }
             case "FRIENDS": {
