@@ -3114,7 +3114,7 @@ def inbox_handler(request, author_serial):
                 return Response({'message': 'Posts added to inbox and created locally.'}, status=status.HTTP_201_CREATED)
 
             if item_type == 'post':
-                # to create a post, basically call this url: api/authors/<path:author_serial>/posts/
+                # to create a post, basically call this url: service/api/authors/<path:author_serial>/posts/
                 # i need the author_serial from data
                 auth_serial = data.get("author_id")
                 hostname = data["author"]["host"]
@@ -3123,91 +3123,23 @@ def inbox_handler(request, author_serial):
                 api_url = f"{hostname}api/authors/{auth_serial}/posts/"
                 print("complete url:" , api_url)
 
-                # Get or create the post
-                post, post_created = Post.objects.get_or_create(
-                    id=post_uuid,
-                    defaults={
-                        'author': author,
-                        'title': data.get('title', ''),
-                        'description': data.get('description', ''),
-                        'contentType': data.get('contentType', 'text/plain'),
-                        'content': data.get('content', ''),
-                        'published': data.get('published', timezone.now()),
-                        'visibility': data.get('visibility', 'PUBLIC'),
-                        'page': data.get('page', ''),
-                    }
-                )
+                # Prepare the body for creating a post
+                post_data = {
+                    'title': data.get('title'),
+                    'description': data.get('description', ''),
+                    'contentType': data.get('contentType', 'text/plain'),
+                    'visibility': data.get('visibility', 'PUBLIC'),
+                    'content': data.get('content', ''),
+                }
 
-                # If the post exists, update its info
-                if not post_created:
-                    post.title = data.get('title', post.title)
-                    post.description = data.get('description', post.description)
-                    post.contentType = data.get('contentType', post.contentType)
-                    post.content = data.get('content', post.content)
-                    post.published = data.get('published', post.published)
-                    post.visibility = data.get('visibility', post.visibility)
-                    post.page = data.get('page', post.page)
-                    post.save()
+                # Check if there is an image to upload
+                if 'image' in data:
+                    post_data['image'] = data['image']  # Assuming the image is included in the data
 
-                # Handle comments if any
-                comments_data = data.get('comments', {}).get('src', [])
-                for comment_data in comments_data:
-                    # Process each comment (similar logic as before)
-                    comment_author_data = comment_data.get('author', {})
-                    comment_author_id = comment_author_data.get('id')
-                    if not comment_author_id:
-                        continue  # Skip comments without author ID
-
-                    # Parse comment author UUID
-                    comment_author_uuid = comment_author_id.rstrip('/').split('/')[-1]
-
-                    # Get or create the comment author
-                    comment_author, ca_created = Author.objects.get_or_create(
-                        uuid=comment_author_uuid,
-                        defaults={
-                            'displayName': comment_author_data.get('displayName', ''),
-                            'host': comment_author_data.get('host', ''),
-                            'page': comment_author_data.get('page', ''),
-                            'github': comment_author_data.get('github', ''),
-                            'profileImage': comment_author_data.get('profileImage', ''),
-                        }
-                    )
-
-                    # If the author exists, update their info
-                    if not ca_created:
-                        comment_author.displayName = comment_author_data.get('displayName', comment_author.displayName)
-                        comment_author.host = comment_author_data.get('host', comment_author.host)
-                        comment_author.page = comment_author_data.get('page', comment_author.page)
-                        comment_author.github = comment_author_data.get('github', comment_author.github)
-                        comment_author.profileImage = comment_author_data.get('profileImage', comment_author.profileImage)
-                        comment_author.save()
-
-                    # Process the comment
-                    comment_id = comment_data.get('id')
-                    if not comment_id:
-                        continue  # Skip comments without ID
-
-                    # Parse comment UUID
-                    comment_uuid = comment_id.rstrip('/').split('/')[-1]
-
-                    # Get or create the comment
-                    comment, comment_created = Comment.objects.get_or_create(
-                        id=comment_uuid,
-                        defaults={
-                            'post': post,
-                            'author': comment_author,
-                            'content': comment_data.get('comment', ''),
-                            'contentType': comment_data.get('contentType', 'text/plain'),
-                            'published': comment_data.get('published', timezone.now()),
-                        }
-                    )
-
-                    # If the comment exists, update its info
-                    if not comment_created:
-                        comment.content = comment_data.get('comment', comment.content)
-                        comment.contentType = comment_data.get('contentType', comment.contentType)
-                        comment.published = comment_data.get('published', comment.published)
-                        comment.save()
+                response = requests.post(api_url, json=post_data, headers={
+                    'Authorization': f"Token {data.get('token')}",  # Ensure this line is correctly indented
+                    'Content-Type': 'application/json'
+                })
 
                 return Response({'message': 'Post added to inbox and created locally.'}, status=status.HTTP_201_CREATED)
 
@@ -3707,7 +3639,7 @@ def send_follow_request_to_remote_authors(request, author_serial):
         follow_activity_copy['object']['host'] = node.url.rstrip('/')
 
         # Define the endpoint for the target node's inbox
-        endpoint = f"/api/authors/{author_uuid}/inbox/"
+        endpoint = f"api/authors/{author_uuid}/inbox/"
 
         # Send the follow request to the remote node's inbox using make_node_request
         response = make_node_request(
