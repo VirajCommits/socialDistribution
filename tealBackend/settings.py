@@ -74,12 +74,14 @@ MIDDLEWARE = [
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
-    "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware"
 ]
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework_simplejwt.authentication.JWTAuthentication",  # Use JWT authentication
+        'rest_framework.authentication.SessionAuthentication',
+        'backendApp.authentication.NodeBasicAuthentication',
         'rest_framework.authentication.SessionAuthentication',
         'backendApp.authentication.NodeBasicAuthentication',
     ],
@@ -94,6 +96,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:8000",  # Backend development server
     "https://social-distribution-1-3adb84f120d9.herokuapp.com",  # Production domain
     'https://teal-rakshit-a972530cc317.herokuapp.com',
+    'https://teal-rakshit-a972530cc317.herokuapp.com',
     "https://social-sanket-603a86c4b610.herokuapp.com",
     "https://teal-pranav-0e8aa7849ad7.herokuapp.com",
     "http://127.0.0.1:8000",  # Localhost alternative
@@ -102,6 +105,7 @@ CORS_ALLOW_CREDENTIALS = True
 
 # CSRF Trusted Origins
 CSRF_TRUSTED_ORIGINS = [
+    'https://teal-rakshit-a972530cc317.herokuapp.com',
     'https://teal-rakshit-a972530cc317.herokuapp.com',
     "https://social-distribution-1-3adb84f120d9.herokuapp.com",
     "https://social-sanket-603a86c4b610.herokuapp.com",

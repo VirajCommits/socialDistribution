@@ -15,7 +15,7 @@ const baseURL = isProduction
 axios.defaults.headers.common['Content-Type'] = 'application/json';
 axios.defaults.withCredentials = true;
 axios.defaults.baseURL = baseURL;
-console.log("This is the actual env:", process.env.NODE_ENV);
+
 console.log('Environment:', process.env.NODE_ENV === 'production' ? 'Production' : 'Development');
 console.log('Using API URL:', baseURL);
 
@@ -30,6 +30,8 @@ axios.interceptors.request.use(
       // console.log('Token found and added to request');
     } else {
       // console.log('No token found in localStorage');
+      localStorage.removeItem('token');
+      router.push('/login');
     }
     return config;
   },

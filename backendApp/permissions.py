@@ -24,6 +24,8 @@ class IsAuthenticatedOrNode(permissions.BasePermission):
         if isinstance(request.user, RemoteNode):
             print("Authenticated as RemoteNode")
             return True
+
+        print("^^^^^^^^^^^^^^^^^^^^^" , request.user)
         
         # Check if the user is a regular authenticated user
         if hasattr(request.user, 'is_authenticated') and request.user.is_authenticated:
