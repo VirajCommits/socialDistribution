@@ -3245,8 +3245,64 @@ def inbox_handler(request, author_serial):
                 pass
 
             elif item_type == 'comment':
-                pass
+                data = request.data
+                print("DATA IN INBOX COMMENT: ============" , data)
+                print("WE ARE INSIDE INBOX COMMENT")
+                try:
+                    # Extract necessary data
+                    comment_data = request.data
+                    
+                    # Get or create the comment author
+                    author_data = comment_data.get('author', {})
+                    author_id = author_data.get('id')
+                    author_uuid = author_id.rstrip('/').split('/')[-1]
+                    
+                    author, _ = Author.objects.get_or_create(
+                        uuid=author_uuid,
+                        defaults={
+                            'displayName': author_data.get('displayName', ''),
+                            'host': author_data.get('host', ''),
+                            'page': author_data.get('page', ''),
+                            'github': author_data.get('github', ''),
+                            'profileImage': author_data.get('profileImage', '')
+                        }
+                    )
 
+                    # Get the post
+                    post_data = comment_data.get('post', {})
+                    post_id = post_data.get('id')
+                    post = get_object_or_404(Post, id=post_id)
+
+                    # Create the comment
+                    comment, created = Comment.objects.get_or_create(
+                        id=comment_data.get('id'),
+                        defaults={
+                            'post': post,
+                            'author': author,
+                            'content': comment_data.get('content', ''),
+                            'contentType': comment_data.get('contentType', 'text/plain'),
+                            'published': comment_data.get('published', timezone.now())
+                        }
+                    )
+
+                    # Add to inbox
+                    inbox.comments.add(comment)
+
+                    return Response(
+                        {'message': 'Comment added to inbox successfully.'}, 
+                        status=status.HTTP_201_CREATED
+                    )
+
+                except Post.DoesNotExist:
+                    return Response(
+                        {'error': 'Referenced post does not exist'}, 
+                        status=status.HTTP_404_NOT_FOUND
+                    )
+                except Exception as e:
+                    return Response(
+                        {'error': str(e)}, 
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
             elif item_type == 'follow':
                 # Handle Follow Activity
                 print("Handling follow request.")
