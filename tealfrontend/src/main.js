@@ -5,11 +5,11 @@ import router from './router/index.js';
 import axios from 'axios';
 
 // Get the base URL from the environment variable or default to localhost
-// const baseURL = process.env.VUE_APP_API_BASE_URL || 'http://localhost:8000/service/api';
+// const baseURL = process.env.VUE_APP_API_BASE_URL || 'http://localhost:8000/api';
 const isProduction = window.location.hostname.includes('herokuapp.com');
 const baseURL = isProduction
-  ? 'https://social-distribution-1-3adb84f120d9.herokuapp.com/service/api'
-  : 'http://127.0.0.1:8000/service/api';
+  ? 'https://social-distribution-1-3adb84f120d9.herokuapp.com/api'
+  : 'http://127.0.0.1:8000/api';
 
 // Axios configuration
 axios.defaults.headers.common['Content-Type'] = 'application/json';

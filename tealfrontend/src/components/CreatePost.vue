@@ -198,7 +198,7 @@ export default {
           },
         });
         const authors = authorsResponse.data;
-        console.log(authors)
+        console.log("AUTHORS IN CREATE POST:" , authors)
         const currentAuthorId = this.user.id.split("/").pop();
 
         // Track which authors have received the notification
@@ -253,7 +253,7 @@ export default {
     },
     async sendNotificationToInbox(authorId, postData, host) {
       try {
-        const inboxUrl = `${host}service/api/authors/${authorId}/inbox/`;
+        const inboxUrl = `${host}api/authors/${authorId}/inbox/`;
 
         console.log("POST DATA:" , postData , inboxUrl)
 

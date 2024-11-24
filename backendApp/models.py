@@ -134,7 +134,7 @@ class Post(models.Model):
         self.save()
 
     def get_post_url(self):
-        return f"{self.author.host}service/api/posts/{self.id}/link/"
+        return f"{self.author.host}api/posts/{self.id}/link/"
 
 
 class FollowRequest(models.Model):

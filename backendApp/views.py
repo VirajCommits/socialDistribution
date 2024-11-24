@@ -1031,7 +1031,7 @@ def send_data_to_remote_node(url, data , uuid):
 
     # The endpoint is 'inbox/'
     print("This is the data i got:(Viraj) " , data)
-    endpoint = f'service/api/authors/{uuid}/inbox/'
+    endpoint = f'api/authors/{uuid}/inbox/'
 
     # Send the POST request via make_node_request
     response = make_node_request(
@@ -2811,8 +2811,8 @@ def test_node_connection(request):
             try:
                  # Test outgoing connection (us -> them)
                 outgoing_url = f"{node.url}"
-                # endpoint = 'service/api/authors/931b3149-9101-4bb6-a78d-3350fdb70615/posts/all/'
-                endpoint = 'service/api/authors/931b3149-9101-4bb6-a78d-3350fdb70615/posts/all'
+                # endpoint = 'api/authors/931b3149-9101-4bb6-a78d-3350fdb70615/posts/all/'
+                endpoint = 'api/authors/931b3149-9101-4bb6-a78d-3350fdb70615/posts/all'
                 outgoing_response = make_node_request(base_url=outgoing_url, endpoint=endpoint)
                 
                 results.append({
@@ -3114,41 +3114,14 @@ def inbox_handler(request, author_serial):
                 return Response({'message': 'Posts added to inbox and created locally.'}, status=status.HTTP_201_CREATED)
 
             if item_type == 'post':
-                print("WE ARE INSIDE SINGLE POST HANDLER")
-                # Handle a single post
-                author_data = data.get('author', {})
-                author_id = author_data.get('id')
-                if not author_id:
-                    return Response({'error': 'Author ID is required.'}, status=status.HTTP_400_BAD_REQUEST)
+                # to create a post, basically call this url: api/authors/<path:author_serial>/posts/
+                # i need the author_serial from data
+                auth_serial = data.get("author_id")
+                hostname = data["author"]["host"]
+                print("THIS IS THE HOSTNAME: " , hostname , auth_serial)
 
-                # Parse author UUID from the author_id URL
-                author_uuid = author_id.rstrip('/').split('/')[-1]
-
-                # Get or create the author
-                author, created = Author.objects.get_or_create(
-                    uuid=author_uuid,
-                    defaults={
-                        'displayName': author_data.get('displayName', ''),
-                        'host': author_data.get('host', ''),
-                        'page': author_data.get('page', ''),
-                        'github': author_data.get('github', ''),
-                        'profileImage': author_data.get('profileImage', ''),
-                    }
-                )
-
-                # If the author exists, update their info
-                if not created:
-                    author.displayName = author_data.get('displayName', author.displayName)
-                    author.host = author_data.get('host', author.host)
-                    author.page = author_data.get('page', author.page)
-                    author.github = author_data.get('github', author.github)
-                    author.profileImage = author_data.get('profileImage', author.profileImage)
-                    author.save()
-
-                # Now process the post
-                post_id = data.get('id')
-                if not post_id:
-                    return Response({'error': 'Post ID is required.'}, status=status.HTTP_400_BAD_REQUEST)
+                api_url = f"{hostname}api/authors/{auth_serial}/posts/"
+                print("complete url:" , api_url)
 
                 # Parse post UUID from the post_id URL
                 post_uuid = post_id.rstrip('/').split('/')[-1]
@@ -3305,6 +3278,7 @@ def inbox_handler(request, author_serial):
                         {'error': str(e)}, 
                         status=status.HTTP_400_BAD_REQUEST
                     )
+
             elif item_type == 'follow':
                 # Handle Follow Activity
                 print("Handling follow request.")
@@ -3465,7 +3439,7 @@ def sync_remote_authors(request):
             try:
                 # Fetch all authors from the remote node
                 base_url = node.url
-                endpoint = 'service/api/authors/'
+                endpoint = 'api/authors/'
 
                 response = make_node_request(
                     base_url=base_url,
@@ -3736,7 +3710,7 @@ def send_follow_request_to_remote_authors(request, author_serial):
         follow_activity_copy['object']['host'] = node.url.rstrip('/')
 
         # Define the endpoint for the target node's inbox
-        endpoint = f"/service/api/authors/{author_uuid}/inbox/"
+        endpoint = f"/api/authors/{author_uuid}/inbox/"
 
         # Send the follow request to the remote node's inbox using make_node_request
         response = make_node_request(
