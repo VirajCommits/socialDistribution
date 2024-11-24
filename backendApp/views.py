@@ -3552,7 +3552,7 @@ def send_follow_request_to_remote_authors(request, author_serial):
 
         # Send the follow request to the remote node's inbox using make_node_request
         response = make_node_request(
-            node=node,
+            node=node.url,
             endpoint=endpoint,
             method='POST',
             data=follow_activity_copy
