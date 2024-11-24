@@ -361,7 +361,7 @@ export default {
         console.log("TARGET HOST IN COMMENT SECTION:" , targethost)
 
         console.log("HOST IN COMMENT SECTION:" , targethost)
-        const targetNode = connected_nodes.find(node => node.url+'/' === targethost);
+        const targetNode = connected_nodes.find(node => node.url === targethost);
         console.log("TARGET NODE IN COMMENT SECTION:" , targetNode)
         const credentials = btoa(`${targetNode.username}:${targetNode.password}`);
 
