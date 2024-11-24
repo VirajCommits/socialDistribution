@@ -1985,7 +1985,7 @@ def check_relationship_status(request, author_uuid):
 @permission_classes([IsAuthenticated])
 def get_author_stats(request, author_uuid):
     try:
-        author = get_object_or_404(Author, uuid=author_serial)
+        author = get_object_or_404(Author, uuid=author_uuid)
         followers = author.followers.all()
         
         # Format each follower according to the specification
