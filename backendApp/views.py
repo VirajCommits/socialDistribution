@@ -2857,6 +2857,7 @@ def inbox_handler(request, author_serial):
         try:
             if item_type == "posts":
                 # Handle multiple posts
+                print("Handling multiple posts.")
                 posts_data = data.get('src', [])
                 for post_data in posts_data:
                     # Process each post individually
@@ -3171,7 +3172,7 @@ def inbox_handler(request, author_serial):
                     object=target_author,
                     defaults={'summary': data.get('summary', '')}
                 )
-                
+
                 if created:
                     return Response({"status": "success", "message": "Follow request sent successfully."}, status=status.HTTP_201_CREATED)
                 else:
