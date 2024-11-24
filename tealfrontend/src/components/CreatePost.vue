@@ -287,7 +287,7 @@ export default {
         console.log("CONNECTED NODES DATA:" , connected_nodes)
         console.log("TARGET HOST:" , targethost)
 
-        const targetNode = connected_nodes.find(node => node.url === targethost);
+        const targetNode = connected_nodes.find(node => node.url === host);
         console.log("TARGET NODE:" , targetNode)
         const credentials = btoa(`${targetNode.username}:${targetNode.password}`);
         console.log(payload)
