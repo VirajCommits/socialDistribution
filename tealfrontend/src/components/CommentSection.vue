@@ -286,6 +286,7 @@ export default {
 
         // Distribute the comment to the target authors
         for (const author of targetAuthors) {
+          console.log("AUTHOR IN COMMENT SECTION:" , author)
           const targethost = author.id.split('/authors/')[0];
           const authorId = author.id.split("/").pop();
           if (!processedAuthors.has(authorId)) {
@@ -309,6 +310,7 @@ export default {
      */
     async sendCommentToInbox(authorId, commentData, postData, targethost) {
       try {
+        console.log("SENDING COMMENT TO INBOX IN COMMENT SECTION:" , authorId, commentData, postData, targethost)
         const inboxUrl = `/authors/${authorId}/inbox/`;
 
         const payload = {
