@@ -215,6 +215,7 @@ export default {
           },
         });
         const authors = authorsResponse.data;
+        console.log("AUTHORS IN COMMENT SECTION:===========" , authors)
 
         // Current user's ID
         const currentAuthorId = this.authID;

@@ -198,6 +198,7 @@ export default {
           },
         });
         const authors = authorsResponse.data;
+        console.log("AUTHORS IN CREATE POST:" , authors)
         const currentAuthorId = this.user.id.split("/").pop();
 
         // Track which authors have received the notification
