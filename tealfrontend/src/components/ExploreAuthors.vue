@@ -187,6 +187,7 @@ export default {
 
           },
         });
+        console.log(response.data); 
         // Extract `username` from `author.id`
         this.authors = response.data.map((author) => ({
           ...author,
