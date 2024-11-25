@@ -3949,7 +3949,6 @@ def test_node_connection(request):
     },
     tags=["Inbox"],
 )
-@csrf_exempt
 @api_view(['POST', 'GET', 'DELETE'])
 def inbox_handler(request, author_serial):
     """
