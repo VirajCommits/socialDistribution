@@ -276,23 +276,22 @@ export default {
     };
 
     if (targetNode) {
-      const endpoint = `${targetNode.url}/api/authors/${targetUuid}/inbox/`;
+      // Define the endpoint on your server
+      const endpoint = `/authors/${targetUuid}/sendRemoteRequest/`;
+      // const csrfToken = Cookies.get("csrftoken"); // Get CSRF token from cookies
 
-        // Encode the remote node's credentials for Basic Auth
-        const credentials = `${targetNode.username}:${targetNode.password}`;
-        const encodedCredentials = btoa(credentials); // btoa is available in browsers
-
-        // Send the follow request to the remote node's inbox endpoint
-        await axios.post(
-          endpoint,
-          followActivity,
-          {
-            headers: {
-              Authorization: `Basic ${encodedCredentials}`,
-              'Content-Type': 'application/json',
-            }
+      // Send the follow request to your server's sendRemoteRequest endpoint
+      await axios.post(
+        endpoint,
+        followActivity,
+        {
+          headers: {
+            Authorization: `Token ${this.token}`,
+            'Content-Type': 'application/json',
+            
           }
-        );
+        }
+      );
 
       this.showNotification(
         "Follow request sent successfully!",
@@ -562,6 +561,7 @@ export default {
   },
 };
 </script>
+
 <style scoped>
 .explore-container {
   height: 100vh;
