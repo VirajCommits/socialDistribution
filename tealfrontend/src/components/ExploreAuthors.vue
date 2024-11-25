@@ -126,6 +126,8 @@
 
 <script>
 import axios from "axios";
+// import Cookies from 'js-cookie';
+
 
 export default {
   name: "ExploreAuthors",
@@ -177,10 +179,12 @@ export default {
       }
 
       try {
+        // const csrfToken = Cookies.get("csrftoken"); // Get CSRF token from cookies
         const response = await axios.get("/authors/", {
           headers: {
             Authorization: `Token ${this.token}`,
             "Content-Type": "application/json",
+
           },
         });
         // Extract `username` from `author.id`
@@ -270,6 +274,7 @@ export default {
     if (targetNode) {
       // Define the endpoint on your server
       const endpoint = `/authors/${targetUuid}/sendRemoteRequest/`;
+      // const csrfToken = Cookies.get("csrftoken"); // Get CSRF token from cookies
 
       // Send the follow request to your server's sendRemoteRequest endpoint
       await axios.post(
@@ -278,7 +283,8 @@ export default {
         {
           headers: {
             Authorization: `Token ${this.token}`,
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            
           }
         }
       );
@@ -290,11 +296,13 @@ export default {
       );
     } else {
       // For local authors, use your own endpoint
+      // const csrfToken = Cookies.get("csrftoken"); // Get CSRF token from cookies
       await axios.post(
         `/authors/${targetUuid}/send_follow_request/`,
         followActivity,
         {
-          headers: { Authorization: `Token ${this.token}` },
+          headers: { Authorization: `Token ${this.token}`},
+          
         }
       );
 
@@ -490,7 +498,7 @@ export default {
               id: authorId
             }
           };
-
+          // const csrfToken = Cookies.get("csrftoken"); // Get CSRF token from cookies
           await axios.post(inboxEndpoint, unfollowActivity, {
             headers: {
               'node-username': targetNode.username,
