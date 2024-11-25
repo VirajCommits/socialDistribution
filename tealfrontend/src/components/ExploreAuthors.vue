@@ -169,48 +169,49 @@ export default {
     },
     async fetchAuthors() {
       if (!this.token) {
-        this.showNotification(
-          "Authentication required",
-          "error",
-          "fas fa-lock"
-        );
+        this.showNotification("Authentication required", "error", "fas fa-lock");
         this.$router.push("/login");
         return;
       }
 
       try {
-        // const csrfToken = Cookies.get("csrftoken"); // Get CSRF token from cookies
         const response = await axios.get("/authors/", {
           headers: {
             Authorization: `Token ${this.token}`,
             "Content-Type": "application/json",
-
           },
         });
-        // Extract `username` from `author.id`
-        this.authors = response.data.map((author) => ({
-          ...author,
-          username: author.id.split("/").pop(),
-        }));
+
+        console.log(response.data); // This will help you understand the response format
+
+        // Handling different formats of response
+        if (Array.isArray(response.data)) {
+          this.authors = response.data.map((author) => ({
+            ...author,
+            username: author.id.split("/").pop(),
+          }));
+        } else if (response.data.authors && Array.isArray(response.data.authors)) {
+          this.authors = response.data.authors.map((author) => ({
+            ...author,
+            username: author.id.split("/").pop(),
+          }));
+        } else {
+          console.error("Unexpected data format:", response.data);
+          this.authors = [];
+        }
+
         await this.fetchPendingRequests();
       } catch (error) {
         console.error("Error fetching authors:", error);
         if (error.response?.status === 401) {
-          this.showNotification(
-            "Session expired. Please login again",
-            "error",
-            "fas fa-lock"
-          );
+          this.showNotification("Session expired. Please login again", "error", "fas fa-lock");
           this.$router.push("/login");
         } else {
-          this.showNotification(
-            "Failed to load authors",
-            "error",
-            "fas fa-exclamation-circle"
-          );
+          this.showNotification("Failed to load authors", "error", "fas fa-exclamation-circle");
         }
       }
     },
+
     goBack() {
       this.$router.push("/stream");
     },
