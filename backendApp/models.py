@@ -11,7 +11,7 @@ class Author(AbstractUser):
     type = models.CharField(max_length=6, default="author", editable=False)
     uuid = models.UUIDField(unique=True, editable=False, default=uuid.uuid4)
     id = models.URLField(primary_key=True, max_length=500)
-    host = models.URLField(default="https://social-distribution-1-3adb84f120d9.herokuapp.com/")
+    host = models.URLField(default="https://social-sanket-603a86c4b610.herokuapp.com/")
     displayName = models.CharField(max_length=255)
     github = models.URLField(blank=True)
     is_approved = models.BooleanField(default=False)
@@ -54,7 +54,6 @@ class Author(AbstractUser):
                 return path_parts[-1]  # The username should be the last part of the URL
         return None
 
-    
     def get_full_data(self):
         """Return the author data in the format required by the API"""
         return {
@@ -180,7 +179,6 @@ class Like(models.Model):
         return f"Like by {self.author.displayName} on {self.post.title if self.post else self.comment.id}"
 
 
-
 class InboxItem(models.Model):
     INBOX_ITEM_TYPES = [
         ('post', 'Post'),
@@ -279,7 +277,7 @@ class RemoteNode(models.Model):
     
     def str(self):
         return self.url
-    
+
 class ToWhichItsConnected(models.Model):
     url = models.URLField(unique=True)  # The base URL of the remote node
     username = models.CharField(max_length=255)  # Node's username
