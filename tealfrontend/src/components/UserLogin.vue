@@ -122,10 +122,12 @@ export default {
     },
     async syncAuthors(accessToken) {
       console.log("SYNCING POSTS!")
+      const csrfToken = Cookies.get("csrftoken"); // Get CSRF token from cookies
       try {
         const syncResponse = await axios.get("sync_remote_authors/", {
           headers: {
             'Authorization': `Basic ${accessToken}`,
+            "X-CSRFToken": csrfToken,
           },
         });
         console.log("Sync successful:", syncResponse.data);
