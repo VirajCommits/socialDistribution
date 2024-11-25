@@ -126,6 +126,8 @@
 import axios from "axios";
 import TurndownService from "turndown";
 import { marked } from "marked";
+import Cookies from 'js-cookie';
+
 
 export default {
   name: "EditPost",
@@ -425,11 +427,12 @@ export default {
         };
 
         console.log(`Sending update to inbox of author ${authorId}:`, payload);
-
+        const csrfToken = Cookies.get("csrftoken"); 
         await axios.post(inboxUrl, payload, {
           headers: {
             Authorization: `Token ${token}`,
             "Content-Type": "application/json",
+            "X-CSRFToken": csrfToken,
           },
           withCredentials: true,
         });
@@ -467,6 +470,7 @@ export default {
 <style scoped>
 /* Import Google Fonts */
 @import url("https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap");
+
 
 /* General Styles */
 .edit-post-container {
