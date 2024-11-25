@@ -4629,7 +4629,7 @@ def sync_remote_authors(request):
                 "status": "error",
                 "message": "No remote nodes found in the database. Please create one in the admin panel."
             }, status=status.HTTP_404_NOT_FOUND)
-
+        print(remote_nodes)
         results = []
         for node in remote_nodes:
             node_result = {
@@ -4648,11 +4648,11 @@ def sync_remote_authors(request):
                     endpoint=endpoint,
                 )
 
-                print("****************" , response)
+                print("****************" , response.data)
 
                 if response.status_code == 200:
                     print(response)
-                    data = response.authors.json()
+                    data = response.data.authors.json()
                     print(data)
                     # Adjust based on the remote node's response structure
                     remote_authors = data
