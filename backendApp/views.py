@@ -1116,7 +1116,7 @@ def get_all_posts(request, author_serial):
     tags=["Follow Requests"],
 )
 @api_view(["POST"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticatedOrNode])
 def send_follow_request(request, author_uuid):
     current_author = request.user  # The one sending the request
     # The one receiving the request
