@@ -1605,10 +1605,13 @@ def get_all_authors(request):
 
             author_data.append(serialized_author)
         author_data["type"] = "authors"
-        author_data["authors"] = author_data
+        response_data = {}
+        response_data["type"] = "authors"
+        response_data["authors"] = author_data
+        
 
 
-        return Response(author_data)
+        return Response(response_data)
     except Exception as e:
         import traceback
 
