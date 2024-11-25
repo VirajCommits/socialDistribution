@@ -4620,7 +4620,7 @@ def process_follow_request(request, follow_request):
 @permission_classes([IsAuthenticated])
 def sync_remote_authors(request):
 
-    print("INCOMING REQUEST BODY:" , request)
+    print("INCOMING REQUEST BODY:" ,)
     try:
         # Get all active remote nodes
         remote_nodes = ToWhichItsConnected.objects.filter(active=True)
@@ -4629,7 +4629,7 @@ def sync_remote_authors(request):
                 "status": "error",
                 "message": "No remote nodes found in the database. Please create one in the admin panel."
             }, status=status.HTTP_404_NOT_FOUND)
-        print(remote_nodes)
+
         results = []
         for node in remote_nodes:
             node_result = {
@@ -4648,12 +4648,12 @@ def sync_remote_authors(request):
                     endpoint=endpoint,
                 )
 
-                print("****************" , response.data)
+                print("****************" , response)
 
                 if response.status_code == 200:
                     print(response)
-                    data = response.data.authors.json()
-                    print(data)
+                    data = response.json()
+                    print(">>>>>>>>>>>>>>>>>>>>>>>>>" , data)
                     # Adjust based on the remote node's response structure
                     remote_authors = data
 
