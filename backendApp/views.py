@@ -4619,6 +4619,8 @@ def process_follow_request(request, follow_request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def sync_remote_authors(request):
+
+    print("INCOMING REQUEST BODY:" ,)
     try:
         # Get all active remote nodes
         remote_nodes = ToWhichItsConnected.objects.filter(active=True)
@@ -4647,6 +4649,7 @@ def sync_remote_authors(request):
                 )
 
                 if response.status_code == 200:
+                    print(response)
                     data = response.json()
                     # Adjust based on the remote node's response structure
                     remote_authors = data["authors"]
