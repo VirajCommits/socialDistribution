@@ -38,7 +38,7 @@ const routes = [
   {
     path: '/swagger',
     beforeEnter() {
-      window.location.href = 'https://teal-pranav-0e8aa7849ad7.herokuapp.com/swagger'; // Redirect to Swagger UI
+      window.location.href = 'https://social-distribution-1-3adb84f120d9.herokuapp.com/swagger'; // Redirect to Swagger UI
     },
   },
   {

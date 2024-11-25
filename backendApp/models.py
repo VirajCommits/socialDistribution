@@ -11,7 +11,7 @@ class Author(AbstractUser):
     type = models.CharField(max_length=6, default="author", editable=False)
     uuid = models.UUIDField(unique=True, editable=False, default=uuid.uuid4)
     id = models.URLField(primary_key=True, max_length=500)
-    host = models.URLField(default="https://teal-pranav-0e8aa7849ad7.herokuapp.com/")
+    host = models.URLField(default="https://social-distribution-1-3adb84f120d9.herokuapp.com/")
     displayName = models.CharField(max_length=255)
     github = models.URLField(blank=True)
     is_approved = models.BooleanField(default=False)
@@ -134,7 +134,7 @@ class Post(models.Model):
         self.save()
 
     def get_post_url(self):
-        return f"{self.author.host}service/api/posts/{self.id}/link/"
+        return f"{self.author.host}api/posts/{self.id}/link/"
 
 
 class FollowRequest(models.Model):

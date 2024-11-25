@@ -85,44 +85,85 @@ export default {
       }
     },
     async toggleLike() {
-      try {
-        const currentUser = JSON.parse(localStorage.getItem("user"));
-        const currentAuthorId = currentUser ? currentUser.id : null;
+  try {
+    const currentUser = JSON.parse(localStorage.getItem("user"));
+    const currentAuthorId = currentUser ? currentUser.id : null;
 
-        if (!currentAuthorId) {
-          this.errorMessage = "User not authenticated.";
-          return;
-        }
+    if (!currentAuthorId) {
+      this.errorMessage = "User not authenticated.";
+      return;
+    }
 
-        const apiUrl = this.commentId
-          ? `/comments/${this.commentId}/like/`
-          : `/posts/${this.postId}/like/`;
+    if (this.liked) {
+      console.warn("Unliking is not implemented.");
+      return;
+    }
 
-        if (this.liked) {
-          console.warn("Unliking is not implemented.");
-          return;
-        } else {
-          const payload = { author_id: currentAuthorId };
+    // Get the target item (post or comment) details
+    const targetItemUrl = this.commentId
+      ? `/comments/${this.commentId}/`
+      : `/posts/${this.postId}/`;
+    
+    const targetResponse = await axios.get(targetItemUrl);
+    const targetItem = targetResponse.data;
 
-          await axios.post(apiUrl, payload, {
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Token ${localStorage.getItem("token")}`,
-            },
-          });
+    // Get the author of the post/comment that is being liked
+    const targetAuthor = targetItem.author;
+    const targetAuthorId = targetAuthor.uuid;
+    const targetHost = targetAuthor.host;
 
-          this.liked = true;
-          if (this.commentId) {
-            this.commentLikeCount += 1;
-          } else {
-            this.postLikeCount += 1;
-          }
-        }
-      } catch (error) {
-        console.error("Error toggling like:", error.response || error);
-        this.errorMessage = "An error occurred while toggling the like.";
+    // Get connected nodes
+    const response = await axios.get('/connected-nodes/', {
+      headers: { Authorization: `Token ${localStorage.getItem("token")}` },
+    });
+    const connected_nodes = response.data;
+    const targetNode = connected_nodes.find(node => node.url === targetHost);
+
+    if (targetNode) {
+      // Prepare the like payload
+      const likePayload = {
+        type: "like",
+        id: crypto.randomUUID(),
+        author: {
+          type: "author",
+          id: currentUser.id,
+          host: currentUser.host,
+          displayName: currentUser.displayName,
+          page: currentUser.page,
+          github: currentUser.github,
+          profileImage: currentUser.profileImage,
+        },
+        object: this.commentId 
+          ? `/comments/${this.commentId}` 
+          : `/posts/${this.postId}`,
+        published: new Date().toISOString()
+      };
+
+      // Send to target author's inbox (the author of the post/comment being liked)
+      const inboxUrl = `${targetHost}/api/authors/${targetAuthorId}/inbox/`;
+      const credentials = btoa(`${targetNode.username}:${targetNode.password}`);
+
+      await axios.post(inboxUrl, likePayload, {
+        headers: {
+          Authorization: `Basic ${credentials}`,
+          "Content-Type": "application/json",
+        },
+        withCredentials: true,
+      });
+
+      // Update local state
+      this.liked = true;
+      if (this.commentId) {
+        this.commentLikeCount += 1;
+      } else {
+        this.postLikeCount += 1;
       }
-    },
+    }
+  } catch (error) {
+    console.error("Error toggling like:", error.response || error);
+    this.errorMessage = "An error occurred while toggling the like.";
+  }
+},
   },
 };
 </script>

@@ -26,8 +26,8 @@ schema_view = get_schema_view(
 
 urlpatterns = [
     # path("", views.defaultPath, name="defaultPath"),
-    path("service/api/signup/", views.signup, name="signup"),
-    path("service/api/login/", views.login, name="login"),
+    path("api/signup/", views.signup, name="signup"),
+    path("api/login/", views.login, name="login"),
     # Swagger paths
     path(
         "swagger/",
@@ -37,146 +37,146 @@ urlpatterns = [
     path("redoc/", schema_view.with_ui("redoc", cache_timeout=0), name="schema-redoc"),
     # API paths
     path(
-        "service/api/authors/<path:author_serial>/posts/",
+        "api/authors/<path:author_serial>/posts/",
         views.create_post,
         name="create_post",
     ),
     path(
-        "service/api/authors/<path:author_serial>/posts/all/",
+        "api/authors/<path:author_serial>/posts/all/",
         views.get_all_posts,
         name="get_all_posts",
     ),
     path(
-        "service/api/authors/<path:author_serial>/posts/<path:post_serial>",
+        "api/authors/<path:author_serial>/posts/<path:post_serial>",
         views.post_detail,
         name="post_detail",
     ),
     path(
-        "service/api/posts/<uuid:post_id>/comments/",
+        "api/posts/<uuid:post_id>/comments/",
         views.stream_page_comments,
         name="stream_page_comments",
     ),
     path(
-        "service/api/posts/<uuid:post_id>/likes/",
+        "api/posts/<uuid:post_id>/likes/",
         views.stream_page_likes,
         name="stream_page_likes",
     ),
     path(
-        "service/api/posts/<uuid:post_id>/comment/",
+        "api/posts/<uuid:post_id>/comment/",
         views.post_comment,
         name="post_comment",
     ),
-    path("service/api/posts/<uuid:post_id>/like/", views.like_post, name="like_post"),
+    path("api/posts/<uuid:post_id>/like/", views.like_post, name="like_post"),
     path(
-        "service/api/posts/<uuid:post_id>/repost/",
+        "api/posts/<uuid:post_id>/repost/",
         views.repost_post,
         name="repost_post",
     ),
     # Follow request paths
     path(
-        "service/api/authors/<uuid:author_uuid>/send_follow_request/",
+        "api/authors/<uuid:author_uuid>/send_follow_request/",
         views.send_follow_request,
         name="send_follow_request",
     ),
     path(
-        "service/api/authors/<uuid:author_uuid>/accept_follow_request/",
+        "api/authors/<uuid:author_uuid>/accept_follow_request/",
         views.accept_follow_request,
         name="accept_follow_request",
     ),
     path(
-        "service/api/authors/<uuid:author_uuid>/decline_follow_request/",
+        "api/authors/<uuid:author_uuid>/decline_follow_request/",
         views.decline_follow_request,
         name="decline_follow_request",
     ),
     path(
-        "service/api/authors/follow_requests/",
+        "api/authors/follow_requests/",
         views.get_follow_requests,
         name="get_follow_requests",
     ),
     path(
-        "service/api/authors/pending_requests/",
+        "api/authors/pending_requests/",
         views.get_pending_requests,
         name="get-pending-requests",
     ),
     path(
-        "service/api/authors/<uuid:author_uuid>/remove_follow_request/",
+        "api/authors/<uuid:author_uuid>/remove_follow_request/",
         views.remove_follow_request,
         name="remove-follow-request",
     ),
     # Fetch all authors path
     path(
-        "service/api/authors/",
+        "api/authors/",
         views.get_all_authors,
         name="get_all_authors",
     ),
     # Stream and follow-related paths
     path(
-        "service/api/authors/<path:author_id>/stream/",
+        "api/authors/<path:author_id>/stream/",
         views.stream_page,
         name="stream_page",
     ),
     path(
-        "service/api/authors/<str:author_id>/unfollow/",
+        "api/authors/<str:author_id>/unfollow/",
         views.unfollow_author,
         name="unfollow_author",
     ),
     path(
-        "service/api/posts/<uuid:post_id>/",
+        "api/posts/<uuid:post_id>/",
         views.get_post_by_link,
         name="get_post_by_link",
     ),
     path(
-        "service/api/authors/<uuid:author_uuid>/relationship/",
+        "api/authors/<uuid:author_uuid>/relationship/",
         views.check_relationship_status,
         name="check-relationship-status",
     ),
     path(
-        "service/api/authors/<uuid:author_uuid>/stats/",
+        "api/authors/<uuid:author_uuid>/stats/",
         views.get_author_stats,
         name="get-author-stats",
     ),
-    # path(
-    #     "service/api/authors/<uuid:author_uuid>/followers/",
-    #     views.get_author_followers,
-    #     name="get-author-followers",
-    # ),
     path(
-        "service/api/authors/<uuid:author_uuid>/following/",
+        "api/authors/<uuid:author_uuid>/followers/",
+        views.get_author_followers,
+        name="get-author-followers",
+    ),
+    path(
+        "api/authors/<uuid:author_uuid>/following/",
         views.get_author_following,
         name="get-author-following",
     ),
     path(
-        "service/api/authors/<uuid:author_uuid>/friends/",
+        "api/authors/<uuid:author_uuid>/friends/",
         views.get_author_friends,
         name="get-author-friends",
     ),
     path(
-        "service/api/comments/<uuid:comment_id>/like/",
+        "api/comments/<uuid:comment_id>/like/",
         views.like_comment,
         name="like_comment",
     ),
     path(
-        "service/api/comments/<uuid:comment_id>/likes/",
+        "api/comments/<uuid:comment_id>/likes/",
         views.comment_likes,
         name="comment_likes",
     ),
     path(
-        "service/api/authors/<uuid:author_uuid>/",
+        "api/authors/<uuid:author_uuid>/",
         views.update_author_profile,
         name="update_author_profile",
     ),
     path(
-        "service/api/authors/<uuid:author_uuid>/public/",
+        "api/authors/<uuid:author_uuid>/public/",
         views.PublicAuthorProfileView.as_view(),
         name="public-author-profile",
     ),
     path(
-        "service/api/authors/<uuid:author_uuid>/stats/public/",
+        "api/authors/<uuid:author_uuid>/stats/public/",
         views.PublicAuthorStatsView.as_view(),
         name="public-author-stats",
     ),
     path(
-        "service/api/authors/<uuid:author_uuid>/post/public/",
+        "api/authors/<uuid:author_uuid>/post/public/",
         views.PublicPostsView.as_view(),
         name="public-author-posts",
     ),
@@ -186,25 +186,25 @@ urlpatterns = [
     #     name="test_connection",
     # ),
     path(
-        'service/api/authors/<str:author_serial>/inbox/', 
+        'api/authors/<str:author_serial>/inbox/', 
         views.inbox_handler, 
         name='inbox'
     ),
 
     path(
-        'service/api/authors/<str:author_serial>/sendRemoteRequest/', 
+        'api/authors/<str:author_serial>/sendRemoteRequest/', 
         views.send_follow_request_to_remote_authors, 
         name='send_follow_request_to_remote_authors'
     ),
 
 
     path(
-    "service/api/authors/<path:author_serial>/followers/",
+    "api/authors/<path:author_serial>/followers/",
     views.followers_handler,
     name="followers_handler"
     ),
     path(
-        "service/api/authors/<path:author_serial>/followers/<path:foreign_author_fqid>/",
+        "api/authors/<path:author_serial>/followers/<path:foreign_author_fqid>/",
         views.specific_follower_handler,
         name="specific_follower_handler"
     ),
@@ -212,22 +212,22 @@ urlpatterns = [
         "stream", TemplateView.as_view(template_name="index.html"), name="stream"
     ),
     path(
-        "service/api/sync_remote_authors/",
+        "api/sync_remote_authors/",
         views.sync_remote_authors,
         name="sync_remote_authors",
     ),
     
-    path('service/api/connected-nodes/', views.connected_nodes, name='connected_nodes'),
+    path('api/connected-nodes/', views.connected_nodes, name='connected_nodes'),
     path('verify-connection/', views.verify_node_connection, name='verify_node_connection'),
     path(
         "posts/<uuid:post_id>/",
         TemplateView.as_view(template_name="index.html"),
         name="post_detail",
     ),
-    path('service/api/connected-nodes/', views.connected_nodes, name='connected_nodes'),
+    path('api/connected-nodes/', views.connected_nodes, name='connected_nodes'),
     # Catch-all route for Vue frontend
     re_path(
-        r"^(?!service/api|admin|swagger|static|media).*$",
+        r"^(?!api|admin|swagger|static|media).*$",
         TemplateView.as_view(template_name="index.html"),
     ),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
