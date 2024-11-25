@@ -561,7 +561,6 @@ export default {
   },
 };
 </script>
-
 <style scoped>
 .explore-container {
   height: 100vh;

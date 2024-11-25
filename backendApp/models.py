@@ -54,7 +54,6 @@ class Author(AbstractUser):
                 return path_parts[-1]  # The username should be the last part of the URL
         return None
 
-    
     def get_full_data(self):
         """Return the author data in the format required by the API"""
         return {
@@ -180,7 +179,6 @@ class Like(models.Model):
         return f"Like by {self.author.displayName} on {self.post.title if self.post else self.comment.id}"
 
 
-
 class InboxItem(models.Model):
     INBOX_ITEM_TYPES = [
         ('post', 'Post'),
@@ -283,7 +281,7 @@ class RemoteNode(models.Model):
     
     def str(self):
         return self.url
-    
+
 class ToWhichItsConnected(models.Model):
     url = models.URLField(unique=True)  # The base URL of the remote node
     username = models.CharField(max_length=255)  # Node's username

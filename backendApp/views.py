@@ -4857,7 +4857,7 @@ def construct_comment_likes_data(comment):
         likes_data["src"].append(like_data)
 
     return likes_data
-@csrf_exempt
+
 @api_view(['POST'])
 def send_follow_request_to_remote_authors(request, author_serial):
     """

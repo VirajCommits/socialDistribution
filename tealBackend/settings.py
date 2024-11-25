@@ -77,14 +77,13 @@ MIDDLEWARE = [
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
-        'backendApp.authentication.NodeBasicAuthentication',
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "backendApp.authentication.NodeBasicAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": [
         "backendApp.permissions.IsAuthenticatedOrNode",
         "rest_framework.permissions.IsAuthenticated",
-
-    ]
+    ],
 }
 # CORS Configuration
 CORS_ALLOWED_ORIGINS = [
