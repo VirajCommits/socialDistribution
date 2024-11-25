@@ -1604,7 +1604,6 @@ def get_all_authors(request):
             serialized_author["type"] = "author"
 
             author_data.append(serialized_author)
-        author_data["type"] = "authors"
         response_data = {}
         response_data["type"] = "authors"
         response_data["authors"] = author_data
