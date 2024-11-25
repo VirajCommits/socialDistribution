@@ -5,7 +5,7 @@ import router from './router/index.js';
 import axios from 'axios';
 
 // Get the base URL from the environment variable or default to localhost
-// const baseURL = process.env.VUE_APP_API_BASE_URL || 'http://localhost:8000/service/api';
+// const baseURL = process.env.VUE_APP_API_BASE_URL || 'http://localhost:8000/api';
 const isProduction = window.location.hostname.includes('herokuapp.com');
 const baseURL = isProduction
   ? 'https://teal-darrenkrz-c0d7276a7808.herokuapp.com/service/api'

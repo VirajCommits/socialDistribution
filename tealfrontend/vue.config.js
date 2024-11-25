@@ -8,7 +8,7 @@ module.exports = defineConfig({
   filenameHashing: true,
   devServer: {
     proxy: {
-      '/service/api': {
+      '/api': {
         target: 'http://localhost:8000',
         changeOrigin: true,
       },

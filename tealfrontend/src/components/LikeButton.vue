@@ -140,7 +140,7 @@ export default {
       };
 
       // Send to target author's inbox (the author of the post/comment being liked)
-      const inboxUrl = `${targetHost}/service/api/authors/${targetAuthorId}/inbox/`;
+      const inboxUrl = `${targetHost}/api/authors/${targetAuthorId}/inbox/`;
       const credentials = btoa(`${targetNode.username}:${targetNode.password}`);
 
       await axios.post(inboxUrl, likePayload, {
