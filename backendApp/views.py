@@ -3951,7 +3951,7 @@ def test_node_connection(request):
 )
 
 @csrf_exempt
-@authentication_classes([JWTAuthentication, NodeBasicAuthentication])
+@authentication_classes([NodeBasicAuthentication])
 @permission_classes([IsAuthenticatedOrNode])
 @api_view(['POST', 'GET', 'DELETE'])
 def inbox_handler(request, author_serial):
