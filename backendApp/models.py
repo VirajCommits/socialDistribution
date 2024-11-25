@@ -11,7 +11,7 @@ class Author(AbstractUser):
     type = models.CharField(max_length=6, default="author", editable=False)
     uuid = models.UUIDField(unique=True, editable=False, default=uuid.uuid4)
     id = models.URLField(primary_key=True, max_length=500)
-    host = models.URLField(default="https://social-distribution-1-3adb84f120d9.herokuapp.com/")
+    host = models.URLField(default="https://teal-darrenkrz-c0d7276a7808.herokuapp.com/")
     displayName = models.CharField(max_length=255)
     github = models.URLField(blank=True)
     is_approved = models.BooleanField(default=False)
@@ -219,32 +219,6 @@ class GitHubPost(models.Model):
 
     def __str__(self):
         return f"{self.author.displayName}'s GitHub {self.activity_type}"
-
-
-# class RemoteNode(models.Model):
-#     url = models.URLField(unique=True)
-#     username = models.CharField(max_length=255)
-#     _password = models.TextField()  # Store encrypted password
-#     connected = models.BooleanField(default=False)
-
-#     def set_password(self, raw_password):
-#         """Encrypt and save the password."""
-#         cipher = Fernet(settings.FERNET_KEY)
-#         self._password = cipher.encrypt(raw_password.encode()).decode()
-
-#     def get_password(self):
-#         """Decrypt and retrieve the password."""
-#         cipher = Fernet(settings.FERNET_KEY)
-#         return cipher.decrypt(self._password.encode()).decode()
-
-#     def save(self, *args, **kwargs):
-#         """Automatically encrypt the password if it's not encrypted before saving."""
-#         if self._password and not self._password.startswith("gAAAA"):
-#             self.set_password(self._password)
-#         super().save(*args, **kwargs)
-
-#     def __str__(self):
-#         return f"Remote Node at {self.url} (Connected: {self.connected})"
 
 class Inbox(models.Model):
     author = models.OneToOneField(

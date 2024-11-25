@@ -42,7 +42,9 @@ ALLOWED_HOSTS = env.list(
         "social-sanket-603a86c4b610.herokuapp.com",
         "teal-rakshit-a972530cc317.herokuapp.com",
         "teal-pranav-0e8aa7849ad7.herokuapp.com",
-        ".herokuapp.com",
+        "teal-darrenkrz-c0d7276a7808.herokuapp.com",
+        "project-teal-1-2b076456090f.herokuapp.com",
+        "*.herokuapp.com",
     ],
 )
 
@@ -94,7 +96,9 @@ CORS_ALLOWED_ORIGINS = [
     'https://teal-rakshit-a972530cc317.herokuapp.com',
     "https://social-sanket-603a86c4b610.herokuapp.com",
     "https://teal-pranav-0e8aa7849ad7.herokuapp.com",
-    "https://michael-heroku-9aacc16677e5.herokuapp.com",
+    "https://teal-darrenkrz-c0d7276a7808.herokuapp.com",
+    "https://project-teal-1-2b076456090f.herokuapp.com",
+    "*.herokuapp.com"
     "http://127.0.0.1:8000",  # Localhost alternative
 ]
 CORS_ALLOW_CREDENTIALS = True
@@ -106,6 +110,9 @@ CSRF_TRUSTED_ORIGINS = [
     "https://social-sanket-603a86c4b610.herokuapp.com",
     "https://michael-heroku-9aacc16677e5.herokuapp.com",
     "https://teal-pranav-0e8aa7849ad7.herokuapp.com",
+    "https://teal-darrenkrz-c0d7276a7808.herokuapp.com",
+    "https://project-teal-1-2b076456090f.herokuapp.com",
+    "*.herokuapp.com"
     "http://localhost:8080",
     "http://localhost:8000",
     "http://127.0.0.1:8000",
