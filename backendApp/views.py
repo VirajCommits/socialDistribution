@@ -3113,34 +3113,133 @@ def inbox_handler(request, author_serial):
                 return Response({'message': 'Posts added to inbox and created locally.'}, status=status.HTTP_201_CREATED)
 
             if item_type == 'post':
-                # to create a post, basically call this url: service/api/authors/<path:author_serial>/posts/
-                # i need the author_serial from data
-                auth_serial = data.get("author_id")
-                hostname = data["author"]["host"]
-                print("THIS IS THE HOSTNAME: " , hostname , auth_serial)
+                print("WE ARE INSIDE SINGLE POST HANDLER")
+                # Handle a single post
+                author_data = data.get('author', {})
+                author_id = author_data.get('id')
+                if not author_id:
+                    return Response({'error': 'Author ID is required.'}, status=status.HTTP_400_BAD_REQUEST)
 
-                api_url = f"{hostname}service/api/authors/{auth_serial}/posts/"
-                print("complete url:" , api_url)
+                # Parse author UUID from the author_id URL
+                author_uuid = author_id.rstrip('/').split('/')[-1]
 
-                # Prepare the body for creating a post
-                post_data = {
-                    'title': data.get('title'),
-                    'description': data.get('description', ''),
-                    'contentType': data.get('contentType', 'text/plain'),
-                    'visibility': data.get('visibility', 'PUBLIC'),
-                    'content': data.get('content', ''),
-                }
+                # Get or create the author
+                author, created = Author.objects.get_or_create(
+                    uuid=author_uuid,
+                    defaults={
+                        'displayName': author_data.get('displayName', ''),
+                        'host': author_data.get('host', ''),
+                        'page': author_data.get('page', ''),
+                        'github': author_data.get('github', ''),
+                        'profileImage': author_data.get('profileImage', ''),
+                    }
+                )
 
-                # Check if there is an image to upload
-                if 'image' in data:
-                    post_data['image'] = data['image']  # Assuming the image is included in the data
+                # If the author exists, update their info
+                if not created:
+                    author.displayName = author_data.get('displayName', author.displayName)
+                    author.host = author_data.get('host', author.host)
+                    author.page = author_data.get('page', author.page)
+                    author.github = author_data.get('github', author.github)
+                    author.profileImage = author_data.get('profileImage', author.profileImage)
+                    author.save()
 
-                response = requests.post(api_url, json=post_data, headers={
-                    'Authorization': f"Token {data.get('token')}",  # Ensure this line is correctly indented
-                    'Content-Type': 'application/json'
-                })
+                # Now process the post
+                post_id = data.get('id')
+                if not post_id:
+                    return Response({'error': 'Post ID is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+                # Parse post UUID from the post_id URL
+                post_uuid = post_id.rstrip('/').split('/')[-1]
+
+                # Get or create the post
+                post, post_created = Post.objects.get_or_create(
+                    id=post_uuid,
+                    defaults={
+                        'author': author,
+                        'title': data.get('title', ''),
+                        'description': data.get('description', ''),
+                        'contentType': data.get('contentType', 'text/plain'),
+                        'content': data.get('content', ''),
+                        'published': data.get('published', timezone.now()),
+                        'visibility': data.get('visibility', 'PUBLIC'),
+                        'page': data.get('page', ''),
+                    }
+                )
+
+                # If the post exists, update its info
+                if not post_created:
+                    post.title = data.get('title', post.title)
+                    post.description = data.get('description', post.description)
+                    post.contentType = data.get('contentType', post.contentType)
+                    post.content = data.get('content', post.content)
+                    post.published = data.get('published', post.published)
+                    post.visibility = data.get('visibility', post.visibility)
+                    post.page = data.get('page', post.page)
+                    post.save()
+
+                # Handle comments if any
+                comments_data = data.get('comments', {}).get('src', [])
+                for comment_data in comments_data:
+                    # Process each comment (similar logic as before)
+                    comment_author_data = comment_data.get('author', {})
+                    comment_author_id = comment_author_data.get('id')
+                    if not comment_author_id:
+                        continue  # Skip comments without author ID
+
+                    # Parse comment author UUID
+                    comment_author_uuid = comment_author_id.rstrip('/').split('/')[-1]
+
+                    # Get or create the comment author
+                    comment_author, ca_created = Author.objects.get_or_create(
+                        uuid=comment_author_uuid,
+                        defaults={
+                            'displayName': comment_author_data.get('displayName', ''),
+                            'host': comment_author_data.get('host', ''),
+                            'page': comment_author_data.get('page', ''),
+                            'github': comment_author_data.get('github', ''),
+                            'profileImage': comment_author_data.get('profileImage', ''),
+                        }
+                    )
+
+                    # If the author exists, update their info
+                    if not ca_created:
+                        comment_author.displayName = comment_author_data.get('displayName', comment_author.displayName)
+                        comment_author.host = comment_author_data.get('host', comment_author.host)
+                        comment_author.page = comment_author_data.get('page', comment_author.page)
+                        comment_author.github = comment_author_data.get('github', comment_author.github)
+                        comment_author.profileImage = comment_author_data.get('profileImage', comment_author.profileImage)
+                        comment_author.save()
+
+                    # Process the comment
+                    comment_id = comment_data.get('id')
+                    if not comment_id:
+                        continue  # Skip comments without ID
+
+                    # Parse comment UUID
+                    comment_uuid = comment_id.rstrip('/').split('/')[-1]
+
+                    # Get or create the comment
+                    comment, comment_created = Comment.objects.get_or_create(
+                        id=comment_uuid,
+                        defaults={
+                            'post': post,
+                            'author': comment_author,
+                            'content': comment_data.get('comment', ''),
+                            'contentType': comment_data.get('contentType', 'text/plain'),
+                            'published': comment_data.get('published', timezone.now()),
+                        }
+                    )
+
+                    # If the comment exists, update its info
+                    if not comment_created:
+                        comment.content = comment_data.get('comment', comment.content)
+                        comment.contentType = comment_data.get('contentType', comment.contentType)
+                        comment.published = comment_data.get('published', comment.published)
+                        comment.save()
 
                 return Response({'message': 'Post added to inbox and created locally.'}, status=status.HTTP_201_CREATED)
+
 
             elif item_type == 'like':
                 pass
