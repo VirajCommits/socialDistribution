@@ -288,5 +288,7 @@ class ToWhichItsConnected(models.Model):
     password = models.CharField(max_length=255)  # Node's password (or token)
     active = models.BooleanField(default=True)
 
+    def is_authenticated(self):
+            return True  # or implement your logic if needed
     def str(self):
         return self.url
