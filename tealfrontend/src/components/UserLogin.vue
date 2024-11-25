@@ -1,4 +1,3 @@
-
 <template>
   <div class="login-container">
     <div class="login-box">
@@ -63,7 +62,7 @@
 <script>
 import axios from "axios";
 import Cookies from 'js-cookie';
-
+axios.defaults.headers.common["X-CSRFToken"] = Cookies.get("csrftoken");
 
 export default {
   name: "UserLogin",
@@ -85,18 +84,14 @@ export default {
 
 
       try {
-        const csrfToken = Cookies.get("csrftoken"); // Get CSRF token from cookies
 
         // Attempt to log in the user
         console.log("username and pass:" , this.username , this.password)
         const response = await axios.post("/login/", {
           username: this.username,
           password: this.password,
-        }, {
-  headers: {
-    "X-CSRFToken": csrfToken, // Include the CSRF token in the headers
-  },
-});
+        }
+);
 
         // Store authentication tokens and user data
         const accessToken = response.data.access;
