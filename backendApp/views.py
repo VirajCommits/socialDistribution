@@ -4619,6 +4619,8 @@ def process_follow_request(request, follow_request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def sync_remote_authors(request):
+
+    print("INCOMING REQUEST BODY:" , request)
     try:
         # Get all active remote nodes
         remote_nodes = ToWhichItsConnected.objects.filter(active=True)
