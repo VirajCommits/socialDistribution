@@ -155,6 +155,8 @@
 import axios from "axios";
 import LikeButton from "./LikeButton.vue";
 import CommentSection from "./CommentSection.vue";
+import Cookies from 'js-cookie';
+
 
 export default {
   name: "StreamPage",
@@ -473,12 +475,13 @@ export default {
         const payload = {
           author_id: currentAuthorId, // Include the author ID if your API requires it
         };
-
+        const csrfToken = Cookies.get("csrftoken"); 
         // Make the POST request to repost the post
         const response = await axios.post(apiUrl, payload, {
           headers: {
             "Content-Type": "application/json",
             Authorization: `Token ${localStorage.getItem("token")}`, // Include the authentication token
+            "X-CSRFToken": csrfToken,
           },
         });
 

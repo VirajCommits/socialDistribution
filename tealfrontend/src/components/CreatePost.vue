@@ -87,6 +87,8 @@
 
 <script>
 import axios from "axios";
+import Cookies from 'js-cookie';
+
 
 export default {
   name: "CreatePost",
@@ -152,12 +154,13 @@ export default {
         } else {
           formData.append("content", this.form.content);
         }
-
+        const csrfToken = Cookies.get("csrftoken"); // Get CSRF token from cookies
         // Create the post only once
         const response = await axios.post(apiUrl, formData, {
           headers: {
             "Content-Type": "multipart/form-data",
             Authorization: `Token ${localStorage.getItem("token")}`,
+            "X-CSRFToken": csrfToken,
           },
         });
 
@@ -297,10 +300,12 @@ export default {
         console.log("TARGET NODE:" , targetNode)
         const credentials = btoa(`${targetNode.username}:${targetNode.password}`);
         console.log(payload)
+        const csrfToken = Cookies.get("csrftoken"); 
         await axios.post(inboxUrl, payload, {
           headers: {
             Authorization: `Basic ${credentials}`,
             "Content-Type": "application/json",
+            "X-CSRFToken": csrfToken,
           },
           withCredentials: true,
         });
