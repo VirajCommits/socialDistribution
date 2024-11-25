@@ -190,7 +190,7 @@
 
 <script>
 import axios from 'axios';
-import Cookies from 'js-cookie';
+//import Cookies from 'js-cookie';
 
 
 export default {
@@ -338,7 +338,7 @@ export default {
           try {
             const formData = new FormData();
             formData.append('profileImage', file);
-            const csrfToken = Cookies.get("csrftoken"); // Get CSRF token from cookies
+            //const csrfToken = Cookies.get("csrftoken"); // Get CSRF token from cookies
             
             const response = await axios.post(
               `/authors/${this.user.uuid}/`,
@@ -347,7 +347,7 @@ export default {
                 headers: {
                   'Authorization': `Token ${localStorage.getItem("token")}`,
                   'Content-Type': 'multipart/form-data',
-                  "X-CSRFToken": csrfToken,
+                  //"X-CSRFToken": csrfToken,
                 },
               }
             );

@@ -12,7 +12,7 @@
 
 <script>
 import axios from "axios";
-import Cookies from 'js-cookie';
+//import Cookies from 'js-cookie';
 
 
 export default {
@@ -144,13 +144,13 @@ export default {
       // Send to target author's inbox (the author of the post/comment being liked)
       const inboxUrl = `${targetHost}/api/authors/${targetAuthorId}/inbox/`;
       const credentials = btoa(`${targetNode.username}:${targetNode.password}`);
-      const csrfToken = Cookies.get("csrftoken"); // Get CSRF token from cookies
+      //const csrfToken = Cookies.get("csrftoken"); // Get CSRF token from cookies
 
       await axios.post(inboxUrl, likePayload, {
         headers: {
           Authorization: `Basic ${credentials}`,
           "Content-Type": "application/json",
-          "X-CSRFToken": csrfToken,
+          //"X-CSRFToken": csrfToken,
         },
         withCredentials: true,
       });

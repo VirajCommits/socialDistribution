@@ -126,7 +126,7 @@
 import axios from "axios";
 import TurndownService from "turndown";
 import { marked } from "marked";
-import Cookies from 'js-cookie';
+//import Cookies from 'js-cookie';
 
 
 export default {
@@ -427,12 +427,12 @@ export default {
         };
 
         console.log(`Sending update to inbox of author ${authorId}:`, payload);
-        const csrfToken = Cookies.get("csrftoken"); 
+        //const csrfToken = Cookies.get("csrftoken"); 
         await axios.post(inboxUrl, payload, {
           headers: {
             Authorization: `Token ${token}`,
             "Content-Type": "application/json",
-            "X-CSRFToken": csrfToken,
+            //"X-CSRFToken": csrfToken,
           },
           withCredentials: true,
         });
