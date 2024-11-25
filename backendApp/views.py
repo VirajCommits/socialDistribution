@@ -4655,7 +4655,7 @@ def sync_remote_authors(request):
                     data = response.json()
                     print(">>>>>>>>>>>>>>>>>>>>>>>>>" , data)
                     # Adjust based on the remote node's response structure
-                    remote_authors = data
+                    remote_authors = data["authors"]
 
                     # Iterate over authors and save them to the local database
                     for author_data in remote_authors:
