@@ -64,7 +64,7 @@ INSTALLED_APPS = [
 AUTH_USER_MODEL = 'backendApp.Author'
 
 MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware',  # Must come first
+    "corsheaders.middleware.CorsMiddleware",  # Must come first
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -77,11 +77,11 @@ MIDDLEWARE = [
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "rest_framework_simplejwt.authentication.JWTAuthentication",  # Use JWT authentication
+        "backendApp.authentication.NodeBasicAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
-    ]
+    ],
 }
 
 # CORS Configuration
