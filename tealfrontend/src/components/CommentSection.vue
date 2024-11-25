@@ -70,7 +70,7 @@
 <script>
 import axios from "axios";
 import LikeButton from "./LikeButton.vue";
-//import Cookies from 'js-cookie';
+import Cookies from 'js-cookie';
 
 export default {
   name: "CommentSection",
@@ -165,14 +165,14 @@ export default {
           author_id: this.authID, // Include the author ID
         };
 
-        //const csrfToken = Cookies.get("csrftoken"); // Get CSRF token from cookies
+        const csrfToken = Cookies.get("csrftoken"); // Get CSRF token from cookies
 
         // Make the POST request to submit the comment
         const response = await axios.post(apiUrl, payload, {
           headers: {
             "Content-Type": "application/json",
             Authorization: `Token ${localStorage.getItem("token")}`, // Include the authentication token
-            //"X-CSRFToken": csrfToken,
+            "X-CSRFToken": csrfToken,
           },
         });
 
@@ -370,13 +370,13 @@ export default {
         console.log("TARGET NODE IN COMMENT SECTION:" , targetNode)
         const credentials = btoa(`${targetNode.username}:${targetNode.password}`);
 
-        //const csrfToken = Cookies.get("csrftoken"); // Get CSRF token from cookies
+        const csrfToken = Cookies.get("csrftoken"); // Get CSRF token from cookies
 
         await axios.post(inboxUrl, payload, {
           headers: {
             Authorization: `Basic ${credentials}`,
             "Content-Type": "application/json",
-            //"X-CSRFToken": csrfToken,
+            "X-CSRFToken": csrfToken,
           },
           withCredentials: true,
         });

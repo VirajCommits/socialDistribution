@@ -287,7 +287,7 @@
 
 <script>
 import axios from "axios";
-//import Cookies from 'js-cookie';
+import Cookies from 'js-cookie';
 
 
 export default {
@@ -309,7 +309,7 @@ export default {
     async signup() {
       this.error = "";
       this.isLoading = true;
-      //const csrfToken = Cookies.get("csrftoken"); // Get CSRF token from cookies
+      const csrfToken = Cookies.get("csrftoken"); // Get CSRF token from cookies
 
       
       try {
@@ -324,9 +324,9 @@ export default {
             profileImage: this.profileImage,
           },
           {
-          //headers: {
-    //"X-CSRFToken": csrfToken, // Include the CSRF token in the headers
-  //},
+          headers: {
+    "X-CSRFToken": csrfToken, // Include the CSRF token in the headers
+  },
       });
         if (response.data.access) {
           // User was approved and tokens were returned

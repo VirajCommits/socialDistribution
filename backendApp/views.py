@@ -3951,8 +3951,8 @@ def test_node_connection(request):
 )
 
 @csrf_exempt
-@authentication_classes([NodeBasicAuthentication])
-@permission_classes([IsAuthenticatedOrNode])
+# @authentication_classes([NodeBasicAuthentication])
+# @permission_classes([IsAuthenticatedOrNode])
 @api_view(['POST', 'GET', 'DELETE'])
 def inbox_handler(request, author_serial):
     """
@@ -4649,7 +4649,7 @@ def sync_remote_authors(request):
                 if response.status_code == 200:
                     data = response.json()
                     # Adjust based on the remote node's response structure
-                    remote_authors = data
+                    remote_authors = data["authors"]
 
                     # Iterate over authors and save them to the local database
                     for author_data in remote_authors:
