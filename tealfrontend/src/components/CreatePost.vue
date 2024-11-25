@@ -87,6 +87,8 @@
 
 <script>
 import axios from "axios";
+import Cookies from 'js-cookie';
+
 
 export default {
   name: "CreatePost",
@@ -152,12 +154,13 @@ export default {
         } else {
           formData.append("content", this.form.content);
         }
-
+        const csrfToken = Cookies.get("csrftoken"); // Get CSRF token from cookies
         // Create the post only once
         const response = await axios.post(apiUrl, formData, {
           headers: {
             "Content-Type": "multipart/form-data",
             Authorization: `Token ${localStorage.getItem("token")}`,
+            "X-CSRFToken": csrfToken,
           },
         });
 
@@ -198,17 +201,21 @@ export default {
           },
         });
         const authors = authorsResponse.data;
-        console.log("AUTHORS IN CREATE POST:" , authors)
+        console.log("AUTHORS IN CREATE POST:" , authors , this.user.id)
         const currentAuthorId = this.user.id.split("/").pop();
+        console.log("Current auth id:" , currentAuthorId)
 
         // Track which authors have received the notification
         const processedAuthors = new Set([currentAuthorId]); // Initialize with current author
+        console.log(processedAuthors)
 
         switch (this.form.visibility) {
           case "PUBLIC": {
             // Only send notifications to other authors' inboxes
-            console.log("These are all the authors:" , authors)
-            for (const author of authors) {
+
+            const followers = await this.getFollowers(currentAuthorId);
+            console.log("Followers are:" , followers)
+            for (const author of followers) {
               const authorId = author.id.split("/").pop(-1);
               
               if (
@@ -252,8 +259,8 @@ export default {
     },
     async sendNotificationToInbox(authorId, postData, host) {
       try {
+        console.log("This is the host:" , host)
         const inboxUrl = `${host}api/authors/${authorId}/inbox/`;
-
         console.log("POST DATA:" , postData , inboxUrl)
 
         const payload = {
@@ -293,10 +300,12 @@ export default {
         console.log("TARGET NODE:" , targetNode)
         const credentials = btoa(`${targetNode.username}:${targetNode.password}`);
         console.log(payload)
+        const csrfToken = Cookies.get("csrftoken"); 
         await axios.post(inboxUrl, payload, {
           headers: {
             Authorization: `Basic ${credentials}`,
             "Content-Type": "application/json",
+            "X-CSRFToken": csrfToken,
           },
           withCredentials: true,
         });
@@ -308,6 +317,7 @@ export default {
     async getFollowers(authorId) {
     try {
         const response = await axios.get(`/authors/${authorId}/followers/`);
+        console.log("Followers response:" , response)
         return response.data;
     } catch (error) {
         console.error(`Error getting followers for author ${authorId}:`, error);
