@@ -1601,8 +1601,12 @@ def get_all_authors(request):
             serialized_author["followers"] = [
                 str(follower.uuid) for follower in followers
             ]
+            serialized_author["type"] = "author"
 
             author_data.append(serialized_author)
+        author_data["type"] = "authors"
+        author_data["authors"] = author_data
+
 
         return Response(author_data)
     except Exception as e:
