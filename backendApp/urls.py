@@ -135,11 +135,11 @@ urlpatterns = [
         views.get_author_stats,
         name="get-author-stats",
     ),
-    # path(
-    #     "service/api/authors/<uuid:author_uuid>/followers/",
-    #     views.get_author_followers,
-    #     name="get-author-followers",
-    # ),
+    path(
+        "service/api/authors/<uuid:author_uuid>/followers/",
+        views.get_author_followers,
+        name="get-author-followers",
+    ),
     path(
         "service/api/authors/<uuid:author_uuid>/following/",
         views.get_author_following,
