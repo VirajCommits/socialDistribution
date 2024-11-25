@@ -4647,7 +4647,9 @@ def sync_remote_authors(request):
                 )
 
                 if response.status_code == 200:
-                    data = response.json()
+                    print(response)
+                    data = response.authors.json()
+                    print(data)
                     # Adjust based on the remote node's response structure
                     remote_authors = data
 
