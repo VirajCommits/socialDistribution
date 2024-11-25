@@ -79,8 +79,6 @@ MIDDLEWARE = [
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "rest_framework_simplejwt.authentication.JWTAuthentication",  # Use JWT authentication
-        'rest_framework.authentication.SessionAuthentication',
         'backendApp.authentication.NodeBasicAuthentication',
     ],
     "DEFAULT_PERMISSION_CLASSES": [
