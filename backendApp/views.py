@@ -1601,10 +1601,16 @@ def get_all_authors(request):
             serialized_author["followers"] = [
                 str(follower.uuid) for follower in followers
             ]
+            serialized_author["type"] = "author"
 
             author_data.append(serialized_author)
+        response_data = {}
+        response_data["type"] = "authors"
+        response_data["authors"] = author_data
+        
 
-        return Response(author_data)
+
+        return Response(response_data)
     except Exception as e:
         import traceback
 
@@ -3943,11 +3949,11 @@ def test_node_connection(request):
     },
     tags=["Inbox"],
 )
+
 @csrf_exempt
-@api_view(['POST', 'GET', 'DELETE'])
-@authentication_classes([JWTAuthentication, NodeBasicAuthentication])
+@authentication_classes([NodeBasicAuthentication])
 @permission_classes([IsAuthenticatedOrNode])
-# @permission_classes([AllowAny])
+@api_view(['POST', 'GET', 'DELETE'])
 def inbox_handler(request, author_serial):
     """
     Handles inbox activities for a given author. Supports POST (to add activities),
