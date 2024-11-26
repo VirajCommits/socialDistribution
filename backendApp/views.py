@@ -22,7 +22,7 @@ from .serializers import (
 from .models import Author, Post, Comment, Like, FollowRequest, Inbox , ToWhichItsConnected,GitHubPost
 
 from .authentication import NodeBasicAuthentication
-from .permissions import IsAuthenticatedOrNode
+from .permissions import IsAuthenticatedOrNode, IsNode
 from .utils import make_node_request
 
 # from .utils import connect_to_remote_node
@@ -1581,7 +1581,7 @@ def get_follow_requests(request):
 )
 @api_view(["GET"])
 @authentication_classes([JWTAuthentication, NodeBasicAuthentication])
-@permission_classes([IsAuthenticatedOrNode])
+@permission_classes([IsNode , IsAuthenticated])
 def get_all_authors(request):
     try:
         current_author = request.user
@@ -1593,20 +1593,23 @@ def get_all_authors(request):
 
         author_data = []
         for author in authors:
-            # Serialize the author data
-            serialized_author = AuthorSerializer(author).data
+            serialized_author = {
+                "type": "author",
+                "id": author.id,  # This should be the full URL
+                "host": author.host,
+                "displayName": author.displayName,
+                "github": author.github,
+                "profileImage": author.profileImage,
+                "page": author.page,  # This should be the full URL to author's page
+            }
 
-            # Add followers data
-            followers = author.followers.all()
-            serialized_author["followers"] = [
-                str(follower.uuid) for follower in followers
-            ]
             serialized_author["type"] = "author"
 
             author_data.append(serialized_author)
-        response_data = {}
-        response_data["type"] = "authors"
-        response_data["authors"] = author_data
+        response_data = {
+            "type": "authors",
+            "authors": author_data
+        }
         
 
 
@@ -1619,8 +1622,6 @@ def get_all_authors(request):
         return Response(
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
-
-
 @swagger_auto_schema(
     method="get",
     operation_summary="Fetch the stream of posts for a specific author",
