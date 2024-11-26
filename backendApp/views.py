@@ -22,7 +22,7 @@ from .serializers import (
 from .models import Author, Post, Comment, Like, FollowRequest, Inbox , ToWhichItsConnected,GitHubPost
 
 from .authentication import NodeBasicAuthentication
-from .permissions import IsAuthenticatedOrNode, IsNode
+from .permissions import IsNode
 from .utils import make_node_request
 
 # from .utils import connect_to_remote_node
@@ -1116,7 +1116,7 @@ def get_all_posts(request, author_serial):
     tags=["Follow Requests"],
 )
 @api_view(["POST"])
-@permission_classes([IsAuthenticatedOrNode])
+@permission_classes([IsAuthenticated])
 def send_follow_request(request, author_uuid):
     current_author = request.user  # The one sending the request
     # The one receiving the request
