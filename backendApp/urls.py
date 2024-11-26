@@ -224,12 +224,6 @@ urlpatterns = [
     ),
     
     path('api/connected-nodes/', views.connected_nodes, name='connected_nodes'),
-    path('verify-connection/', views.verify_node_connection, name='verify_node_connection'),
-    path(
-        "posts/<uuid:post_id>/",
-        TemplateView.as_view(template_name="index.html"),
-        name="post_detail",
-    ),
     path('api/connected-nodes/', views.connected_nodes, name='connected_nodes'),
     # Catch-all route for Vue frontend
     re_path(
