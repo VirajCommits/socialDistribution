@@ -278,6 +278,7 @@ export default {
     if (targetNode) {
       // Define the endpoint on your server
       const endpoint = `/authors/${targetUuid}/sendRemoteRequest/`;
+      console.log("Sending request to this endpoint:" , endpoint)
       // const csrfToken = Cookies.get("csrftoken"); // Get CSRF token from cookies
 
       // Send the follow request to your server's sendRemoteRequest endpoint
