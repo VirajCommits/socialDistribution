@@ -3660,7 +3660,7 @@ class PublicPostsView(APIView):
 )
 @api_view(['GET'])
 @authentication_classes([NodeBasicAuthentication])
-@permission_classes([IsAuthenticatedOrNode])
+@permission_classes([IsAuthenticated])
 def verify_node_connection(request):
     try:
         # Log incoming request details
