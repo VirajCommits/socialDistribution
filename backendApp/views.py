@@ -1581,7 +1581,7 @@ def get_follow_requests(request):
 )
 @api_view(["GET"])
 @authentication_classes([JWTAuthentication, NodeBasicAuthentication])
-@permission_classes([IsNode , IsAuthenticated])
+@permission_classes([AllowAny])
 def get_all_authors(request):
     try:
         current_author = request.user
