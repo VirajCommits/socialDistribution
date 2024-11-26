@@ -6,10 +6,6 @@ from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 from django.views.generic import TemplateView
 from rest_framework import permissions
-from rest_framework_simplejwt.views import (
-    TokenObtainPairView,
-    TokenRefreshView,
-)
 
 # from .views import TestRemoteNodeConnectionView
 
@@ -31,7 +27,7 @@ schema_view = get_schema_view(
 urlpatterns = [
     # path("", views.defaultPath, name="defaultPath"),
     path("api/signup/", views.signup, name="signup"),
-    path("api/login/", TokenObtainPairView.as_view(), name="login"),
+    path("api/login/", views.login, name="login"),
     # Swagger paths
     path(
         "swagger/",
