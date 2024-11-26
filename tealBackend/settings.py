@@ -81,7 +81,7 @@ REST_FRAMEWORK = {
         "backendApp.authentication.NodeBasicAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": [
-        "backendApp.permissions.IsNode",
+        "rest_framework.permissions.AllowAny",
     ],
 }
 # CORS Configuration
