@@ -174,7 +174,7 @@ WHITENOISE_USE_FINDERS = True
 WHITENOISE_MANIFEST_STRICT = False
 WHITENOISE_INDEX_FILE = True
 
-# Default primary key field type
+# Default primary keyfield type
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # JWT Configuration

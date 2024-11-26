@@ -12,7 +12,9 @@ const baseURL = isProduction
   : 'http://127.0.0.1:8000/api';
 
 // Axios configuration
+import Cookies from 'js-cookie';
 axios.defaults.headers.common['Content-Type'] = 'application/json';
+axios.defaults.headers.common["X-CSRFToken"] = Cookies.get("csrftoken");
 axios.defaults.withCredentials = true;
 axios.defaults.baseURL = baseURL;
 
