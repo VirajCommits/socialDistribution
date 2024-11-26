@@ -3613,6 +3613,69 @@ class PublicPostsView(APIView):
             )
 
 
+@swagger_auto_schema(
+    method="get",
+    operation_summary="Verify the connection for the Node user",
+    operation_description="""
+    Use this endpoint to verify the connection for a Node user. It returns a success message along with the user's connection details.
+
+    **When to use:**
+    - Use this endpoint when you need to verify the connection of a Node user.
+    - The response will confirm the connection status and provide details about the authenticated user.
+
+    **How to use:**
+    - Send a `GET` request to this endpoint.
+    - The response will indicate the connection status and return the user's URL if available, or the user’s identifier.
+
+    **Why use or not use:**
+    - This endpoint is useful when checking if the Node user is successfully connected or authenticated.
+    - Do not use if the user is not authenticated or doesn't have a valid Node connection.
+    """,
+    request_body=None,
+    responses={
+        200: openapi.Response(
+            description="Connection successfully verified.",
+            schema=openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "status": openapi.Schema(type=openapi.TYPE_STRING, description="Status of the request"),
+                    "message": openapi.Schema(type=openapi.TYPE_STRING, description="Success message"),
+                    "node": openapi.Schema(type=openapi.TYPE_STRING, description="URL or identifier of the authenticated user"),
+                },
+            ),
+        ),
+        401: "Unauthorized - The user must be authenticated.",
+        400: openapi.Response(
+            description="Error occurred during the connection verification.",
+            schema=openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "status": openapi.Schema(type=openapi.TYPE_STRING, description="Error status"),
+                    "message": openapi.Schema(type=openapi.TYPE_STRING, description="Error message"),
+                },
+            ),
+        ),
+    },
+    tags=["Node Connection"],
+)
+@api_view(['GET'])
+@authentication_classes([])
+@permission_classes([IsAuthenticated])
+def verify_node_connection(request):
+    try:
+        # Log incoming request details
+        return Response({
+            "status": "success",
+            "message": "Connection verified",
+            "node": request.user.url if hasattr(request.user, 'url') else str(request.user)
+        })
+    except Exception as e:
+        # Log any exceptions
+        return Response({
+            "status": "error",
+            "message": str(e)
+        })
+
 
 @swagger_auto_schema(
     method="get",
