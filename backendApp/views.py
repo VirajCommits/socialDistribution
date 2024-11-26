@@ -1580,7 +1580,7 @@ def get_follow_requests(request):
     tags=["Authors"],
 )
 @api_view(["GET"])
-@authentication_classes([JWTAuthentication, NodeBasicAuthentication])
+@authentication_classes([JWTAuthentication])
 @permission_classes([AllowAny])
 def get_all_authors(request):
     try:
@@ -3658,23 +3658,7 @@ class PublicPostsView(APIView):
     },
     tags=["Node Connection"],
 )
-@api_view(['GET'])
-@authentication_classes([NodeBasicAuthentication])
-@permission_classes([IsAuthenticated])
-def verify_node_connection(request):
-    try:
-        # Log incoming request details
-        return Response({
-            "status": "success",
-            "message": "Connection verified",
-            "node": request.user.url if hasattr(request.user, 'url') else str(request.user)
-        })
-    except Exception as e:
-        # Log any exceptions
-        return Response({
-            "status": "error",
-            "message": str(e)
-        })
+
 
 
 @swagger_auto_schema(
