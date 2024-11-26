@@ -3952,8 +3952,8 @@ def test_node_connection(request):
 )
 
 @csrf_exempt
-@authentication_classes([])
-@permission_classes([])
+@authentication_classes([AllowAny])
+@permission_classes([AllowAny])
 @api_view(['POST', 'GET', 'DELETE'])
 def inbox_handler(request, author_serial):
     """
@@ -4861,7 +4861,7 @@ def construct_comment_likes_data(comment):
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
-@authentication_classes([AllowAny])
+@authentication_classes([])
 def send_follow_request_to_remote_authors(request, author_serial):
     """
     Send a follow request to an author on a connected remote node.
