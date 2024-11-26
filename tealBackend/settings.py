@@ -82,7 +82,6 @@ REST_FRAMEWORK = {
     ],
     "DEFAULT_PERMISSION_CLASSES": [
         "backendApp.permissions.IsAuthenticatedOrNode",
-        "rest_framework.permissions.IsAuthenticated",
     ],
 }
 # CORS Configuration
