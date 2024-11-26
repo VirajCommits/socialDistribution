@@ -121,7 +121,7 @@ export default {
       try {
         const syncResponse = await axios.get("sync_remote_authors/", {
           headers: {
-            'Authorization': `Basic ${accessToken}`,
+            'Authorization': `Bearer ${accessToken}`,
           },
         });
         console.log("Sync successful:", syncResponse.data);
