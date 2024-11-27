@@ -31,6 +31,7 @@ class NodeBasicAuthentication(authentication.BaseAuthentication):
         print("WE INSIDE AUTHENTICATE -------------------------------------------------------------------- ")
         auth_header = request.META.get('HTTP_AUTHORIZATION', '')
         if not auth_header.startswith('Basic '):
+            raise exceptions.AuthenticationFailed('Invalid basic auth credentials')
             return False  # Return None to allow other authentication classes to attempt
 
         import base64
