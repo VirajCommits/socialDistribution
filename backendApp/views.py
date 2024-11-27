@@ -22,7 +22,7 @@ from .serializers import (
 from .models import Author, Post, Comment, Like, FollowRequest, Inbox , ToWhichItsConnected,GitHubPost
 
 from .authentication import NodeBasicAuthentication
-from .permissions import IsAuthenticatedOrNode
+from .permissions import IsNode
 from .utils import make_node_request
 
 # from .utils import connect_to_remote_node
@@ -1580,8 +1580,8 @@ def get_follow_requests(request):
     tags=["Authors"],
 )
 @api_view(["GET"])
-@authentication_classes([JWTAuthentication, NodeBasicAuthentication])
-@permission_classes([IsAuthenticatedOrNode])
+@authentication_classes([JWTAuthentication])
+@permission_classes([AllowAny])
 def get_all_authors(request):
     try:
         current_author = request.user
@@ -1593,20 +1593,23 @@ def get_all_authors(request):
 
         author_data = []
         for author in authors:
-            # Serialize the author data
-            serialized_author = AuthorSerializer(author).data
+            serialized_author = {
+                "type": "author",
+                "id": author.id,  # This should be the full URL
+                "host": author.host,
+                "displayName": author.displayName,
+                "github": author.github,
+                "profileImage": author.profileImage,
+                "page": author.page,  # This should be the full URL to author's page
+            }
 
-            # Add followers data
-            followers = author.followers.all()
-            serialized_author["followers"] = [
-                str(follower.uuid) for follower in followers
-            ]
             serialized_author["type"] = "author"
 
             author_data.append(serialized_author)
-        response_data = {}
-        response_data["type"] = "authors"
-        response_data["authors"] = author_data
+        response_data = {
+            "type": "authors",
+            "authors": author_data
+        }
         
 
 
@@ -1619,8 +1622,6 @@ def get_all_authors(request):
         return Response(
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
-
-
 @swagger_auto_schema(
     method="get",
     operation_summary="Fetch the stream of posts for a specific author",
@@ -3612,69 +3613,6 @@ class PublicPostsView(APIView):
             )
 
 
-@swagger_auto_schema(
-    method="get",
-    operation_summary="Verify the connection for the Node user",
-    operation_description="""
-    Use this endpoint to verify the connection for a Node user. It returns a success message along with the user's connection details.
-
-    **When to use:**
-    - Use this endpoint when you need to verify the connection of a Node user.
-    - The response will confirm the connection status and provide details about the authenticated user.
-
-    **How to use:**
-    - Send a `GET` request to this endpoint.
-    - The response will indicate the connection status and return the user's URL if available, or the user’s identifier.
-
-    **Why use or not use:**
-    - This endpoint is useful when checking if the Node user is successfully connected or authenticated.
-    - Do not use if the user is not authenticated or doesn't have a valid Node connection.
-    """,
-    request_body=None,
-    responses={
-        200: openapi.Response(
-            description="Connection successfully verified.",
-            schema=openapi.Schema(
-                type=openapi.TYPE_OBJECT,
-                properties={
-                    "status": openapi.Schema(type=openapi.TYPE_STRING, description="Status of the request"),
-                    "message": openapi.Schema(type=openapi.TYPE_STRING, description="Success message"),
-                    "node": openapi.Schema(type=openapi.TYPE_STRING, description="URL or identifier of the authenticated user"),
-                },
-            ),
-        ),
-        401: "Unauthorized - The user must be authenticated.",
-        400: openapi.Response(
-            description="Error occurred during the connection verification.",
-            schema=openapi.Schema(
-                type=openapi.TYPE_OBJECT,
-                properties={
-                    "status": openapi.Schema(type=openapi.TYPE_STRING, description="Error status"),
-                    "message": openapi.Schema(type=openapi.TYPE_STRING, description="Error message"),
-                },
-            ),
-        ),
-    },
-    tags=["Node Connection"],
-)
-@api_view(['GET'])
-@authentication_classes([NodeBasicAuthentication])
-@permission_classes([IsAuthenticatedOrNode])
-def verify_node_connection(request):
-    try:
-        # Log incoming request details
-        return Response({
-            "status": "success",
-            "message": "Connection verified",
-            "node": request.user.url if hasattr(request.user, 'url') else str(request.user)
-        })
-    except Exception as e:
-        # Log any exceptions
-        return Response({
-            "status": "error",
-            "message": str(e)
-        })
-
 
 @swagger_auto_schema(
     method="get",
@@ -3951,9 +3889,9 @@ def test_node_connection(request):
 )
 
 @csrf_exempt
-# @authentication_classes([NodeBasicAuthentication])
-# @permission_classes([IsAuthenticatedOrNode])
-@api_view(['POST', 'GET', 'DELETE'])
+@authentication_classes([])
+@permission_classes([AllowAny])
+@api_view(['POST'])
 def inbox_handler(request, author_serial):
     """
     Handles inbox activities for a given author. Supports POST (to add activities),
@@ -4857,9 +4795,10 @@ def construct_comment_likes_data(comment):
         likes_data["src"].append(like_data)
 
     return likes_data
-@csrf_exempt
+
 @api_view(['POST'])
 @permission_classes([AllowAny])
+@authentication_classes([])
 def send_follow_request_to_remote_authors(request, author_serial):
     """
     Send a follow request to an author on a connected remote node.

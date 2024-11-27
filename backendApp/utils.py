@@ -28,7 +28,7 @@ def make_node_request(base_url, endpoint, method='GET', data=None):
             'Content-Type': 'application/json'
         }
         
-        # Combine base URL and endpoint
+        # Combine base URL and endpoit
         full_url = urljoin(base_url, endpoint)
         print("This is the full url:" , full_url , headers)
         
