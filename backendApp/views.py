@@ -1990,7 +1990,7 @@ def signup(request):
 )
 @csrf_exempt
 @api_view(["POST"])
-@permission_classes([AllowAny])
+@authentication_classes([])
 def login(request):
     username = request.data.get("username")
     password = request.data.get("password")
