@@ -1869,7 +1869,6 @@ def stream_page(request, author_id):
 @csrf_exempt
 @api_view(["POST"])
 @authentication_classes([])
-@permission_classes([AllowAny])
 def signup(request):
     serializer = AuthorSerializer(data=request.data)
     if serializer.is_valid():
@@ -3889,7 +3888,7 @@ def test_node_connection(request):
 )
 
 @csrf_exempt
-@authentication_classes([AllowAny])
+@authentication_classes([])
 @permission_classes([AllowAny])
 @api_view(['POST', 'GET', 'DELETE'])
 def inbox_handler(request, author_serial):
