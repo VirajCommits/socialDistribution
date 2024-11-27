@@ -374,7 +374,7 @@ export default {
 
         await axios.post(inboxUrl, payload, {
           headers: {
-            Authorization: `Basic ${credentials}`,
+            "Authorization": `Basic ${credentials}`,
             "Content-Type": "application/json",
             "X-CSRFToken": csrfToken,
           },
