@@ -40,7 +40,9 @@ ALLOWED_HOSTS = env.list(
         "localhost",
         "social-distribution-1-3adb84f120d9.herokuapp.com",
         "social-sanket-603a86c4b610.herokuapp.com",
-        "teal-rakshit-a972530cc317.herokuapp.com/",
+        "teal-rakshit-a972530cc317.herokuapp.com",
+        "teal-pranav-0e8aa7849ad7.herokuapp.com",
+
     ],
 )
 
