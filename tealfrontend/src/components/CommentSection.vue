@@ -232,6 +232,7 @@ export default {
         let targetAuthors = [];
 
         console.log("COMMENT SECTION -------------- ")
+        console.log("POST VISIBILITY IN COMMENT SECTION:" , postVisibility)
 
         switch (postVisibility) {
             case "PUBLIC": {
