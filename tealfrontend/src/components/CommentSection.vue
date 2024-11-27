@@ -218,7 +218,7 @@ export default {
             Authorization: `Token ${localStorage.getItem("token")}`,
           },
         });
-        const authors = authorsResponse.data;
+        const authors = authorsResponse.data["authors"];
         console.log("AUTHORS IN COMMENT SECTION:===========" , authors)
         console.log("AUTHORS IN COMMENT SECTION:===========" , authors)
 
