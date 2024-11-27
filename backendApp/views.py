@@ -3908,7 +3908,7 @@ def inbox_handler(request, author_serial):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     elif request.method == 'POST':
-        print("AAAAAAAAAAAAA" , request , author_serial)
+        print("AAAAAAAAAAAAA" , request.headers , author_serial)
         data = request.data
         item_type = data.get('type', '').lower()
 
