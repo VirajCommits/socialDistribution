@@ -27,14 +27,25 @@ const app = createApp(App);
 axios.interceptors.request.use(
   config => {
     const token = localStorage.getItem('token'); // Get the token from localStorage
+
+    // Check if the Authorization header is already set
+    if (config.headers['Authorization']) {
+      // If the header is already Basic, do nothing
+      if (config.headers['Authorization'].startsWith('Basic')) {
+        return config; // Return the config as is
+      }
+    }
+
+    // If no Basic header is present and a token exists, set it as Bearer
     if (token) {
-      config.headers['Authorization'] = `Bearer ${token}`; // Set the Authorization header
+      config.headers['Authorization'] = `Bearer ${token}`; // Set the Authorization header to Bearer token
     } else {
-      // console.log('No token found in localStorage');
+      // If no token is found, remove it from localStorage and redirect to login
       localStorage.removeItem('token');
       router.push('/login');
     }
-    return config;
+
+    return config; // Return the modified config object
   },
   error => {
     console.error('Request interceptor error:', error);
