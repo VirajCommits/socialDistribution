@@ -1990,7 +1990,7 @@ def signup(request):
 )
 @csrf_exempt
 @api_view(["POST"])
-@permission_classes([AllowAny])
+@authentication_classes([])
 def login(request):
     username = request.data.get("username")
     password = request.data.get("password")
@@ -3889,9 +3889,9 @@ def test_node_connection(request):
 )
 
 @csrf_exempt
-@authentication_classes([])
+@authentication_classes([AllowAny])
 @permission_classes([AllowAny])
-@api_view(['POST'])
+@api_view(['POST', 'GET', 'DELETE'])
 def inbox_handler(request, author_serial):
     """
     Handles inbox activities for a given author. Supports POST (to add activities),
