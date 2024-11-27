@@ -26,16 +26,14 @@ const app = createApp(App);
 // Request Interceptor to add the Authorization header with the token
 axios.interceptors.request.use(
   config => {
-    if (!config.headers['Authorization']) {
-      const token = localStorage.getItem('token');
-      if (token) {
-        config.headers['Authorization'] = `Bearer ${token}`;
-      }
-      else {
-        // console.log('No token found in localStorage');
-        localStorage.removeItem('token');
-        router.push('/login');
-      }
+    const token = localStorage.getItem('token'); // Get the token from localStorage
+    if (token) {
+      config.headers['Authorization'] = `Bearer ${token}`; // Set the Authorization header
+      // console.log('Token found and added to request');
+    } else {
+      // console.log('No token found in localStorage');
+      localStorage.removeItem('token');
+      router.push('/login');
     }
     return config;
   },
