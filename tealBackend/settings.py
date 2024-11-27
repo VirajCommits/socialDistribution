@@ -90,7 +90,7 @@ CORS_ALLOWED_ORIGINS = [
     "https://social-distribution-1-3adb84f120d9.herokuapp.com",  # Production domain
     'https://teal-rakshit-a972530cc317.herokuapp.com',
     "https://social-sanket-603a86c4b610.herokuapp.com",
-    "*.herokuapp.com"
+    "*.herokuapp.com/"
     "http://127.0.0.1:8000",  # Localhost alternative
 ]
 CORS_ALLOW_CREDENTIALS = True
