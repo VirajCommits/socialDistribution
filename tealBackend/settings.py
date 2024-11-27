@@ -139,8 +139,8 @@ TEMPLATES = [
 # Database Configuration
 DATABASES = {
     'default': env.db('DATABASE_URL', default='sqlite:///' + str(BASE_DIR / 'db.sqlite3')),
+    'CONN_MAX_AGE': 600, 
 }
-print("This is database" , DATABASES)
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
