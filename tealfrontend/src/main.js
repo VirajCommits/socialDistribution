@@ -8,7 +8,7 @@ import axios from 'axios';
 // const baseURL = process.env.VUE_APP_API_BASE_URL || 'http://localhost:8000/api';
 const isProduction = window.location.hostname.includes('herokuapp.com');
 const baseURL = isProduction
-  ? 'https://social-distribution-1-3adb84f120d9.herokuapp.com/api'
+  ? 'https://teal-pranav-0e8aa7849ad7.herokuapp.com/api'
   : 'http://127.0.0.1:8000/api';
 
 // Axios configuration
@@ -26,26 +26,18 @@ const app = createApp(App);
 // Request Interceptor to add the Authorization header with the token
 axios.interceptors.request.use(
   config => {
-    const token = localStorage.getItem('token'); // Get the token from localStorage
-
-    // Check if the Authorization header is already set
-    if (config.headers['Authorization']) {
-      // If the header is already Basic, do nothing
-      if (config.headers['Authorization'].startsWith('Basic')) {
-        return config; // Return the config as is
+    if (!config.headers['Authorization']) {
+      const token = localStorage.getItem('token');
+      if (token) {
+        config.headers['Authorization'] = `Bearer ${token}`;
+      }
+      else {
+        // console.log('No token found in localStorage');
+        localStorage.removeItem('token');
+        router.push('/login');
       }
     }
-
-    // If no Basic header is present and a token exists, set it as Bearer
-    if (token) {
-      config.headers['Authorization'] = `Bearer ${token}`; // Set the Authorization header to Bearer token
-    } else {
-      // If no token is found, remove it from localStorage and redirect to login
-      localStorage.removeItem('token');
-      router.push('/login');
-    }
-
-    return config; // Return the modified config object
+    return config;
   },
   error => {
     console.error('Request interceptor error:', error);
