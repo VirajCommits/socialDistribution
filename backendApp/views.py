@@ -3818,7 +3818,7 @@ def test_node_connection(request):
 )
 
 @csrf_exempt
-@authentication_classes([])
+@authentication_classes([NodeBasicAuthentication])
 @permission_classes([AllowAny])
 @api_view(['POST'])
 def inbox_handler(request, author_serial):
