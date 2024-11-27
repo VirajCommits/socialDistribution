@@ -8,7 +8,7 @@ import axios from 'axios';
 // const baseURL = process.env.VUE_APP_API_BASE_URL || 'http://localhost:8000/api';
 const isProduction = window.location.hostname.includes('herokuapp.com');
 const baseURL = isProduction
-  ? 'https://teal-pranav-0e8aa7849ad7.herokuapp.com/api'
+  ? 'https://social-distribution-1-3adb84f120d9.herokuapp.com/api'
   : 'http://127.0.0.1:8000/api';
 
 // Axios configuration
@@ -26,16 +26,14 @@ const app = createApp(App);
 // Request Interceptor to add the Authorization header with the token
 axios.interceptors.request.use(
   config => {
-    if (!config.headers['Authorization']) {
-      const token = localStorage.getItem('token');
-      if (token) {
-        config.headers['Authorization'] = `Bearer ${token}`;
-      }
-      else {
-        // console.log('No token found in localStorage');
-        localStorage.removeItem('token');
-        router.push('/login');
-      }
+    const token = localStorage.getItem('token'); // Get the token from localStorage
+    if (token) {
+      config.headers['Authorization'] = `Bearer ${token}`; // Set the Authorization header
+      // console.log('Token found and added to request');
+    } else {
+      // console.log('No token found in localStorage');
+      localStorage.removeItem('token');
+      router.push('/login');
     }
     return config;
   },
