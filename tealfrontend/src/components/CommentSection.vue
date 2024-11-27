@@ -374,11 +374,10 @@ export default {
 
         await axios.post(inboxUrl, payload, {
           headers: {
-            "Authorization": `Basic ${credentials}`,
             "Content-Type": "application/json",
+            Authorization: `Basic ${credentials}`,
             "X-CSRFToken": csrfToken,
           },
-          withCredentials: true,
         });
       } catch (error) {
         console.error(`Error sending comment to author ${authorId}'s inbox:`, error);
