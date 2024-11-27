@@ -3734,43 +3734,6 @@ def test_node_connection(request):
             "type": str(type(e))
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-
-@swagger_auto_schema(
-    method="get",
-    operation_summary="Retrieve the inbox contents for a given author",
-    operation_description="""
-    Use this endpoint to retrieve the inbox contents of a specific author identified by their UUID.
-
-    **When to use:**
-    - Use this endpoint to get the inbox data for an author, which includes posts, likes, comments, and follow requests.
-    - It is useful for checking activities related to a specific author.
-
-    **How to use:**
-    - Send a `GET` request to this endpoint with the `author_serial` as part of the URL.
-    - The inbox contents for the specified author will be returned.
-
-    **Why use or not use:**
-    - This endpoint should be used when you need to retrieve the activities for a specific author.
-    - Do not use this endpoint if you are not authenticated or if the author UUID does not exist.
-    """,
-    responses={
-        200: openapi.Response(
-            description="Inbox retrieved successfully.",
-            schema=InboxSerializer()
-        ),
-        404: openapi.Response(
-            description="Author not found.",
-            schema=openapi.Schema(
-                type=openapi.TYPE_OBJECT,
-                properties={
-                    "detail": openapi.Schema(type=openapi.TYPE_STRING, description="Error message")
-                }
-            )
-        ),
-        401: "Unauthorized",
-    },
-    tags=["Inbox"],
-)
 @swagger_auto_schema(
     method="post",
     operation_summary="Add activity to the author's inbox",
@@ -3831,47 +3794,6 @@ def test_node_connection(request):
                     "error": openapi.Schema(type=openapi.TYPE_STRING, description="Error message")
                 }
             )
-        ),
-        404: openapi.Response(
-            description="Author not found.",
-            schema=openapi.Schema(
-                type=openapi.TYPE_OBJECT,
-                properties={
-                    "detail": openapi.Schema(type=openapi.TYPE_STRING, description="Error message")
-                }
-            )
-        ),
-        401: "Unauthorized",
-    },
-    tags=["Inbox"],
-)
-@swagger_auto_schema(
-    method="delete",
-    operation_summary="Clear all activities from the author's inbox",
-    operation_description="""
-    Use this endpoint to clear all activities from a given author's inbox.
-
-    **When to use:**
-    - Use this endpoint to clear all posts, likes, comments, and follow requests from the inbox of the specified author.
-    - This is useful for managing inbox contents or clearing outdated activities.
-
-    **How to use:**
-    - Send a `DELETE` request to this endpoint with the `author_serial` as part of the URL.
-    - This will clear all activities from the author's inbox.
-
-    **Why use or not use:**
-    - This endpoint should be used when you want to reset or clear the inbox of an author.
-    - Do not use if you want to retain the inbox contents.
-    """,
-    responses={
-        204: openapi.Response(
-            description="Inbox cleared successfully.",
-            schema=openapi.Schema(
-                type=openapi.TYPE_OBJECT,
-                properties={
-                    "message": openapi.Schema(type=openapi.TYPE_STRING, description="Success message")
-                }
-            ),
         ),
         404: openapi.Response(
             description="Author not found.",
