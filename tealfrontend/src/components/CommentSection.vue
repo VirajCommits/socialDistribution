@@ -231,23 +231,16 @@ export default {
         // Determine the list of authors to send the comment to based on post visibility
         let targetAuthors = [];
 
-        console.log("COMMENT SECTION -------------- ")
-        console.log("POST VISIBILITY IN COMMENT SECTION:" , postVisibility)
-
         switch (postVisibility) {
             case "PUBLIC": {
                 // Visible to everyone except the current author
                 const ourHost = this.user.host;
-
-                console.log("OUR HOST IN COMMENT SECTION:" , ourHost)
-                console.log("CURRENT AUTHOR ID IN COMMENT SECTION:" , currentAuthorId)
-                console.log("AUTHORS IN COMMENT SECTION:" , authors)
     
                 // Filter out authors who:
                 // 1. Are not the current author
                 // 2. Don't have the same host as our user
                 targetAuthors = authors.filter(author => 
-                    author.uuid !== currentAuthorId && 
+                    author.id.split("/").pop() !== currentAuthorId && 
                     author.host !== ourHost
                 );
                 console.log("TARGET AUTHORS IN COMMENT SECTION:" , targetAuthors)
