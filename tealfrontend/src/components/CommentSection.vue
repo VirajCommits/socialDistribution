@@ -237,6 +237,10 @@ export default {
             case "PUBLIC": {
                 // Visible to everyone except the current author
                 const ourHost = this.user.host;
+
+                console.log("OUR HOST IN COMMENT SECTION:" , ourHost)
+                console.log("CURRENT AUTHOR ID IN COMMENT SECTION:" , currentAuthorId)
+                console.log("AUTHORS IN COMMENT SECTION:" , authors)
     
                 // Filter out authors who:
                 // 1. Are not the current author
