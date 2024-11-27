@@ -218,7 +218,7 @@ export default {
             Authorization: `Token ${localStorage.getItem("token")}`,
           },
         });
-        const authors = authorsResponse.data;
+        const authors = authorsResponse.data["authors"];
         console.log("AUTHORS IN COMMENT SECTION:===========" , authors)
         console.log("AUTHORS IN COMMENT SECTION:===========" , authors)
 
@@ -242,7 +242,7 @@ export default {
                 // 1. Are not the current author
                 // 2. Don't have the same host as our user
                 targetAuthors = authors.filter(author => 
-                    author.uuid !== currentAuthorId && 
+                    author.id.split("/")[-1] !== currentAuthorId && 
                     author.host !== ourHost
                 );
                 console.log("TARGET AUTHORS IN COMMENT SECTION:" , targetAuthors)
