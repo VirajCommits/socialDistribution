@@ -231,6 +231,7 @@ export default {
           }
           case "FRIENDS": {
                 const followers = await this.getFollowers(currentAuthorId);
+                console.log("The processed authors:" , processedAuthors)
                 for (const follower of followers) {
                     if (!processedAuthors.has(follower.uuid)) {
                         const mutualFollowers = await this.getFollowers(follower.uuid);
