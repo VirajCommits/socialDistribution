@@ -99,7 +99,7 @@ export default {
   },
   mounted() {
     this.initializeUser();
-    this.fetchComments();
+    this.fetchInitialData();
   },
   methods: {
     /**
@@ -124,24 +124,26 @@ export default {
      * Fetches comments associated with the given post ID.
      * Populates the comments array with fetched data.
      */
-    // Fetch comments for the given post ID
-    async fetchComments() {
+    async fetchInitialData() {
+      this.loading = true;
       try {
-        const apiUrl = `/posts/${encodeURIComponent(this.postId)}/comments/`;
-        const response = await axios.get(apiUrl, {
-          headers: {
-            Authorization: `Token ${localStorage.getItem("token")}`,
-          },
-        });
-        this.comments = response.data || [];
-        this.loading = false;
+        const [commentsResponse, followersResponse] = await Promise.all([
+          axios.get(`/posts/${encodeURIComponent(this.postId)}/comments/`, {
+            headers: {
+              Authorization: `Token ${localStorage.getItem("token")}`,
+            },
+          }),
+          this.getFollowers(this.authID)
+        ]);
+        this.comments = commentsResponse.data || [];
+        this.followers = followersResponse.data || [];
       } catch (error) {
-        console.error("Error fetching comments:", error.response || error);
-        this.errorMessage = "An error occurred while fetching comments.";
+        console.error("Error fetching initial data:", error);
+        this.errorMessage = "An error occurred while loading data.";
+      } finally {
         this.loading = false;
       }
     },
-    
 
     /**
      * Submits a new comment.
@@ -178,7 +180,7 @@ export default {
 
         // Clear the input field and fetch updated comments
         this.newComment = "";
-        this.fetchComments();
+        this.fetchInitialData();
 
         // Distribute the comment via inbox
         await this.distributeComment(response.data);
