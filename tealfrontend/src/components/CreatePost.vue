@@ -207,7 +207,7 @@ export default {
 
         // Track which authors have received the notification
         const processedAuthors = new Set([currentAuthorId]); // Initialize with current author
-        console.log(processedAuthors)
+        console.log(" >>>>>>>>>>>> " , processedAuthors , this.form.visibility)
 
         switch (this.form.visibility) {
           case "PUBLIC": {
@@ -231,6 +231,7 @@ export default {
           }
           case "FRIENDS": {
                 const followers = await this.getFollowers(currentAuthorId);
+                console.log("The processed authors:" , processedAuthors)
                 for (const follower of followers) {
                     if (!processedAuthors.has(follower.uuid)) {
                         const mutualFollowers = await this.getFollowers(follower.uuid);
@@ -317,7 +318,7 @@ export default {
     async getFollowers(authorId) {
     try {
         const response = await axios.get(`/authors/${authorId}/followers/`);
-        console.log("Followers response:" , response)
+        console.log("Followers response:" , response.data)
         return response.data;
     } catch (error) {
         console.error(`Error getting followers for author ${authorId}:`, error);

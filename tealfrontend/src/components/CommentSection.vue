@@ -196,7 +196,6 @@ export default {
       try {
         // Fetch the post details to get the author's information and visibility
         const postApiUrl = `/posts/${encodeURIComponent(this.postId)}/`;
-        console.log("<<<<<<<<<<<<>>>>>>>>>>>>>>>>>" , postApiUrl)
         const postResponse = await axios.get(postApiUrl, {
           headers: {
             Authorization: `Token ${localStorage.getItem("token")}`,
@@ -219,8 +218,6 @@ export default {
           },
         });
         const authors = authorsResponse.data["authors"];
-        console.log("AUTHORS IN COMMENT SECTION:===========" , authors)
-        console.log("AUTHORS IN COMMENT SECTION:===========" , authors)
 
         // Current user's ID
         const currentAuthorId = this.authID;
@@ -240,10 +237,9 @@ export default {
                 // 1. Are not the current author
                 // 2. Don't have the same host as our user
                 targetAuthors = authors.filter(author => 
-                    author.id.split("/").pop() !== currentAuthorId && 
+                    author.id.split("/")[-1] !== currentAuthorId && 
                     author.host !== ourHost
                 );
-                console.log("TARGET AUTHORS IN COMMENT SECTION:" , targetAuthors)
                 break;
             }
             case "FRIENDS": {
@@ -263,8 +259,6 @@ export default {
                         follower => follower.uuid === postAuthorId
                     );
                     
-                    console.log('Is follower:', isFollower);
-                    console.log('Is followed:', isFollowed);
                     
                     // Only allow access if there's a mutual follow relationship
                     if (!isFollower || !isFollowed) {
@@ -294,11 +288,8 @@ export default {
                 break;
             }
         }
-
-        console.log("TARGET AUTHORS IN COMMENT SECTION before for loop:" , targetAuthors)
         // Distribute the comment to the target authors
         for (const author of targetAuthors) {
-          console.log("AUTHOR IN COMMENT SECTION:" , author)
           const targethost = author.id.split('/authors/')[0];
           const authorId = author.id.split("/").pop();
           if (!processedAuthors.has(authorId)) {
@@ -372,11 +363,10 @@ export default {
 
         await axios.post(inboxUrl, payload, {
           headers: {
-            Authorization: `Basic ${credentials}`,
             "Content-Type": "application/json",
+            Authorization: `Basic ${credentials}`,
             "X-CSRFToken": csrfToken,
           },
-          withCredentials: true,
         });
       } catch (error) {
         console.error(`Error sending comment to author ${authorId}'s inbox:`, error);
