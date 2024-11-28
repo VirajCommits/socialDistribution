@@ -196,7 +196,6 @@ export default {
       try {
         // Fetch the post details to get the author's information and visibility
         const postApiUrl = `/posts/${encodeURIComponent(this.postId)}/`;
-        console.log("<<<<<<<<<<<<>>>>>>>>>>>>>>>>>" , postApiUrl)
         const postResponse = await axios.get(postApiUrl, {
           headers: {
             Authorization: `Token ${localStorage.getItem("token")}`,
@@ -219,8 +218,6 @@ export default {
           },
         });
         const authors = authorsResponse.data["authors"];
-        console.log("AUTHORS IN COMMENT SECTION:===========" , authors)
-        console.log("AUTHORS IN COMMENT SECTION:===========" , authors)
 
         // Current user's ID
         const currentAuthorId = this.authID;
@@ -230,8 +227,6 @@ export default {
 
         // Determine the list of authors to send the comment to based on post visibility
         let targetAuthors = [];
-
-        console.log("COMMENT SECTION -------------- ")
 
         switch (postVisibility) {
             case "PUBLIC": {
