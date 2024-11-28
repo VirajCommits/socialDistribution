@@ -4484,6 +4484,7 @@ def process_follow_request(request, follow_request):
 )
 @csrf_exempt
 @api_view(['GET'])
+@authentication_classes([NodeBasicAuthentication])
 def sync_remote_authors(request):
 
     print("INCOMING REQUEST BODY:" ,)
