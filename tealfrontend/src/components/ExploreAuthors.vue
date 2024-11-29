@@ -154,6 +154,11 @@
 
 <script>
 import axios from "axios";
+import Cookies from 'js-cookie';
+
+axios.defaults.headers.common["X-CSRFToken"] = Cookies.get("csrftoken");
+
+
 
 export default {
   name: "ExploreAuthors",
@@ -195,45 +200,49 @@ export default {
     },
     async fetchAuthors() {
       if (!this.token) {
-        this.showNotification(
-          "Authentication required",
-          "error",
-          "fas fa-lock"
-        );
+        this.showNotification("Authentication required", "error", "fas fa-lock");
         this.$router.push("/login");
         return;
       }
 
       try {
-        const response = await axios.get(
-          "http://localhost:8000/service/api/authors/",
-          {
-            headers: {
-              Authorization: `Token ${this.token}`,
-              "Content-Type": "application/json",
-            },
-          }
-        );
-        this.authors = response.data;
+        const response = await axios.get("/authors/", {
+          headers: {
+            Authorization: `Token ${this.token}`,
+            "Content-Type": "application/json",
+          },
+        });
+
+        console.log(response.data); // This will help you understand the response format
+
+        // Handling different formats of response
+        if (Array.isArray(response.data)) {
+          this.authors = response.data.map((author) => ({
+            ...author,
+            username: author.id.split("/").pop(),
+          }));
+        } else if (response.data.authors && Array.isArray(response.data.authors)) {
+          this.authors = response.data.authors.map((author) => ({
+            ...author,
+            username: author.id.split("/").pop(),
+          }));
+        } else {
+          console.error("Unexpected data format:", response.data);
+          this.authors = [];
+        }
+
         await this.fetchPendingRequests();
       } catch (error) {
         console.error("Error fetching authors:", error);
         if (error.response?.status === 401) {
-          this.showNotification(
-            "Session expired. Please login again",
-            "error",
-            "fas fa-lock"
-          );
+          this.showNotification("Session expired. Please login again", "error", "fas fa-lock");
           this.$router.push("/login");
         } else {
-          this.showNotification(
-            "Failed to load authors",
-            "error",
-            "fas fa-exclamation-circle"
-          );
+          this.showNotification("Failed to load authors", "error", "fas fa-exclamation-circle");
         }
       }
     },
+
     goBack() {
       this.$router.push("/stream");
     },
@@ -260,15 +269,98 @@ export default {
       }
     },
     async sendFollowRequest(authorId) {
-      try {
-        const targetUuid = authorId.split("/").pop();
-        await axios.post(
-          `http://localhost:8000/service/api/authors/${targetUuid}/send_follow_request/`,
-          null,
-          {
-            headers: { Authorization: `Token ${this.token}` },
+  console.log("This is the authorID: ", authorId);
+  try {
+    const targetUuid = authorId.split("/").pop();
+    const targethost = authorId.split('/authors/')[0];
+    console.log("This is the host: ", targethost);
+
+    // Fetch the list of connected nodes
+    const response = await axios.get('/connected-nodes/', {
+      headers: { Authorization: `Token ${this.token}` },
+    });
+    const connectedNodes = response.data;
+    console.log(connectedNodes);
+
+    const targetNode = connectedNodes.find(node => node.url === targethost);
+    console.log("This is the target node: ", targetNode);
+
+    const user = JSON.parse(localStorage.getItem("user"));
+    console.log("This is the user: ", user);
+
+    // Get the target author's full data from the authors array
+    const targetAuthor = this.authors.find(author => author.id === authorId);
+
+    const followActivity = {
+      type: "Follow",
+      summary: `${user.displayName} wants to follow ${targetAuthor.displayName}`,
+      actor: {
+        type: "author",
+        id: user.id,
+        host: user.host,
+        displayName: user.displayName,
+        github: user.github || "",
+        profileImage: user.profileImage || "",
+        url: user.url || user.page
+      },
+      object: targetAuthor // The target author already has all required fields
+    };
+
+    if (targetNode) {
+      // Define the endpoint on your server
+      const endpoint = `/authors/${targetUuid}/sendRemoteRequest/`;
+      console.log("Sending request to this endpoint:" , endpoint)
+      // const csrfToken = Cookies.get("csrftoken"); // Get CSRF token from cookies
+
+      // Send the follow request to your server's sendRemoteRequest endpoint
+      await axios.post(
+        endpoint,
+        followActivity,
+        {
+          headers: {
+            Authorization: `Token ${this.token}`,
+            'Content-Type': 'application/json',
+            
           }
-        );
+        }
+      );
+
+      this.showNotification(
+        "Follow request sent successfully!",
+        "success",
+        "fas fa-user-plus"
+      );
+    } else {
+      // For local authors, use your own endpoint
+      // const csrfToken = Cookies.get("csrftoken"); // Get CSRF token from cookies
+      await axios.post(
+        `/authors/${targetUuid}/send_follow_request/`,
+        followActivity,
+        {
+          headers: { Authorization: `Token ${this.token}`},
+          
+        }
+      );
+
+      this.showNotification(
+        "Follow request sent successfully!",
+        "success",
+        "fas fa-user-plus"
+      );
+    }
+
+    this.pendingRequests.push(authorId);
+    this.fetchAuthors();
+  } catch (error) {
+    this.showNotification(
+      "Failed to send follow request",
+      "error",
+      "fas fa-exclamation-circle"
+    );
+    console.error("Error sending follow request:", error);
+  }
+},
+
 
     async handlePendingRequest(author) {
       try {
@@ -410,14 +502,56 @@ export default {
     },
     async confirmUnfollow() {
       try {
-        const authorUUID = this.selectedAuthor.id.split("/").pop();
-        await axios.delete(
-          `http://localhost:8000/service/api/authors/${authorUUID}/unfollow/`,
-          null,
-          {
-            headers: { Authorization: `Token ${this.token}` },
-          }
-        );
+        const authorId = this.selectedAuthor.id;
+        const targetUuid = authorId.split("/").pop();
+        const targethost = authorId.split('/authors/')[0];
+
+        // Fetch the list of connected nodes
+        const response = await axios.get('/connected-nodes/', {
+          headers: { Authorization: `Token ${this.token}` },
+        });
+        const connectedNodes = response.data;
+
+        const targetNode = connectedNodes.find(node => node.url === targethost);
+        if (targetNode) {
+          // For remote nodes, send to their inbox
+          const inboxEndpoint = `${targethost}/api/authors/${targetUuid}/inbox/`;
+          console.log('Sending unfollow request to remote inbox:', {
+            endpoint: inboxEndpoint,
+            credentials: {
+              username: targetNode.username,
+              password: '********' // masked for security
+            }
+          });
+
+          // Prepare the unfollow activity object
+          const unfollowActivity = {
+            type: "unfollow",
+            actor: {
+              id: localStorage.getItem("id"),
+              host: window.location.origin,
+              displayName: localStorage.getItem("displayName"),
+            },
+            object: {
+              id: authorId
+            }
+          };
+          // const csrfToken = Cookies.get("csrftoken"); // Get CSRF token from cookies
+          await axios.post(inboxEndpoint, unfollowActivity, {
+            headers: {
+              'node-username': targetNode.username,
+              'node-password': targetNode.password,
+            },
+          });
+        } else {
+          // For local authors, use the existing endpoint
+          await axios.delete(
+            `/authors/${targetUuid}/unfollow/`,
+            {
+              headers: { Authorization: `Token ${this.token}` },
+            }
+          );
+        }
 
         this.showNotification(
           "Successfully unfollowed author",

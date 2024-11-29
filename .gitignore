@@ -284,3 +284,4 @@ __pycache__/
 db.sqlite3
 
 !backendApp/static/vue/
+

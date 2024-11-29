@@ -43,6 +43,35 @@ class Author(AbstractUser):
         return (self.followers.filter(id=other_author.id).exists() and
                 other_author.followers.filter(id=self.id).exists())
 
+    @property
+    def github_username(self):
+        if self.github:
+            # Parse the GitHub URL to get the path and extract the username
+            path_parts = urlparse(self.github).path.strip("/").split("/")
+            if path_parts:  # Ensure there is a username in the path
+                return path_parts[-1]  # The username should be the last part of the URL
+        return None
+
+    def get_full_data(self):
+        """Return the author data in the format required by the API"""
+        return {
+            "type": "author",
+            "id": self.id,
+            "host": self.host,
+            "displayName": self.displayName,
+            "github": self.github,
+            "profileImage": self.profileImage,
+            "page": self.page
+        }
+
+    def format_follow_request(self, target_author):
+        """Create a properly formatted follow request object"""
+        return {
+            "type": "follow",
+            "summary": f"{self.displayName} wants to follow {target_author.displayName}",
+            "actor": self.get_full_data(),
+            "object": target_author.get_full_data()
+        }
 
 class Post(models.Model):
     VISIBILITY_CHOICES = [
@@ -148,7 +177,6 @@ class Like(models.Model):
         return f"Like by {self.author.displayName} on {self.post.title if self.post else self.comment.id}"
 
 
-
 class InboxItem(models.Model):
     INBOX_ITEM_TYPES = [
         ('post', 'Post'),
@@ -218,15 +246,22 @@ class RemoteNode(models.Model):
     username = models.CharField(max_length=255)  # Node's username
     password = models.CharField(max_length=255)  # Node's password (or token)
     active = models.BooleanField(default=True)
+
+    @property
+    def is_authenticated(self):
+        return True  # or implement your logic if needed
     
     def str(self):
         return self.url
-    
+
 class ToWhichItsConnected(models.Model):
     url = models.URLField(unique=True)  # The base URL of the remote node
     username = models.CharField(max_length=255)  # Node's username
     password = models.CharField(max_length=255)  # Node's password (or token)
     active = models.BooleanField(default=True)
 
+    @property
+    def is_authenticated(self):
+            return True  # or implement your logic if needed
     def str(self):
         return self.url

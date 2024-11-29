@@ -14,27 +14,21 @@ from rest_framework import permissions
 schema_view = get_schema_view(
     openapi.Info(
         title="Your API Title",
-        default_version='v1',
+        default_version="v1",
         description="API documentation for your project",
         terms_of_service="https://www.google.com/policies/terms/",
         contact=openapi.Contact(email="contact@yourapi.local"),
         license=openapi.License(name="BSD License"),
     ),
     public=True,
+    permission_classes=(permissions.AllowAny,),
 )
 
 urlpatterns = [
     # path("", views.defaultPath, name="defaultPath"),
     path("api/signup/", views.signup, name="signup"),
     path("api/login/", views.login, name="login"),
-
     # Swagger paths
-    path('swagger/', schema_view.with_ui('swagger',
-         cache_timeout=0), name='schema-swagger-ui'),
-    path('redoc/', schema_view.with_ui('redoc',
-         cache_timeout=0), name='schema-redoc'),
-
-    # Post-related paths
     path(
         "swagger/",
         schema_view.with_ui("swagger", cache_timeout=0),
@@ -111,13 +105,6 @@ urlpatterns = [
     ),
     # Fetch all authors path
     path(
-        "service/api/authors/",
-        views.get_all_authors,
-        name="get_all_authors",
-    ),
-
-    # To get the posts for displaying on the stream
-    path(
         "api/authors/",
         views.get_all_authors,
         name="get_all_authors",
@@ -134,13 +121,113 @@ urlpatterns = [
         name="unfollow_author",
     ),
     path(
-        "service/api/authors/<uuid:author_uuid>/relationship/",
+        "api/posts/<uuid:post_id>/",
+        views.get_post_by_link,
+        name="get_post_by_link",
+    ),
+    path(
+        "api/authors/<uuid:author_uuid>/relationship/",
         views.check_relationship_status,
         name="check-relationship-status",
     ),
     path(
-        "service/api/authors/<uuid:author_uuid>/stats/",
+        "api/authors/<uuid:author_uuid>/stats/",
         views.get_author_stats,
         name="get-author-stats",
+    ),
+    path(
+        "api/authors/<uuid:author_uuid>/followers/",
+        views.get_author_followers,
+        name="get-author-followers",
+    ),
+    path(
+        "api/authors/<uuid:author_uuid>/following/",
+        views.get_author_following,
+        name="get-author-following",
+    ),
+    path(
+        "api/authors/<uuid:author_uuid>/friends/",
+        views.get_author_friends,
+        name="get-author-friends",
+    ),
+    path(
+        "api/comments/<uuid:comment_id>/like/",
+        views.like_comment,
+        name="like_comment",
+    ),
+    path(
+        "api/comments/<uuid:comment_id>/likes/",
+        views.comment_likes,
+        name="comment_likes",
+    ),
+    path(
+        "api/authors/<uuid:author_uuid>/",
+        views.update_author_profile,
+        name="update_author_profile",
+    ),
+    path(
+        "api/authors/<uuid:author_uuid>/public/",
+        views.PublicAuthorProfileView.as_view(),
+        name="public-author-profile",
+    ),
+    path(
+        "api/authors/<uuid:author_uuid>/stats/public/",
+        views.PublicAuthorStatsView.as_view(),
+        name="public-author-stats",
+    ),
+    path(
+        "api/authors/<uuid:author_uuid>/post/public/",
+        views.PublicPostsView.as_view(),
+        name="public-author-posts",
+    ),
+    # path(
+    #     "nodes/<int:pk>/test_connection/",
+    #     TestRemoteNodeConnectionView.as_view(),
+    #     name="test_connection",
+    # ),
+    path(
+        'api/authors/<str:author_serial>/inbox/', 
+        views.inbox_handler, 
+        name='inbox'
+    ),
+
+    path(
+        'api/authors/<str:author_serial>/inbox', 
+        views.inbox_handler, 
+        name='inbox'
+    ),
+
+    path(
+        'api/authors/<str:author_serial>/sendRemoteRequest/', 
+        views.send_follow_request_to_remote_authors, 
+        name='send_follow_request_to_remote_authors'
+    ),
+
+
+    path(
+    "api/authors/<path:author_serial>/followers/",
+    views.followers_handler,
+    name="followers_handler"
+    ),
+    path(
+        "api/authors/<path:author_serial>/followers/<path:foreign_author_fqid>/",
+        views.specific_follower_handler,
+        name="specific_follower_handler"
+    ),
+    path(
+        "stream", TemplateView.as_view(template_name="index.html"), name="stream"
+    ),
+    path(
+        "api/sync_remote_authors/",
+        views.sync_remote_authors,
+        name="sync_remote_authors",
+    ),
+    
+    path('api/connected-nodes/', views.connected_nodes, name='connected_nodes'),
+    path('api/connected-nodes/', views.connected_nodes, name='connected_nodes'),
+    # Catch-all route for Vue frontend
+    re_path(
+        r"^(?!api|admin|swagger|static|media).*$",
+        TemplateView.as_view(template_name="index.html"),
     ),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

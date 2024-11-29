@@ -178,6 +178,223 @@ export default {
      * @param {String} timestamp - The original timestamp.
      * @returns {String} - The formatted timestamp.
      */
+    async distributeComment(commentData) {
+      try {
+        // Fetch the post details to get the author's information and visibility
+        const postApiUrl = `/posts/${encodeURIComponent(this.postId)}/`;
+        const postResponse = await axios.get(postApiUrl, {
+          headers: {
+            Authorization: `Token ${localStorage.getItem("token")}`,
+          },
+        });
+        const post = postResponse.data;
+
+        if (!post) {
+          console.warn("Post details not found. Skipping comment distribution.");
+          return;
+        }
+
+        const postAuthorId = post.author.id.split("/").pop();
+        const postVisibility = post.visibility || "PUBLIC";
+
+        // Fetch all authors (or fetch only relevant authors based on visibility)
+        const authorsResponse = await axios.get("/authors/", {
+          headers: {
+            Authorization: `Token ${localStorage.getItem("token")}`,
+          },
+        });
+        const authors = authorsResponse.data["authors"];
+
+        // Current user's ID
+        const currentAuthorId = this.authID;
+
+        // Track which authors have received the notification to prevent duplicates
+        const processedAuthors = new Set([currentAuthorId]); // Initialize with current author
+
+        // Determine the list of authors to send the comment to based on post visibility
+        let targetAuthors = [];
+
+        switch (postVisibility) {
+            case "PUBLIC": {
+                // Visible to everyone except the current author
+                const ourHost = this.user.host;
+    
+                // Filter out authors who:
+                // 1. Are not the current author
+                // 2. Don't have the same host as our user
+                targetAuthors = authors.filter(author => 
+                    author.id.split("/")[-1] !== currentAuthorId && 
+                    author.host !== ourHost
+                );
+                console.log("TARGET AUTHORS IN COMMENT SECTION:" , targetAuthors)
+                break;
+            }
+            case "FRIENDS": {
+                try {
+                    console.log("Checking FRIENDS visibility");
+                    const currentUser = JSON.parse(localStorage.getItem('user'));
+                    
+                    // First, check if the current user is a follower of the post author
+                    const postAuthorFollowers = await this.getFollowers(postAuthorId);
+                    const isFollower = postAuthorFollowers.some(
+                        follower => follower.uuid === currentUser.uuid
+                    );
+                    
+                    // Then check if the post author follows the current user
+                    const currentUserFollowers = await this.getFollowers(currentUser.uuid);
+                    const isFollowed = currentUserFollowers.some(
+                        follower => follower.uuid === postAuthorId
+                    );
+                    
+                    console.log('Is follower:', isFollower);
+                    console.log('Is followed:', isFollowed);
+                    
+                    // Only allow access if there's a mutual follow relationship
+                    if (!isFollower || !isFollowed) {
+                        console.log('Not a mutual friend - access denied');
+                        throw new Error('You must be friends with the author to view this post');
+                    }
+                    
+                    // If we get here, they are friends, so include in targetAuthors
+                    targetAuthors = [currentUser];
+                    
+                } catch (error) {
+                    console.error('Error in FRIENDS visibility check:', error);
+                    throw error;
+                }
+                break;
+            }
+            case "UNLISTED": {
+                // Visible to all followers of the post author
+                targetAuthors = await this.getFollowers(postAuthorId);
+                break;
+            }
+            default: {
+                // Default to PUBLIC if visibility is undefined
+                targetAuthors = authors.filter(
+                    (author) => author.id.split("/").pop() !== currentAuthorId
+                );
+                break;
+            }
+        }
+
+        console.log("TARGET AUTHORS IN COMMENT SECTION before for loop:" , targetAuthors)
+        // Distribute the comment to the target authors
+        for (const author of targetAuthors) {
+          console.log("AUTHOR IN COMMENT SECTION:" , author)
+          const targethost = author.id.split('/authors/')[0];
+          const authorId = author.id.split("/").pop();
+          if (!processedAuthors.has(authorId)) {
+            await this.sendCommentToInbox(authorId, commentData, post, targethost);
+            processedAuthors.add(authorId);
+          }
+        }
+
+        console.log("Comment distribution completed.");
+      } catch (error) {
+        console.error("Error distributing comment:", error);
+        // Optionally, set an error message or handle it as needed
+      }
+    },
+
+    /**
+     * Sends the comment to a specific author's inbox.
+     * @param {String} authorId - The UUID of the target author.
+     * @param {Object} commentData - The data of the comment.
+     * @param {Object} postData - The data of the post the comment belongs to.
+     */
+    async sendCommentToInbox(authorId, commentData, postData, targethost) {
+      try {
+        console.log("SENDING COMMENT TO INBOX IN COMMENT SECTION:" , authorId, commentData, postData, targethost)
+        const inboxUrl = `${targethost}/api/authors/${authorId}/inbox/`;
+
+        const payload = {
+          type: "comment",
+          id: commentData.id,
+          content: commentData.content,
+          contentType: commentData.contentType,
+          published: commentData.published || new Date().toISOString(),
+          author: {
+            type: "author",
+            id: this.user.id,
+            host: this.user.host,
+            displayName: this.user.displayName,
+            page: this.user.page,
+            github: this.user.github,
+            profileImage: this.user.profileImage,
+          },
+          post: {
+            id: postData.id,
+            title: postData.title,
+            description: postData.description,
+            contentType: postData.contentType,
+            content: postData.content,
+            published: postData.published,
+            visibility: postData.visibility,
+            author: postData.author,
+          },
+        };
+
+        console.log(`Sending comment to inbox of author ${authorId}:`, payload);
+
+        const response = await axios.get('/connected-nodes/', {
+          headers: { Authorization: `Token ${this.token}` },
+        });
+        const connectedNodes = response;
+        const connected_nodes = response.data;
+        console.log("CONNECTED NODES IN COMMENT SECTION:" , connectedNodes)
+        console.log("CONNECTED NODES DATA IN COMMENT SECTION:" , connected_nodes)
+        console.log("TARGET HOST IN COMMENT SECTION:" , targethost)
+
+        console.log("HOST IN COMMENT SECTION:" , targethost)
+        const targetNode = connected_nodes.find(node => node.url === targethost);
+        console.log("TARGET NODE IN COMMENT SECTION:" , targetNode)
+        const credentials = btoa(`${targetNode.username}:${targetNode.password}`);
+
+        const csrfToken = Cookies.get("csrftoken"); // Get CSRF token from cookies
+
+        await axios.post(inboxUrl, payload, {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Basic ${credentials}`,
+            "X-CSRFToken": csrfToken,
+          },
+        });
+      } catch (error) {
+        console.error(`Error sending comment to author ${authorId}'s inbox:`, error);
+        throw error; // Re-throw to handle in distributeComment
+      }
+    },
+
+    /**
+     * Fetches the followers of a given author.
+     * Used when the post visibility is set to FRIENDS.
+     * @param {String} authorId - The UUID of the author whose followers are to be fetched.
+     * @returns {Array} - An array of follower authors.
+     */
+    async getFollowers(authorId) {
+      try {
+        const followersApiUrl = `/authors/${encodeURIComponent(authorId)}/followers/`;
+        const response = await axios.get(followersApiUrl, {
+          headers: {
+            Authorization: `Token ${localStorage.getItem("token")}`,
+          },
+        });
+        return response.data || [];
+      } catch (error) {
+        console.error("Error fetching followers:", error);
+        return [];
+      }
+    },
+    async getFollowing(authorId) {
+        try {
+            const response = await axios.get(`/authors/${authorId}/following/`);
+            return response.data;
+        } catch (error) {
+            console.error(`Error getting following for author ${authorId}:`, error);
+            return [];
+        }
+    }
   },
 };
 </script>
