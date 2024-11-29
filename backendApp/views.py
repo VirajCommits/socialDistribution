@@ -4205,72 +4205,75 @@ def inbox_handler(request, author_serial):
 
                 return Response({'message': 'Post added to inbox and created locally.'}, status=status.HTTP_201_CREATED)
             elif item_type == 'like':
-                print("WE ARE INSIDE THE LIKE SECTION ... IMPLEMENT THE INBOX!")
-                try:
-                    # Extract like data
-                    like_data = request.data
-                    object_id = like_data.get('object')  # This is the URL of the liked object (post/comment)
+                # Handle Like (either for a post or a comment)
+                author_data = data.get('author', {})
+                author_id = author_data.get('id')
+                author_uuid = author_id.rstrip('/').split('/')[-1]
 
-                    # Check if the object being liked is a post or a comment
-                    if 'posts' in object_id:
-                        # Extract post ID
-                        post_id = object_id.rstrip('/').split('/')[-1]
+                author, _ = Author.objects.get_or_create(
+                    uuid=author_uuid,
+                    defaults={
+                        'displayName': author_data.get('displayName', ''),
+                        'host': author_data.get('host', ''),
+                        'page': author_data.get('page', ''),
+                        'github': author_data.get('github', ''),
+                        'profileImage': author_data.get('profileImage', '')
+                    }
+                )
 
-                        # Call the like_post API
-                        like_response = like_post(request, post_id)
-                        if like_response.status_code == status.HTTP_201_CREATED:
-                            # Add the like to the inbox if successful
-                            like_instance = Like.objects.get(id=like_response.data['id'])
-                            inbox.likes.add(like_instance)
+                # Determine if like is for a post or comment
+                post_data = data.get('post')
+                comment_data = data.get('comment')
 
-                            return Response(
-                                {'message': 'Like added to inbox successfully.'},
-                                status=status.HTTP_201_CREATED
-                            )
-                        else:
-                            return like_response  # Pass the error response back if something goes wrong
+                if post_data:
+                    post_id = post_data.get('id')
+                    post = get_object_or_404(Post, id=post_id)
 
-                    elif 'comments' in object_id:
-                        # Extract comment ID
-                        comment_id = object_id.rstrip('/').split('/')[-1]
+                    # Create like for post
+                    like, created = Like.objects.get_or_create(
+                        author=author,
+                        post=post,
+                        defaults={
+                            'published': data.get('published', timezone.now())
+                        }
+                    )
 
-                        # Ensure the comment exists
-                        comment = get_object_or_404(Comment, id=comment_id)
-
-                        # Check if the author has already liked the comment
-                        author = Author.objects.get(user=request.user)
-                        if Like.objects.filter(object=comment.id, author=author).exists():
-                            return Response(
-                                {"detail": "You have already liked this comment."},
-                                status=status.HTTP_400_BAD_REQUEST,
-                            )
-
-                        # Create the like manually (can optionally be refactored into a `like_comment` API)
-                        like = Like.objects.create(
-                            id=like_data.get('id'),
-                            author=author,
-                            object=comment.id,
-                            summary=like_data.get('summary', ''),
-                            published=like_data.get('published', timezone.now())
-                        )
-
-                        # Add the like to the inbox
+                    if created:
+                        # Add like to inbox
                         inbox.likes.add(like)
-
                         return Response(
-                            {'message': 'Like added to inbox successfully.'},
+                            {'message': 'Like for post added to inbox successfully.'},
                             status=status.HTTP_201_CREATED
                         )
-
                     else:
-                        return Response(
-                            {'error': 'Unsupported object type for like'},
-                            status=status.HTTP_400_BAD_REQUEST
-                        )
+                        return Response({'message': 'Like for post already exists.'}, status=status.HTTP_200_OK)
 
-                except Exception as e:
+                elif comment_data:
+                    comment_id = comment_data.get('id')
+                    comment = get_object_or_404(Comment, id=comment_id)
+
+                    # Create like for comment
+                    like, created = Like.objects.get_or_create(
+                        author=author,
+                        comment=comment,
+                        defaults={
+                            'published': data.get('published', timezone.now())
+                        }
+                    )
+
+                    if created:
+                        # Add like to inbox
+                        inbox.likes.add(like)
+                        return Response(
+                            {'message': 'Like for comment added to inbox successfully.'},
+                            status=status.HTTP_201_CREATED
+                        )
+                    else:
+                        return Response({'message': 'Like for comment already exists.'}, status=status.HTTP_200_OK)
+
+                else:
                     return Response(
-                        {'error': str(e)},
+                        {'error': 'Invalid like type: must include post or comment.'},
                         status=status.HTTP_400_BAD_REQUEST
                     )
 
