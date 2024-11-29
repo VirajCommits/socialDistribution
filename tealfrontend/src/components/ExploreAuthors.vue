@@ -126,6 +126,11 @@
 
 <script>
 import axios from "axios";
+import Cookies from 'js-cookie';
+
+axios.defaults.headers.common["X-CSRFToken"] = Cookies.get("csrftoken");
+
+
 
 export default {
   name: "ExploreAuthors",
@@ -167,11 +172,7 @@ export default {
     },
     async fetchAuthors() {
       if (!this.token) {
-        this.showNotification(
-          "Authentication required",
-          "error",
-          "fas fa-lock"
-        );
+        this.showNotification("Authentication required", "error", "fas fa-lock");
         this.$router.push("/login");
         return;
       }
@@ -183,30 +184,37 @@ export default {
             "Content-Type": "application/json",
           },
         });
-        // Extract `username` from `author.id`
-        this.authors = response.data.map((author) => ({
-          ...author,
-          username: author.id.split("/").pop(),
-        }));
+
+        console.log(response.data); // This will help you understand the response format
+
+        // Handling different formats of response
+        if (Array.isArray(response.data)) {
+          this.authors = response.data.map((author) => ({
+            ...author,
+            username: author.id.split("/").pop(),
+          }));
+        } else if (response.data.authors && Array.isArray(response.data.authors)) {
+          this.authors = response.data.authors.map((author) => ({
+            ...author,
+            username: author.id.split("/").pop(),
+          }));
+        } else {
+          console.error("Unexpected data format:", response.data);
+          this.authors = [];
+        }
+
         await this.fetchPendingRequests();
       } catch (error) {
         console.error("Error fetching authors:", error);
         if (error.response?.status === 401) {
-          this.showNotification(
-            "Session expired. Please login again",
-            "error",
-            "fas fa-lock"
-          );
+          this.showNotification("Session expired. Please login again", "error", "fas fa-lock");
           this.$router.push("/login");
         } else {
-          this.showNotification(
-            "Failed to load authors",
-            "error",
-            "fas fa-exclamation-circle"
-          );
+          this.showNotification("Failed to load authors", "error", "fas fa-exclamation-circle");
         }
       }
     },
+
     goBack() {
       this.$router.push("/stream");
     },
@@ -270,6 +278,8 @@ export default {
     if (targetNode) {
       // Define the endpoint on your server
       const endpoint = `/authors/${targetUuid}/sendRemoteRequest/`;
+      console.log("Sending request to this endpoint:" , endpoint)
+      // const csrfToken = Cookies.get("csrftoken"); // Get CSRF token from cookies
 
       // Send the follow request to your server's sendRemoteRequest endpoint
       await axios.post(
@@ -278,7 +288,8 @@ export default {
         {
           headers: {
             Authorization: `Token ${this.token}`,
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            
           }
         }
       );
@@ -290,11 +301,13 @@ export default {
       );
     } else {
       // For local authors, use your own endpoint
+      // const csrfToken = Cookies.get("csrftoken"); // Get CSRF token from cookies
       await axios.post(
         `/authors/${targetUuid}/send_follow_request/`,
         followActivity,
         {
-          headers: { Authorization: `Token ${this.token}` },
+          headers: { Authorization: `Token ${this.token}`},
+          
         }
       );
 
@@ -469,7 +482,7 @@ export default {
         const targetNode = connectedNodes.find(node => node.url === targethost);
         if (targetNode) {
           // For remote nodes, send to their inbox
-          const inboxEndpoint = `${targethost}/service/api/authors/${targetUuid}/inbox/`;
+          const inboxEndpoint = `${targethost}/api/authors/${targetUuid}/inbox/`;
           console.log('Sending unfollow request to remote inbox:', {
             endpoint: inboxEndpoint,
             credentials: {
@@ -490,7 +503,7 @@ export default {
               id: authorId
             }
           };
-
+          // const csrfToken = Cookies.get("csrftoken"); // Get CSRF token from cookies
           await axios.post(inboxEndpoint, unfollowActivity, {
             headers: {
               'node-username': targetNode.username,

@@ -7,7 +7,7 @@ def make_node_request(base_url, endpoint, method='GET', data=None):
     """
     Make authenticated request to another node using ToWhichItsConnected credentials
     @param base_url: The base URL of the target node (e.g., 'https://other-team.herokuapp.com/')
-    @param endpoint: The API endpoint (e.g., 'service/api/authors/')
+    @param endpoint: The API endpoint (e.g., 'api/authors/')
     """
     try:
         
@@ -28,7 +28,7 @@ def make_node_request(base_url, endpoint, method='GET', data=None):
             'Content-Type': 'application/json'
         }
         
-        # Combine base URL and endpoint
+        # Combine base URL and endpoit
         full_url = urljoin(base_url, endpoint)
         print("This is the full url:" , full_url , headers)
         

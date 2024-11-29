@@ -81,15 +81,12 @@ MIDDLEWARE = [
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "rest_framework_simplejwt.authentication.JWTAuthentication",  # Use JWT authentication
-        'rest_framework.authentication.SessionAuthentication',
-        'backendApp.authentication.NodeBasicAuthentication',
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": [
-        "rest_framework.permissions.IsAuthenticated",
-    ]
+        "rest_framework.permissions.AllowAny",
+    ],
 }
-
 # CORS Configuration
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:8080",  # Frontend development server
@@ -118,21 +115,6 @@ CSRF_TRUSTED_ORIGINS = [
     "http://localhost:8000",
     "http://127.0.0.1:8000",
 ]
-
-CORS_ALLOW_HEADERS = [
-    'accept',
-    'accept-encoding',
-    'authorization',
-    'content-type',
-    'dnt',
-    'origin',
-    'user-agent',
-    'x-csrftoken',
-    'x-requested-with',
-    'node-password',
-    'node-username',
-]
-
 
 # WhiteNoise Configuration (remove non-standard settings)
 STATIC_URL = "/static/"
@@ -164,10 +146,12 @@ TEMPLATES = [
 
 # Database Configuration
 DATABASES = {
-    'default': env.db('DATABASE_URL', default='sqlite:///' + str(BASE_DIR / 'db.sqlite3')),
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',  # or your desired database backend
+        'NAME': env.db('DATABASE_URL', default='sqlite:///' + str(BASE_DIR / 'db.sqlite3')),
+        'CONN_MAX_AGE': 600,
+    }
 }
-print("This is database" , DATABASES)
-
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -203,13 +187,13 @@ WHITENOISE_USE_FINDERS = True
 WHITENOISE_MANIFEST_STRICT = False
 WHITENOISE_INDEX_FILE = True
 
-# Default primary key field type
+# Default primary keyfield type
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # JWT Configuration
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=15),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=15),
 }
 
 # Channels configuration

@@ -54,7 +54,6 @@ class Author(AbstractUser):
                 return path_parts[-1]  # The username should be the last part of the URL
         return None
 
-    
     def get_full_data(self):
         """Return the author data in the format required by the API"""
         return {
@@ -134,7 +133,7 @@ class Post(models.Model):
         self.save()
 
     def get_post_url(self):
-        return f"{self.author.host}service/api/posts/{self.id}/link/"
+        return f"{self.author.host}api/posts/{self.id}/link/"
 
 
 class FollowRequest(models.Model):
@@ -178,7 +177,6 @@ class Like(models.Model):
     published = models.DateTimeField(default=timezone.now)
     def __str__(self):
         return f"Like by {self.author.displayName} on {self.post.title if self.post else self.comment.id}"
-
 
 
 class InboxItem(models.Model):
@@ -276,15 +274,22 @@ class RemoteNode(models.Model):
     username = models.CharField(max_length=255)  # Node's username
     password = models.CharField(max_length=255)  # Node's password (or token)
     active = models.BooleanField(default=True)
+
+    @property
+    def is_authenticated(self):
+        return True  # or implement your logic if needed
     
     def str(self):
         return self.url
-    
+
 class ToWhichItsConnected(models.Model):
     url = models.URLField(unique=True)  # The base URL of the remote node
     username = models.CharField(max_length=255)  # Node's username
     password = models.CharField(max_length=255)  # Node's password (or token)
     active = models.BooleanField(default=True)
 
+    @property
+    def is_authenticated(self):
+            return True  # or implement your logic if needed
     def str(self):
         return self.url

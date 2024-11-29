@@ -1,3 +1,4 @@
+
 <template>
   <div class="login-container">
     <div class="login-box">
@@ -82,13 +83,16 @@ export default {
 
       console.log("Trying to log in")
 
+
       try {
+
         // Attempt to log in the user
         console.log("username and pass:" , this.username , this.password)
         const response = await axios.post("/login/", {
           username: this.username,
           password: this.password,
-        });
+        }
+);
 
         // Store authentication tokens and user data
         const accessToken = response.data.access;

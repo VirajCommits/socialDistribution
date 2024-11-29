@@ -287,6 +287,8 @@
 
 <script>
 import axios from "axios";
+import Cookies from 'js-cookie';
+
 
 export default {
   name: "UserSignup",
@@ -307,6 +309,8 @@ export default {
     async signup() {
       this.error = "";
       this.isLoading = true;
+      const csrfToken = Cookies.get("csrftoken"); // Get CSRF token from cookies
+
       
       try {
         const response = await axios.post(
@@ -318,8 +322,12 @@ export default {
             displayName: this.displayName,
             github: this.github,
             profileImage: this.profileImage,
-          }
-        );
+          },
+          {
+          headers: {
+    "X-CSRFToken": csrfToken, // Include the CSRF token in the headers
+  },
+      });
         if (response.data.access) {
           // User was approved and tokens were returned
           localStorage.setItem("token", response.data.access);

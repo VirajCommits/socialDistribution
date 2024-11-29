@@ -70,6 +70,7 @@
 <script>
 import axios from "axios";
 import LikeButton from "./LikeButton.vue";
+import Cookies from 'js-cookie';
 
 export default {
   name: "CommentSection",
@@ -164,11 +165,14 @@ export default {
           author_id: this.authID, // Include the author ID
         };
 
+        const csrfToken = Cookies.get("csrftoken"); // Get CSRF token from cookies
+
         // Make the POST request to submit the comment
         const response = await axios.post(apiUrl, payload, {
           headers: {
             "Content-Type": "application/json",
             Authorization: `Token ${localStorage.getItem("token")}`, // Include the authentication token
+            "X-CSRFToken": csrfToken,
           },
         });
 
@@ -192,7 +196,6 @@ export default {
       try {
         // Fetch the post details to get the author's information and visibility
         const postApiUrl = `/posts/${encodeURIComponent(this.postId)}/`;
-        console.log("<<<<<<<<<<<<>>>>>>>>>>>>>>>>>" , postApiUrl)
         const postResponse = await axios.get(postApiUrl, {
           headers: {
             Authorization: `Token ${localStorage.getItem("token")}`,
@@ -214,8 +217,7 @@ export default {
             Authorization: `Token ${localStorage.getItem("token")}`,
           },
         });
-        const authors = authorsResponse.data;
-        console.log("AUTHORS IN COMMENT SECTION:===========" , authors)
+        const authors = authorsResponse.data["authors"];
 
         // Current user's ID
         const currentAuthorId = this.authID;
@@ -226,8 +228,6 @@ export default {
         // Determine the list of authors to send the comment to based on post visibility
         let targetAuthors = [];
 
-        console.log("COMMENT SECTION -------------- ")
-
         switch (postVisibility) {
             case "PUBLIC": {
                 // Visible to everyone except the current author
@@ -237,7 +237,7 @@ export default {
                 // 1. Are not the current author
                 // 2. Don't have the same host as our user
                 targetAuthors = authors.filter(author => 
-                    author.uuid !== currentAuthorId && 
+                    author.id.split("/")[-1] !== currentAuthorId && 
                     author.host !== ourHost
                 );
                 console.log("TARGET AUTHORS IN COMMENT SECTION:" , targetAuthors)
@@ -320,7 +320,7 @@ export default {
     async sendCommentToInbox(authorId, commentData, postData, targethost) {
       try {
         console.log("SENDING COMMENT TO INBOX IN COMMENT SECTION:" , authorId, commentData, postData, targethost)
-        const inboxUrl = `${targethost}/service/api/authors/${authorId}/inbox/`;
+        const inboxUrl = `${targethost}/api/authors/${authorId}/inbox/`;
 
         const payload = {
           type: "comment",
@@ -365,12 +365,14 @@ export default {
         console.log("TARGET NODE IN COMMENT SECTION:" , targetNode)
         const credentials = btoa(`${targetNode.username}:${targetNode.password}`);
 
+        const csrfToken = Cookies.get("csrftoken"); // Get CSRF token from cookies
+
         await axios.post(inboxUrl, payload, {
           headers: {
-            Authorization: `Basic ${credentials}`,
             "Content-Type": "application/json",
+            Authorization: `Basic ${credentials}`,
+            "X-CSRFToken": csrfToken,
           },
-          withCredentials: true,
         });
       } catch (error) {
         console.error(`Error sending comment to author ${authorId}'s inbox:`, error);
