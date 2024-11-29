@@ -111,6 +111,7 @@
   justify-content: center;
   background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
   padding: 0;
+  overflow: hidden;
   position: fixed;
   top: 0;
   left: 0;
@@ -125,6 +126,7 @@
   width: 100%;
   max-width: 460px;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+  overflow-y: hidden;
   max-height: 100vh;
 }
 
@@ -310,7 +312,7 @@ export default {
       
       try {
         const response = await axios.post(
-          "/signup/",
+          "http://localhost:8000/api/signup/",
           {
             username: this.username,
             email: this.email,
@@ -320,19 +322,11 @@ export default {
             profileImage: this.profileImage,
           }
         );
-        if (response.data.access) {
-          // User was approved and tokens were returned
-          localStorage.setItem("token", response.data.access);
-          localStorage.setItem("user", JSON.stringify(response.data.user));
-          this.$router.push("/stream");
-        } else {
-          // User needs approval
-          this.error = response.data.message || "Account created. Waiting for admin approval.";
-          setTimeout(() => this.$router.push("/login"), 3000);
-        }
+        localStorage.setItem("token", response.data.access);
+        localStorage.setItem("user", JSON.stringify(response.data.user));
+        this.$router.push("/stream");
       } catch (error) {
-        console.error("Signup error:", error.response?.data);
-        this.error = error.response?.data?.error || "Signup failed. Please try again.";
+        this.error = "Signup failed. Please check your information and try again.";
       } finally {
         this.isLoading = false;
       }

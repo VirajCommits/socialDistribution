@@ -179,7 +179,7 @@ export default {
     // Fetch the post data from the backend
     async fetchPost() {
       try {
-        const apiUrl = `/authors/${encodeURIComponent(
+        const apiUrl = `http://localhost:8000/service/api/authors/${encodeURIComponent(
           this.authID
         )}/posts/${encodeURIComponent(this.id)}`;
 
@@ -291,7 +291,7 @@ export default {
       this.errorMessage = "";
 
       try {
-        const apiUrl = `/authors/${encodeURIComponent(
+        const apiUrl = `http://localhost:8000/service/api/authors/${encodeURIComponent(
           this.authID
         )}/posts/${encodeURIComponent(this.id)}`;
 

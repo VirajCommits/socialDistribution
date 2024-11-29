@@ -4,9 +4,6 @@
       <i :class="liked ? 'fas fa-heart' : 'far fa-heart'"></i>
       <span class="like-count">{{ likeCount }}</span>
     </button>
-    <div v-if="loading" class="loading-spinner">
-      <i class="fas fa-spinner fa-spin"></i>
-    </div>
   </div>
 </template>
 
@@ -18,158 +15,87 @@ export default {
   props: {
     postId: {
       type: String,
-      required: false, // Optional for comments
-    },
-    commentId: {
-      type: String,
-      required: false, // Optional for posts
+      required: true,
     },
   },
   data() {
     return {
       liked: false,
-      postLikeCount: 0, // Separate counter for post likes
-      commentLikeCount: 0, // Separate counter for comment likes
-      loading: true,
+      likeCount: 0,
       errorMessage: "",
     };
   },
-  computed: {
-    likeCount() {
-      // Dynamically return the correct like count
-      return this.commentId ? this.commentLikeCount : this.postLikeCount;
-    },
-  },
   mounted() {
-    this.commentId ? this.fetchCommentLikes() : this.fetchPostLikes();
+    this.fetchLikes();
   },
   methods: {
-    async fetchPostLikes() {
+    async fetchLikes() {
       try {
-        const apiUrl = `/posts/${this.postId}/likes/`;
+        const apiUrl = `http://localhost:8000/service/api/posts/${this.postId}/likes/`;
         const response = await axios.get(apiUrl);
-        const likesArray = Array.isArray(response.data) ? response.data : response.data.src || [];
-        this.postLikeCount = likesArray.length;
+        this.likeCount = response.data.length || 0;
 
-        // Check if the logged-in user has liked the post
+        // Check if the logged-in author has liked the post
         const currentUser = JSON.parse(localStorage.getItem("user"));
         const currentAuthorId = currentUser ? currentUser.id : null;
         if (currentAuthorId) {
-          this.liked = likesArray.some((like) => like.author.id === currentAuthorId);
+          this.liked = response.data.some(
+            (like) => like.author.id === currentAuthorId
+          );
         }
       } catch (error) {
-        console.error("Error fetching post likes:", error.response || error);
-        this.errorMessage = "An error occurred while fetching post likes.";
-      } finally {
-        this.loading = false;
-      }
-    },
-    async fetchCommentLikes() {
-      try {
-        const apiUrl = `/comments/${this.commentId}/likes/`;
-        const response = await axios.get(apiUrl);
-        const likesArray = Array.isArray(response.data) ? response.data : response.data.src || [];
-        this.commentLikeCount = likesArray.length;
-
-        // Check if the logged-in user has liked the comment
-        const currentUser = JSON.parse(localStorage.getItem("user"));
-        const currentAuthorId = currentUser ? currentUser.id : null;
-        if (currentAuthorId) {
-          this.liked = likesArray.some((like) => like.author.id === currentAuthorId);
-        }
-      } catch (error) {
-        console.error("Error fetching comment likes:", error.response || error);
-        this.errorMessage = "An error occurred while fetching comment likes.";
-      } finally {
-        this.loading = false;
+        console.error("Error fetching likes:", error.response || error);
+        this.errorMessage = "An error occurred while fetching likes.";
       }
     },
     async toggleLike() {
-  try {
-    const currentUser = JSON.parse(localStorage.getItem("user"));
-    const currentAuthorId = currentUser ? currentUser.id : null;
+      try {
+        const currentUser = JSON.parse(localStorage.getItem("user"));
+        const currentAuthorId = currentUser ? currentUser.id : null;
 
-    if (!currentAuthorId) {
-      this.errorMessage = "User not authenticated.";
-      return;
-    }
+        if (!currentAuthorId) {
+          this.errorMessage = "User not authenticated.";
+          return;
+        }
 
-    if (this.liked) {
-      console.warn("Unliking is not implemented.");
-      return;
-    }
+        const apiUrl = `http://localhost:8000/service/api/posts/${this.postId}/like/`;
 
-    // Get the target item (post or comment) details
-    const targetItemUrl = this.commentId
-      ? `/comments/${this.commentId}/`
-      : `/posts/${this.postId}/`;
-    
-    const targetResponse = await axios.get(targetItemUrl);
-    const targetItem = targetResponse.data;
+        if (this.liked) {
+          // If unliking is needed, implement the logic here
+          // Example: Send a DELETE request to remove the like
+          const unlikeUrl = `${apiUrl}/${currentAuthorId}/`; // Adjust the API endpoint as needed
+          await axios.delete(unlikeUrl, {
+            headers: {
+              Authorization: `Token ${localStorage.getItem("token")}`,
+            },
+          });
+          this.liked = false;
+          this.likeCount -= 1;
+        } else {
+          // Post a like
+          const payload = {
+            author_id: currentAuthorId, // Include the author ID
+            post_id: this.postId,
+          };
 
-    // Get the author of the post/comment that is being liked
-    const targetAuthor = targetItem.author;
-    const targetAuthorId = targetAuthor.uuid;
-    const targetHost = targetAuthor.host;
+          await axios.post(apiUrl, payload, {
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Token ${localStorage.getItem("token")}`, // Include the authentication token
+            },
+          });
 
-    // Get connected nodes
-    const response = await axios.get('/connected-nodes/', {
-      headers: { Authorization: `Token ${localStorage.getItem("token")}` },
-    });
-    const connected_nodes = response.data;
-    const targetNode = connected_nodes.find(node => node.url === targetHost);
-
-    if (targetNode) {
-      // Prepare the like payload
-      const likePayload = {
-        type: "like",
-        id: crypto.randomUUID(),
-        author: {
-          type: "author",
-          id: currentUser.id,
-          host: currentUser.host,
-          displayName: currentUser.displayName,
-          page: currentUser.page,
-          github: currentUser.github,
-          profileImage: currentUser.profileImage,
-        },
-        object: this.commentId 
-          ? `/comments/${this.commentId}` 
-          : `/posts/${this.postId}`,
-        published: new Date().toISOString()
-      };
-
-      // Send to target author's inbox (the author of the post/comment being liked)
-      const inboxUrl = `${targetHost}/api/authors/${targetAuthorId}/inbox/`;
-      const credentials = btoa(`${targetNode.username}:${targetNode.password}`);
-
-      await axios.post(inboxUrl, likePayload, {
-        headers: {
-          Authorization: `Basic ${credentials}`,
-          "Content-Type": "application/json",
-        },
-        withCredentials: true,
-      });
-
-      // Update local state
-      this.liked = true;
-      if (this.commentId) {
-        this.commentLikeCount += 1;
-      } else {
-        this.postLikeCount += 1;
+          this.liked = true;
+          this.likeCount += 1;
+        }
+      } catch (error) {
+        console.error("Error toggling like:", error.response || error);
+        this.errorMessage = "An error occurred while toggling the like.";
       }
-    }
-  } catch (error) {
-    console.error("Error toggling like:", error.response || error);
-    this.errorMessage = "An error occurred while toggling the like.";
-  }
-},
+    },
   },
 };
 </script>
-
-
-
 
 <style scoped>
 .like-button {

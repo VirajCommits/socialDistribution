@@ -29,21 +29,12 @@
             <span class="comment-author">{{ comment.author.displayName }}</span>
           </div>
 
-          <!-- Comment Text -->
+          <!-- Comment Text and Time -->
           <div class="comment-details">
             <p class="comment-text">{{ comment.content }}</p>
           </div>
-
-          <!-- Like Button for Each Comment -->
-          <LikeButton :commentId="comment.id" />
         </li>
       </ul>
-    </div>
-
-    <!-- Success Message -->
-    <div v-if="successMessage" class="success-message">
-      <i class="fas fa-check-circle"></i>
-      {{ successMessage }}
     </div>
 
     <!-- Error Message -->
@@ -89,12 +80,9 @@ export default {
       newComment: "",
       loading: true,
       errorMessage: "",
-      successMessage: "",
       // Default avatar in case the commenter hasn't set one
       defaultAvatar:
         "https://i.pinimg.com/originals/f1/0f/f7/f10ff70a7155e5ab666bcdd1b45b726d.jpg",
-      user: null,
-      authID: "",
     };
   },
   mounted() {
@@ -127,12 +115,8 @@ export default {
     // Fetch comments for the given post ID
     async fetchComments() {
       try {
-        const apiUrl = `/posts/${encodeURIComponent(this.postId)}/comments/`;
-        const response = await axios.get(apiUrl, {
-          headers: {
-            Authorization: `Token ${localStorage.getItem("token")}`,
-          },
-        });
+        const apiUrl = `http://localhost:8000/service/api/posts/${this.postId}/comments/`;
+        const response = await axios.get(apiUrl);
         this.comments = response.data || [];
         this.loading = false;
       } catch (error) {
@@ -151,14 +135,16 @@ export default {
       if (!this.newComment.trim()) return;
 
       try {
-        // Ensure the user is authenticated
-        if (!this.authID) {
+        // Retrieve the author ID of the logged-in user from local storage
+        const currentAuthor = JSON.parse(localStorage.getItem("user"));
+        const currentAuthorId = currentAuthor ? currentAuthor.id : null;
+
+        if (!currentAuthorId) {
           this.errorMessage = "User not authenticated.";
           return;
         }
 
-        // Prepare the comment payload
-        const apiUrl = `/posts/${encodeURIComponent(this.postId)}/comment/`;
+        const apiUrl = `http://localhost:8000/service/api/posts/${this.postId}/comment/`;
         const payload = {
           content: this.newComment.trim(),
           contentType: "text/plain",
@@ -187,234 +173,11 @@ export default {
         this.errorMessage = "An error occurred while submitting the comment.";
       }
     },
-
     /**
-     * Distributes the newly created comment to relevant authors' inboxes.
-     * @param {Object} commentData - The data of the newly created comment.
+     * Formats the timestamp to a more readable format.
+     * @param {String} timestamp - The original timestamp.
+     * @returns {String} - The formatted timestamp.
      */
-    async distributeComment(commentData) {
-      try {
-        // Fetch the post details to get the author's information and visibility
-        const postApiUrl = `/posts/${encodeURIComponent(this.postId)}/`;
-        console.log("<<<<<<<<<<<<>>>>>>>>>>>>>>>>>" , postApiUrl)
-        const postResponse = await axios.get(postApiUrl, {
-          headers: {
-            Authorization: `Token ${localStorage.getItem("token")}`,
-          },
-        });
-        const post = postResponse.data;
-
-        if (!post) {
-          console.warn("Post details not found. Skipping comment distribution.");
-          return;
-        }
-
-        const postAuthorId = post.author.id.split("/").pop();
-        const postVisibility = post.visibility || "PUBLIC";
-
-        // Fetch all authors (or fetch only relevant authors based on visibility)
-        const authorsResponse = await axios.get("/authors/", {
-          headers: {
-            Authorization: `Token ${localStorage.getItem("token")}`,
-          },
-        });
-        const authors = authorsResponse.data;
-        console.log("AUTHORS IN COMMENT SECTION:===========" , authors)
-        console.log("AUTHORS IN COMMENT SECTION:===========" , authors)
-
-        // Current user's ID
-        const currentAuthorId = this.authID;
-
-        // Track which authors have received the notification to prevent duplicates
-        const processedAuthors = new Set([currentAuthorId]); // Initialize with current author
-
-        // Determine the list of authors to send the comment to based on post visibility
-        let targetAuthors = [];
-
-        console.log("COMMENT SECTION -------------- ")
-
-        switch (postVisibility) {
-            case "PUBLIC": {
-                // Visible to everyone except the current author
-                const ourHost = this.user.host;
-    
-                // Filter out authors who:
-                // 1. Are not the current author
-                // 2. Don't have the same host as our user
-                targetAuthors = authors.filter(author => 
-                    author.uuid !== currentAuthorId && 
-                    author.host !== ourHost
-                );
-                console.log("TARGET AUTHORS IN COMMENT SECTION:" , targetAuthors)
-                break;
-            }
-            case "FRIENDS": {
-                try {
-                    console.log("Checking FRIENDS visibility");
-                    const currentUser = JSON.parse(localStorage.getItem('user'));
-                    
-                    // First, check if the current user is a follower of the post author
-                    const postAuthorFollowers = await this.getFollowers(postAuthorId);
-                    const isFollower = postAuthorFollowers.some(
-                        follower => follower.uuid === currentUser.uuid
-                    );
-                    
-                    // Then check if the post author follows the current user
-                    const currentUserFollowers = await this.getFollowers(currentUser.uuid);
-                    const isFollowed = currentUserFollowers.some(
-                        follower => follower.uuid === postAuthorId
-                    );
-                    
-                    console.log('Is follower:', isFollower);
-                    console.log('Is followed:', isFollowed);
-                    
-                    // Only allow access if there's a mutual follow relationship
-                    if (!isFollower || !isFollowed) {
-                        console.log('Not a mutual friend - access denied');
-                        throw new Error('You must be friends with the author to view this post');
-                    }
-                    
-                    // If we get here, they are friends, so include in targetAuthors
-                    targetAuthors = [currentUser];
-                    
-                } catch (error) {
-                    console.error('Error in FRIENDS visibility check:', error);
-                    throw error;
-                }
-                break;
-            }
-            case "UNLISTED": {
-                // Visible to all followers of the post author
-                targetAuthors = await this.getFollowers(postAuthorId);
-                break;
-            }
-            default: {
-                // Default to PUBLIC if visibility is undefined
-                targetAuthors = authors.filter(
-                    (author) => author.id.split("/").pop() !== currentAuthorId
-                );
-                break;
-            }
-        }
-
-        console.log("TARGET AUTHORS IN COMMENT SECTION before for loop:" , targetAuthors)
-        // Distribute the comment to the target authors
-        for (const author of targetAuthors) {
-          console.log("AUTHOR IN COMMENT SECTION:" , author)
-          const targethost = author.id.split('/authors/')[0];
-          const authorId = author.id.split("/").pop();
-          if (!processedAuthors.has(authorId)) {
-            await this.sendCommentToInbox(authorId, commentData, post, targethost);
-            processedAuthors.add(authorId);
-          }
-        }
-
-        console.log("Comment distribution completed.");
-      } catch (error) {
-        console.error("Error distributing comment:", error);
-        // Optionally, set an error message or handle it as needed
-      }
-    },
-
-    /**
-     * Sends the comment to a specific author's inbox.
-     * @param {String} authorId - The UUID of the target author.
-     * @param {Object} commentData - The data of the comment.
-     * @param {Object} postData - The data of the post the comment belongs to.
-     */
-    async sendCommentToInbox(authorId, commentData, postData, targethost) {
-      try {
-        console.log("SENDING COMMENT TO INBOX IN COMMENT SECTION:" , authorId, commentData, postData, targethost)
-        const inboxUrl = `${targethost}/api/authors/${authorId}/inbox/`;
-
-        const payload = {
-          type: "comment",
-          id: commentData.id,
-          content: commentData.content,
-          contentType: commentData.contentType,
-          published: commentData.published || new Date().toISOString(),
-          author: {
-            type: "author",
-            id: this.user.id,
-            host: this.user.host,
-            displayName: this.user.displayName,
-            page: this.user.page,
-            github: this.user.github,
-            profileImage: this.user.profileImage,
-          },
-          post: {
-            id: postData.id,
-            title: postData.title,
-            description: postData.description,
-            contentType: postData.contentType,
-            content: postData.content,
-            published: postData.published,
-            visibility: postData.visibility,
-            author: postData.author,
-          },
-        };
-
-        console.log(`Sending comment to inbox of author ${authorId}:`, payload);
-
-        const response = await axios.get('/connected-nodes/', {
-          headers: { Authorization: `Token ${this.token}` },
-        });
-        const connectedNodes = response;
-        const connected_nodes = response.data;
-        console.log("CONNECTED NODES IN COMMENT SECTION:" , connectedNodes)
-        console.log("CONNECTED NODES DATA IN COMMENT SECTION:" , connected_nodes)
-        console.log("TARGET HOST IN COMMENT SECTION:" , targethost)
-
-        console.log("HOST IN COMMENT SECTION:" , targethost)
-        const targetNode = connected_nodes.find(node => node.url === targethost);
-        console.log("TARGET NODE IN COMMENT SECTION:" , targetNode)
-        const credentials = btoa(`${targetNode.username}:${targetNode.password}`);
-
-        const csrfToken = Cookies.get("csrftoken"); // Get CSRF token from cookies
-
-        await axios.post(inboxUrl, payload, {
-          headers: {
-            Authorization: `Basic ${credentials}`,
-            "Content-Type": "application/json",
-            "X-CSRFToken": csrfToken,
-          },
-          withCredentials: true,
-        });
-      } catch (error) {
-        console.error(`Error sending comment to author ${authorId}'s inbox:`, error);
-        throw error; // Re-throw to handle in distributeComment
-      }
-    },
-
-    /**
-     * Fetches the followers of a given author.
-     * Used when the post visibility is set to FRIENDS.
-     * @param {String} authorId - The UUID of the author whose followers are to be fetched.
-     * @returns {Array} - An array of follower authors.
-     */
-    async getFollowers(authorId) {
-      try {
-        const followersApiUrl = `/authors/${encodeURIComponent(authorId)}/followers/`;
-        const response = await axios.get(followersApiUrl, {
-          headers: {
-            Authorization: `Token ${localStorage.getItem("token")}`,
-          },
-        });
-        return response.data || [];
-      } catch (error) {
-        console.error("Error fetching followers:", error);
-        return [];
-      }
-    },
-    async getFollowing(authorId) {
-        try {
-            const response = await axios.get(`/authors/${authorId}/following/`);
-            return response.data;
-        } catch (error) {
-            console.error(`Error getting following for author ${authorId}:`, error);
-            return [];
-        }
-    }
   },
 };
 </script>
@@ -498,7 +261,7 @@ export default {
 .comment-details {
   display: flex;
   flex-direction: column;
-  align-items: flex-start; /* Aligns text to the left */
+  align-items: center; /* Center-aligns the comment text and time */
   width: 100%;
 }
 
@@ -506,25 +269,15 @@ export default {
   font-size: 0.95rem;
   color: #333333;
   margin: 0.5rem 0;
-  text-align: left; /* Aligns text to the left */
+  text-align: center; /* Center-aligns the comment text */
   max-width: 400px; /* Limits the width for better readability */
   width: 100%; /* Ensures the text takes the available width */
 }
 
-/* Success Message */
-.success-message {
-  display: flex;
-  align-items: center;
-  background-color: #dff0d8;
-  color: #3c763d;
-  padding: 0.75rem 1rem;
-  border: 1px solid #d6e9c6;
-  border-radius: 8px;
-  margin-top: 1rem;
-}
-
-.success-message i {
-  margin-right: 0.5rem;
+.comment-time {
+  font-size: 0.75rem;
+  color: #999999;
+  text-align: center;
 }
 
 /* Error Message */
@@ -534,7 +287,6 @@ export default {
   background-color: #ffe5e5;
   color: #cc0000;
   padding: 0.75rem 1rem;
-  border: 1px solid #e74c3c;
   border-radius: 8px;
   margin-top: 1rem;
 }
@@ -586,6 +338,37 @@ export default {
 
 .comment-form button:hover {
   background-color: #357abd;
+}
+
+.comment-form button:disabled {
+  background-color: #a0c4e8;
+  cursor: not-allowed;
+}
+
+/* Responsive Design for Smaller Screens */
+@media (max-width: 600px) {
+  .comment-section {
+    padding: 1rem;
+  }
+
+  .comment-avatar {
+    width: 35px;
+    height: 35px;
+  }
+
+  .comment-author {
+    font-size: 0.95rem;
+  }
+
+  .comment-text {
+    max-width: 100%; /* Allow full width on small screens */
+    padding: 0 1rem; /* Add some padding for better appearance */
+  }
+
+  .comment-form button {
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+  }
 }
 
 .comment-form button:disabled {

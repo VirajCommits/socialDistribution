@@ -11,7 +11,7 @@ class Author(AbstractUser):
     type = models.CharField(max_length=6, default="author", editable=False)
     uuid = models.UUIDField(unique=True, editable=False, default=uuid.uuid4)
     id = models.URLField(primary_key=True, max_length=500)
-    host = models.URLField(default="https://project-teal-1-2b076456090f.herokuapp.com/")
+    host = models.URLField(default="http://localhost:8000/")
     displayName = models.CharField(max_length=255)
     github = models.URLField(blank=True)
     is_approved = models.BooleanField(default=False)
@@ -40,41 +40,9 @@ class Author(AbstractUser):
 
     def is_friend_with(self, other_author):
         """Check if this author and other_author are mutual followers (friends)"""
-        return (
-            self.followers.filter(id=other_author.id).exists()
-            and other_author.followers.filter(id=self.id).exists()
-        )
+        return (self.followers.filter(id=other_author.id).exists() and
+                other_author.followers.filter(id=self.id).exists())
 
-    @property
-    def github_username(self):
-        if self.github:
-            # Parse the GitHub URL to get the path and extract the username
-            path_parts = urlparse(self.github).path.strip("/").split("/")
-            if path_parts:  # Ensure there is a username in the path
-                return path_parts[-1]  # The username should be the last part of the URL
-        return None
-
-    
-    def get_full_data(self):
-        """Return the author data in the format required by the API"""
-        return {
-            "type": "author",
-            "id": self.id,
-            "host": self.host,
-            "displayName": self.displayName,
-            "github": self.github,
-            "profileImage": self.profileImage,
-            "page": self.page
-        }
-
-    def format_follow_request(self, target_author):
-        """Create a properly formatted follow request object"""
-        return {
-            "type": "follow",
-            "summary": f"{self.displayName} wants to follow {target_author.displayName}",
-            "actor": self.get_full_data(),
-            "object": target_author.get_full_data()
-        }
 
 class Post(models.Model):
     VISIBILITY_CHOICES = [

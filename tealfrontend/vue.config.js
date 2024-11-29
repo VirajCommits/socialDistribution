@@ -4,15 +4,13 @@ const path = require('path')
 module.exports = defineConfig({
   publicPath: '/static/vue/',
   transpileDependencies: true,
-  productionSourceMap: false,
-  filenameHashing: true,
   devServer: {
     proxy: {
       '/api': {
-        target: 'http://localhost:8000',
+        target: 'http://localhost:8000/service/api',
         changeOrigin: true,
       },
     },
   },
-  outputDir: path.resolve(__dirname, '../backendApp/static/vue')
+  outputDir: path.resolve(__dirname, '../backendApp/static/vue'),
 })

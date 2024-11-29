@@ -21,6 +21,10 @@ console.log('Using API URL:', baseURL);
 
 // Create the Vue app
 const app = createApp(App);
+
+// Set up Axios base URL (replace with your API's base URL)
+axios.defaults.baseURL = 'http://localhost:8000/service/api';
+
 // Request Interceptor to add the Authorization header with the token
 axios.interceptors.request.use(
   config => {

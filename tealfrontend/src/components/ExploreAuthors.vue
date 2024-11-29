@@ -58,6 +58,34 @@
                 </span>
               </div>
             </div>
+            <button
+              v-if="isFriend(author)"
+              @click="handleUnfollow(author)"
+              class="friend-button"
+            >
+              <i class="fas fa-user-friends"></i> Friend
+            </button>
+            <button
+              v-else-if="isFollowing(author)"
+              @click="handleUnfollow(author)"
+              class="following-button"
+            >
+              <i class="fas fa-user-check"></i> Following
+            </button>
+            <button
+              v-else-if="hasPendingRequest(author)"
+              @click="handlePendingRequest(author)"
+              class="pending-button"
+            >
+              <i class="fas fa-clock"></i> Request Pending
+            </button>
+            <button
+              v-else
+              @click="sendFollowRequest(author.id)"
+              class="follow-button"
+            >
+              <i class="fas fa-user-plus"></i> Follow
+            </button>
           </div>
 
           <!-- Follow/Unfollow Buttons -->
@@ -177,17 +205,16 @@ export default {
       }
 
       try {
-        const response = await axios.get("/authors/", {
-          headers: {
-            Authorization: `Token ${this.token}`,
-            "Content-Type": "application/json",
-          },
-        });
-        // Extract `username` from `author.id`
-        this.authors = response.data.map((author) => ({
-          ...author,
-          username: author.id.split("/").pop(),
-        }));
+        const response = await axios.get(
+          "http://localhost:8000/service/api/authors/",
+          {
+            headers: {
+              Authorization: `Token ${this.token}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+        this.authors = response.data;
         await this.fetchPendingRequests();
       } catch (error) {
         console.error("Error fetching authors:", error);
@@ -214,12 +241,15 @@ export default {
       if (!this.token) return;
 
       try {
-        const response = await axios.get("/authors/pending_requests/", {
-          headers: {
-            Authorization: `Token ${this.token}`,
-            "Content-Type": "application/json",
-          },
-        });
+        const response = await axios.get(
+          "http://localhost:8000/service/api/authors/pending_requests/",
+          {
+            headers: {
+              Authorization: `Token ${this.token}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
         this.pendingRequests = response.data.map((req) => req.object.id);
       } catch (error) {
         console.error("Error fetching pending requests:", error);
@@ -230,99 +260,21 @@ export default {
       }
     },
     async sendFollowRequest(authorId) {
-  console.log("This is the authorID: ", authorId);
-  try {
-    const targetUuid = authorId.split("/").pop();
-    const targethost = authorId.split('/authors/')[0];
-    console.log("This is the host: ", targethost);
-
-    // Fetch the list of connected nodes
-    const response = await axios.get('/connected-nodes/', {
-      headers: { Authorization: `Token ${this.token}` },
-    });
-    const connectedNodes = response.data;
-    console.log(connectedNodes);
-
-    const targetNode = connectedNodes.find(node => node.url === targethost);
-    console.log("This is the target node: ", targetNode);
-
-    const user = JSON.parse(localStorage.getItem("user"));
-    console.log("This is the user: ", user);
-
-    // Get the target author's full data from the authors array
-    const targetAuthor = this.authors.find(author => author.id === authorId);
-
-    const followActivity = {
-      type: "Follow",
-      summary: `${user.displayName} wants to follow ${targetAuthor.displayName}`,
-      actor: {
-        type: "author",
-        id: user.id,
-        host: user.host,
-        displayName: user.displayName,
-        github: user.github || "",
-        profileImage: user.profileImage || "",
-        url: user.url || user.page
-      },
-      object: targetAuthor // The target author already has all required fields
-    };
-
-    if (targetNode) {
-      // Define the endpoint on your server
-      const endpoint = `/authors/${targetUuid}/sendRemoteRequest/`;
-
-      // Send the follow request to your server's sendRemoteRequest endpoint
-      await axios.post(
-        endpoint,
-        followActivity,
-        {
-          headers: {
-            Authorization: `Token ${this.token}`,
-            'Content-Type': 'application/json'
+      try {
+        const targetUuid = authorId.split("/").pop();
+        await axios.post(
+          `http://localhost:8000/service/api/authors/${targetUuid}/send_follow_request/`,
+          null,
+          {
+            headers: { Authorization: `Token ${this.token}` },
           }
-        }
-      );
-
-      this.showNotification(
-        "Follow request sent successfully!",
-        "success",
-        "fas fa-user-plus"
-      );
-    } else {
-      // For local authors, use your own endpoint
-      await axios.post(
-        `/authors/${targetUuid}/send_follow_request/`,
-        followActivity,
-        {
-          headers: { Authorization: `Token ${this.token}` },
-        }
-      );
-
-      this.showNotification(
-        "Follow request sent successfully!",
-        "success",
-        "fas fa-user-plus"
-      );
-    }
-
-    this.pendingRequests.push(authorId);
-    this.fetchAuthors();
-  } catch (error) {
-    this.showNotification(
-      "Failed to send follow request",
-      "error",
-      "fas fa-exclamation-circle"
-    );
-    console.error("Error sending follow request:", error);
-  }
-},
-
+        );
 
     async handlePendingRequest(author) {
       try {
         const authorUUID = author.id.split("/").pop();
         await axios.delete(
-          `/authors/${authorUUID}/remove_follow_request/`,
+          `http://localhost:8000/service/api/authors/${authorUUID}/remove_follow_request/`,
           {
             headers: { Authorization: `Token ${this.token}` },
           }
@@ -347,29 +299,31 @@ export default {
       }
     },
     async fetchRelationshipStatus(author) {
-      try {
-        const authorUUID = author.id.split("/").pop();
-        const response = await axios.get(
-          `/authors/${authorUUID}/relationship/`,
-          {
-            headers: { Authorization: `Token ${this.token}` },
-          }
-        );
-        this.relationships[author.id] = response.data;
-      } catch (error) {
-        console.error("Error fetching relationship status:", error);
-      }
+        try {
+            const authorUUID = author.id.split("/").pop();
+            const response = await axios.get(
+                `http://localhost:8000/service/api/authors/${authorUUID}/relationship/`,
+                {
+                    headers: { Authorization: `Token ${this.token}` }
+                }
+            );
+            this.relationships[author.id] = response.data;
+        } catch (error) {
+            console.error("Error fetching relationship status:", error);
+        }
     },
+
     async fetchAllRelationships() {
-      for (const author of this.authors) {
-        await this.fetchRelationshipStatus(author);
-      }
+        for (const author of this.authors) {
+            await this.fetchRelationshipStatus(author);
+        }
     },
+
     isFriend(author) {
-      return this.relationships[author.id]?.is_friend || false;
+        return this.relationships[author.id]?.is_friend || false;
     },
     isFollowing(author) {
-      return this.relationships[author.id]?.is_following || false;
+        return this.relationships[author.id]?.is_following || false;
     },
     hasPendingRequest(author) {
       return this.pendingRequests.includes(author.id);
@@ -395,13 +349,13 @@ export default {
       // Check if we're in production
       const isProduction = window.location.hostname.includes("herokuapp.com");
 
-      // Set up the WebSocket URL based on environment
-      const wsProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-      const wsHost = isProduction 
-        ? window.location.hostname                   // Production host
-        : 'localhost:8000';                          // Development host
-      
-      const wsUrl = `${wsProtocol}://${wsHost}/ws/notifications/${uuid}/`;
+      ws.onmessage = async (event) => {
+        const data = JSON.parse(event.data);
+        if (data.type === "follow_request_notification") {
+          // Refresh the data when a follow request is updated
+          await this.fetchAuthors();
+          await this.fetchAllRelationships();
+          await this.fetchPendingRequests();
 
       console.log("Setting up WebSocket connection to:", wsUrl);
 
@@ -456,56 +410,14 @@ export default {
     },
     async confirmUnfollow() {
       try {
-        const authorId = this.selectedAuthor.id;
-        const targetUuid = authorId.split("/").pop();
-        const targethost = authorId.split('/authors/')[0];
-
-        // Fetch the list of connected nodes
-        const response = await axios.get('/connected-nodes/', {
-          headers: { Authorization: `Token ${this.token}` },
-        });
-        const connectedNodes = response.data;
-
-        const targetNode = connectedNodes.find(node => node.url === targethost);
-        if (targetNode) {
-          // For remote nodes, send to their inbox
-          const inboxEndpoint = `${targethost}/api/authors/${targetUuid}/inbox/`;
-          console.log('Sending unfollow request to remote inbox:', {
-            endpoint: inboxEndpoint,
-            credentials: {
-              username: targetNode.username,
-              password: '********' // masked for security
-            }
-          });
-
-          // Prepare the unfollow activity object
-          const unfollowActivity = {
-            type: "unfollow",
-            actor: {
-              id: localStorage.getItem("id"),
-              host: window.location.origin,
-              displayName: localStorage.getItem("displayName"),
-            },
-            object: {
-              id: authorId
-            }
-          };
-
-          await axios.post(inboxEndpoint, unfollowActivity, {
-            headers: {
-              'node-username': targetNode.username,
-              'node-password': targetNode.password,
-            },
-          });
-        } else {
-          // For local authors, use the existing endpoint
-          await axios.delete(
-            `/authors/${targetUuid}/unfollow/`,
-            {
-              headers: { Authorization: `Token ${this.token}` },
-            }
-          );
-        }
+        const authorUUID = this.selectedAuthor.id.split("/").pop();
+        await axios.delete(
+          `http://localhost:8000/service/api/authors/${authorUUID}/unfollow/`,
+          null,
+          {
+            headers: { Authorization: `Token ${this.token}` },
+          }
+        );
 
         this.showNotification(
           "Successfully unfollowed author",

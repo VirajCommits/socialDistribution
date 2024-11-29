@@ -148,7 +148,8 @@ ROOT_URLCONF = "tealBackend.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [BASE_DIR / "backendApp/static/vue"],
+        # Update 'DIRS' to point to the templates directory
+        "DIRS": [BASE_DIR/'backendApp/static/vue'],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -195,12 +196,10 @@ USE_TZ = True
 # Static files
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
-STATICFILES_DIRS = [BASE_DIR / "backendApp/static/",]
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR/'backendApp/static/vue'),
+]
 
-WHITENOISE_USE_FINDERS = True
-WHITENOISE_MANIFEST_STRICT = False
-WHITENOISE_INDEX_FILE = True
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
