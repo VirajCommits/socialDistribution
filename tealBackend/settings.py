@@ -97,7 +97,7 @@ CORS_ALLOWED_ORIGINS = [
     "https://teal-pranav-0e8aa7849ad7.herokuapp.com",
     "https://teal-darrenkrz-c0d7276a7808.herokuapp.com",
     "https://project-teal-1-2b076456090f.herokuapp.com",
-    "*.herokuapp.com"
+    "https://*.herokuapp.com"
     "http://127.0.0.1:8000",  # Localhost alternative
 ]
 CORS_ALLOW_CREDENTIALS = True
