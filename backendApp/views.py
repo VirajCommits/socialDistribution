@@ -4205,9 +4205,76 @@ def inbox_handler(request, author_serial):
 
                 return Response({'message': 'Post added to inbox and created locally.'}, status=status.HTTP_201_CREATED)
             elif item_type == 'like':
-                print("WE ARE INSIDE THE LIKE SECTION ...IMPLEMENT THE INBOX!")
-                return Response({'message': 'Comment added to inbox and created locally.'}, status=status.HTTP_201_CREATED)
-                pass
+                print("WE ARE INSIDE THE LIKE SECTION ... IMPLEMENT THE INBOX!")
+                try:
+                    # Extract like data
+                    like_data = request.data
+
+                    # Get or create the like author
+                    author_data = like_data.get('author', {})
+                    author_id = author_data.get('id')
+                    author_uuid = author_id.rstrip('/').split('/')[-1]
+
+                    author, _ = Author.objects.get_or_create(
+                        uuid=author_uuid,
+                        defaults={
+                            'displayName': author_data.get('displayName', ''),
+                            'host': author_data.get('host', ''),
+                            'page': author_data.get('page', ''),
+                            'github': author_data.get('github', ''),
+                            'profileImage': author_data.get('profileImage', '')
+                        }
+                    )
+
+                    # Get the liked object (post or comment)
+                    liked_object_data = like_data.get('object', {})
+                    liked_object_id = liked_object_data.get('id')
+
+                    # Determine the type of liked object
+                    if 'post' in liked_object_id:
+                        liked_object = get_object_or_404(Post, id=liked_object_id)
+                    elif 'comment' in liked_object_id:
+                        liked_object = get_object_or_404(Comment, id=liked_object_id)
+                    else:
+                        return Response(
+                            {'error': 'Unsupported object type for like'},
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
+
+                    # Create the like object
+                    like, created = Like.objects.get_or_create(
+                        id=like_data.get('id'),
+                        defaults={
+                            'author': author,
+                            'object': liked_object_id,
+                            'summary': like_data.get('summary', ''),
+                            'published': like_data.get('published', timezone.now())
+                        }
+                    )
+
+                    # Add the like to the inbox
+                    inbox.likes.add(like)
+
+                    return Response(
+                        {'message': 'Like added to inbox successfully.'},
+                        status=status.HTTP_201_CREATED
+                    )
+
+                except Post.DoesNotExist:
+                    return Response(
+                        {'error': 'Referenced post does not exist'},
+                        status=status.HTTP_404_NOT_FOUND
+                    )
+                except Comment.DoesNotExist:
+                    return Response(
+                        {'error': 'Referenced comment does not exist'},
+                        status=status.HTTP_404_NOT_FOUND
+                    )
+                except Exception as e:
+                    return Response(
+                        {'error': str(e)},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
 
             elif item_type == 'comment':
                 data = request.data
