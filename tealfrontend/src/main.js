@@ -9,7 +9,7 @@ import axios from 'axios';
 const isProduction = window.location.hostname.includes('herokuapp.com');
 const baseURL = isProduction
   ? 'https://teal-darrenkrz-c0d7276a7808.herokuapp.com/service/api'
-  : 'http://127.0.0.1:8000/service/api';
+  : 'http://127.0.0.1:8000/api';
 
 // Axios configuration
 import Cookies from 'js-cookie';
