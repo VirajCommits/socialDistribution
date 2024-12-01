@@ -24,29 +24,15 @@ class Author(AbstractUser):
     def __str__(self):
         return self.displayName or self.username
 
-    # def save(self, *args, **kwargs):
-    #     if not self.id:
-    #         self.id = f"{self.host}authors/{self.uuid}"
-    #     if not self.page:
-    #         self.page = f"{self.host.replace('project/', '')}authors/{self.username}"
-    #     if not self.displayName:
-    #         self.displayName = self.username
-    #     super().save(*args, **kwargs)
-
     def save(self, *args, **kwargs):
-       if not self.id:
-           self.id = f"{self.host}authors/{self.uuid}"
-       if not self.page:
-           self.page = f"{self.host.replace('api/', '')}authors/{self.username}"
-       if not self.displayName:
-           self.displayName = self.username
-       if not self.username:  # Ensure username is set
-           self.username = self.displayName  # or some other logic to generate a unique username
-       # Check for uniqueness
-       if Author.objects.filter(username=self.username).exists():
-           raise ValueError(f"Username '{self.username}' already exists.")
-       super().save(*args, **kwargs)
-       
+        if not self.id:
+            self.id = f"{self.host}authors/{self.uuid}"
+        if not self.page:
+            self.page = f"{self.host.replace('project/', '')}authors/{self.username}"
+        if not self.displayName:
+            self.displayName = self.username
+        super().save(*args, **kwargs)
+
     def accept_follow_request(self, requester):
         """Accept a follow request from another author."""
         self.followers.add(requester)
