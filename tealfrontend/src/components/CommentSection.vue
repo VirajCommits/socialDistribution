@@ -290,7 +290,8 @@ export default {
         }
         // Distribute the comment to the target authors
         for (const author of targetAuthors) {
-          const targethost = author.id.split('/authors/')[0];
+          let targethost = author.id.split('/authors/')[0];
+          if (targethost.includes("/api")) { targethost = targethost.split("/api")[0]; }
           const authorId = author.id.split("/").pop();
           if (!processedAuthors.has(authorId)) {
             await this.sendCommentToInbox(authorId, commentData, post, targethost);

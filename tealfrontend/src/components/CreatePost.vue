@@ -286,7 +286,8 @@ export default {
           visibility: this.form.visibility,
         };
 
-        const targethost = authorId.split('/authors/')[0];
+        let targethost = authorId.split('/authors/')[0];
+        if (targethost.includes("/api")) { targethost = targethost.split("/api")[0]; }
         const response = await axios.get('/connected-nodes/', {
           headers: { Authorization: `Token ${this.token}` },
         });
