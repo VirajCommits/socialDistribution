@@ -1039,10 +1039,117 @@ def stream_page_likes(request, post_id):
     },
     tags=["Posts"],
 )
+
+def construct_likes_data(post):
+    likes = Like.objects.filter(post=post).order_by('-published')[:5]
+    likes_data = {
+        "type": "likes",
+        "page": f"{post.author.page}/posts/{post.id}",
+        "id": f"{post.author.host}authors/{post.author.uuid}/posts/{post.id}/likes",
+        "page_number": 1,
+        "size": 5,
+        "count": post.likes.count(),
+        "src": []
+    }
+
+    for like in likes:
+        like_data = {
+            "type": "like",
+            "author": {
+                "type": "author",
+                "id": f"{like.author.host}authors/{like.author.uuid}",
+                "page": like.author.page,
+                "host": like.author.host,
+                "displayName": like.author.displayName,
+                "github": like.author.github,
+                "profileImage": like.author.profileImage
+            },
+            "published": like.published.isoformat(),
+            "id": f"{like.author.host}authors/{like.author.uuid}/liked/{like.id}",
+            "object": f"{post.author.page}/posts/{post.id}"
+        }
+        likes_data["src"].append(like_data)
+
+    return likes_data
+
+def construct_comments_data(post):
+    comments = Comment.objects.filter(post=post).order_by('-published')[:5]
+    comments_data = {
+        "type": "comments",
+        "page": f"{post.author.page}/posts/{post.id}",
+        "id": f"{post.author.host}authors/{post.author.uuid}/posts/{post.id}/comments",
+        "page_number": 1,
+        "size": 5,
+        "count": post.comments.count(),
+        "src": []
+    }
+
+    for comment in comments:
+        comment_data = {
+            "type": "comment",
+            "author": {
+                "type": "author",
+                "id": f"{comment.author.host}authors/{comment.author.uuid}",
+                "page": comment.author.page,
+                "host": comment.author.host,
+                "displayName": comment.author.displayName,
+                "github": comment.author.github,
+                "profileImage": comment.author.profileImage
+            },
+            "comment": comment.content,
+            "contentType": comment.contentType,
+            "published": comment.published.isoformat(),
+            "id": f"{comment.post.author.host}authors/{comment.post.author.uuid}/comments/{comment.id}",
+            "post": f"{post.author.host}authors/{post.author.uuid}/posts/{post.id}",
+            "page": f"{comment.author.page}/posts/{post.id}",
+        }
+        comments_data["src"].append(comment_data)
+
+    return comments_data
+
+def construct_posts_data(author):
+    # Get all public and friends-only posts of the author
+    posts = Post.objects.filter(author=author, visibility__in=['PUBLIC', 'FRIENDS']).order_by('-published')
+
+    posts_data = {
+        "type": "posts",
+        "page_number": 1,
+        "size": len(posts),
+        "count": posts.count(),
+        "src": []
+    }
+
+    for post in posts:
+        post_data = {
+            "type": "post",
+            "title": post.title,
+            "id": f"{post.author.host}authors/{post.author.uuid}/posts/{post.id}",
+            "page": f"{post.author.page}/posts/{post.id}",
+            "description": post.description,
+            "contentType": post.contentType,
+            "content": post.content,
+            "author": {
+                "type": "author",
+                "id": f"{post.author.host}authors/{post.author.uuid}",
+                "host": post.author.host,
+                "displayName": post.author.displayName,
+                "page": post.author.page,
+                "github": post.author.github,
+                "profileImage": post.author.profileImage,
+            },
+            "published": post.published.isoformat(),
+            "visibility": post.visibility,
+            "comments": construct_comments_data(post),
+            "likes": construct_likes_data(post),
+        }
+        posts_data["src"].append(post_data)
+
+    return posts_data
+
+
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def get_all_posts(request, author_serial):
-    print("(((((((((((((((((((((((((((((())))))))))))))))))))))))))))))")
     author_serial = unquote(author_serial)
     author = get_object_or_404(Author, uuid=author_serial)
     posts = Post.objects.filter(author=author).order_by("-edited_at")
@@ -1052,9 +1159,19 @@ def get_all_posts(request, author_serial):
     paginator.page_size = 100  # Adjust as needed
     result_page = paginator.paginate_queryset(posts, request)
 
-    serializer = PostSerializer(result_page, many=True)
+    # Use the helper function to construct post data
+    posts_data = construct_posts_data(author)
+    
+    # Update the posts_data to only include paginated results
+    # paginated_posts_data = {
+    #     "type": posts_data["type"],
+    #     "page_number": 1,  # Updated by paginator if needed
+    #     "size": len(result_page),
+    #     "count": posts.count(),
+    #     "src": [construct_posts_data(post)["src"] for post in result_page]
+    # }
 
-    return paginator.get_paginated_response({"type": "posts", "items": serializer.data})
+    return paginator.get_paginated_response(posts_data)
 
 
 @swagger_auto_schema(

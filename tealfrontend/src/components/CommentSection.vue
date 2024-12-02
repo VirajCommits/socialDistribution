@@ -332,7 +332,7 @@ export default {
             "contentType": commentData.contentType,
             "published": commentData.published,
             "id": `${postData.author.host}authors/${postData.author.uuid}/comments/${commentData.id}`, // Changed to template literal
-            "post": `${postData.author.host}authors/${postData.author.uuid}/posts/${postData.author.id}`, // Changed to template literal
+            "post": `${postData.author.host}authors/${postData.author.uuid}/posts/${postData.id}`, // Changed to template literal
             "page": `${commentData.author.page}/posts/${postData.author.id}`, // Changed to template literal
         };
 
