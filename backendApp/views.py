@@ -1580,8 +1580,6 @@ def get_follow_requests(request):
     tags=["Authors"],
 )
 @api_view(["GET"])
-@authentication_classes([JWTAuthentication])
-@permission_classes([AllowAny])
 def get_all_authors(request):
     try:
         current_author = request.user
@@ -1593,6 +1591,8 @@ def get_all_authors(request):
 
         author_data = []
         for author in authors:
+            # Serialize the author data
+            # serialized_author = AuthorSerializer(author).data
             serialized_author = {
                 "type": "author",
                 "id": author.id,  # This should be the full URL
@@ -1603,16 +1603,22 @@ def get_all_authors(request):
                 "page": author.page,  # This should be the full URL to author's page
             }
 
+            # Add followers data
+            # followers = author.followers.all()
+            # serialized_author["followers"] = [
+            #     str(follower.uuid) for follower in followers
+            # ]
             serialized_author["type"] = "author"
 
             author_data.append(serialized_author)
+        # response_data = {}
+        # response_data["type"] = "authors"
+        # response_data["authors"] = author_data
         response_data = {
             "type": "authors",
             "authors": author_data
         }
         
-
-
         return Response(response_data)
     except Exception as e:
         import traceback
@@ -1989,6 +1995,7 @@ def signup(request):
 )
 @csrf_exempt
 @api_view(["POST"])
+@authentication_classes([])
 @authentication_classes([])
 def login(request):
     username = request.data.get("username")
@@ -3813,6 +3820,8 @@ def test_node_connection(request):
 @api_view(['POST'])
 @authentication_classes([NodeBasicAuthentication])
 @permission_classes([AllowAny])
+@authentication_classes([NodeBasicAuthentication])
+@permission_classes([AllowAny])
 def inbox_handler(request, author_serial):
     """
     Handles inbox activities for a given author. Supports POST (to add activities),
@@ -4544,7 +4553,7 @@ def process_follow_request(request, follow_request):
 )
 @csrf_exempt
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
+@authentication_classes([])
 def sync_remote_authors(request):
 
     print("INCOMING REQUEST BODY:" ,)

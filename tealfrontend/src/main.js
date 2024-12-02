@@ -36,6 +36,14 @@ axios.interceptors.request.use(
         config.headers['Authorization'] = `Bearer ${token}`; // Set the Authorization header
         
       }
+      console.log("inside config headers: =================== " , config.headers["Authorization"])
+      if(!config.headers["Authorization"]){
+        config.headers['Authorization'] = `Bearer ${token}`
+      }
+      if (config.headers["Authorization"] && !config.headers["Authorization"].startsWith("Basic ")){
+        config.headers['Authorization'] = `Bearer ${token}`; // Set the Authorization header
+        
+      }
       // console.log('Token found and added to request');
     } else {
       // console.log('No token found in localStorage');
