@@ -28,7 +28,7 @@ class Author(AbstractUser):
         if not self.id:
             self.id = f"{self.host}/authors/{self.uuid}"
         if not self.page:
-            self.page = f"{self.host.replace('project/', '')}authors/{self.username}"
+            self.page = f"{self.host.replace('project/', '')}/authors/{self.username}"
         if not self.displayName:
             self.displayName = self.username
         super().save(*args, **kwargs)
