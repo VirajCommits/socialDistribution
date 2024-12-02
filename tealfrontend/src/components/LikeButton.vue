@@ -14,160 +14,124 @@
 import axios from "axios";
 import Cookies from 'js-cookie';
 
-
 export default {
   name: "LikeButton",
   props: {
-    postId: {
-      type: String,
-      required: false, // Optional for comments
-    },
     commentId: {
       type: String,
-      required: false, // Optional for posts
+      required: true,
     },
   },
   data() {
     return {
       liked: false,
-      postLikeCount: 0, // Separate counter for post likes
-      commentLikeCount: 0, // Separate counter for comment likes
-      loading: true,
       errorMessage: "",
+      authID: "",
+      user: null,
     };
   },
-  computed: {
-    likeCount() {
-      // Dynamically return the correct like count
-      return this.commentId ? this.commentLikeCount : this.postLikeCount;
-    },
-  },
   mounted() {
-    this.commentId ? this.fetchCommentLikes() : this.fetchPostLikes();
+    this.initializeUser();
   },
   methods: {
-    async fetchPostLikes() {
+    /**
+     * Initializes user information from localStorage.
+     */
+    initializeUser() {
       try {
-        const apiUrl = `/posts/${this.postId}/likes/`;
-        const response = await axios.get(apiUrl);
-        const likesArray = Array.isArray(response.data) ? response.data : response.data.src || [];
-        this.postLikeCount = likesArray.length;
-
-        // Check if the logged-in user has liked the post
-        const currentUser = JSON.parse(localStorage.getItem("user"));
-        const currentAuthorId = currentUser ? currentUser.id : null;
-        if (currentAuthorId) {
-          this.liked = likesArray.some((like) => like.author.id === currentAuthorId);
+        this.user = JSON.parse(localStorage.getItem("user"));
+        if (this.user && this.user.id) {
+          this.authID = this.user.id.split("/").pop();
+        } else {
+          throw new Error("User information not found");
         }
       } catch (error) {
-        console.error("Error fetching post likes:", error.response || error);
-        this.errorMessage = "An error occurred while fetching post likes.";
-      } finally {
-        this.loading = false;
+        console.error("Error initializing user:", error);
+        this.errorMessage = "Failed to retrieve user information.";
       }
     },
-    async fetchCommentLikes() {
+
+    /**
+     * Handles the like button click event.
+     * Toggles the like status and sends like notification to the inbox.
+     */
+    async handleLike() {
+      if (!this.authID) {
+        this.errorMessage = "User not authenticated.";
+        return;
+      }
+
+      // Toggle like status
+      this.liked = !this.liked;
+
       try {
-        const apiUrl = `/comments/${this.commentId}/likes/`;
-        const response = await axios.get(apiUrl);
-        const likesArray = Array.isArray(response.data) ? response.data : response.data.src || [];
-        this.commentLikeCount = likesArray.length;
-
-        // Check if the logged-in user has liked the comment
-        const currentUser = JSON.parse(localStorage.getItem("user"));
-        const currentAuthorId = currentUser ? currentUser.id : null;
-        if (currentAuthorId) {
-          this.liked = likesArray.some((like) => like.author.id === currentAuthorId);
-        }
+        // Call the function to send like to the inbox
+        await this.sendLikeToInbox();
       } catch (error) {
-        console.error("Error fetching comment likes:", error.response || error);
-        this.errorMessage = "An error occurred while fetching comment likes.";
-      } finally {
-        this.loading = false;
+        console.error("Error sending like to inbox:", error);
+        this.errorMessage = "An error occurred while sending like to inbox.";
       }
     },
-    async toggleLike() {
-  try {
-    const currentUser = JSON.parse(localStorage.getItem("user"));
-    const currentAuthorId = currentUser ? currentUser.id : null;
 
-    if (!currentAuthorId) {
-      this.errorMessage = "User not authenticated.";
-      return;
-    }
+    /**
+     * Sends the like action to the relevant author's inbox.
+     */
+     async sendLikeToInbox(authorId, likeData, postData, targethost) {
+      try {
+        console.log("SENDING LIKE TO INBOX IN LIKEBUTTON:", authorId, likeData, postData, targethost);
+        
+        const inboxUrl = `${targethost}/api/authors/${authorId}/inbox/`;
 
-    if (this.liked) {
-      console.warn("Unliking is not implemented.");
-      return;
-    }
+        // Create the payload for the like action
+        const payload = {
+          type: "like",
+          author: {
+            type: "author",
+            id: this.user.id,  // Use the current logged-in user's ID
+            host: this.user.host,
+            displayName: this.user.displayName,
+            page: this.user.page,
+            github: this.user.github,
+            profileImage: this.user.profileImage,
+          },
+          published: new Date().toISOString(), // Current timestamp
+          id: `http://${this.user.host}/api/authors/${this.user.id}/liked/${likeData.id}`,  // Like ID (usually a UUID)
+          object: postData.id,  // The post or comment that was liked
+        };
 
-    // Get the target item (post or comment) details
-    const targetItemUrl = this.commentId
-      ? `/comments/${this.commentId}/`
-      : `/posts/${this.postId}/`;
-    
-    const targetResponse = await axios.get(targetItemUrl);
-    const targetItem = targetResponse.data;
+        console.log(`Sending like to inbox of author ${authorId}:`, payload);
 
-    // Get the author of the post/comment that is being liked
-    const targetAuthor = targetItem.author;
-    const targetAuthorId = targetAuthor.uuid;
-    const targetHost = targetAuthor.host;
+        // Get connected nodes (similar to how you did for comments)
+        const response = await axios.get('/connected-nodes/', {
+          headers: { Authorization: `Token ${this.token}` },
+        });
+        const connectedNodes = response.data;
 
-    // Get connected nodes
-    const response = await axios.get('/connected-nodes/', {
-      headers: { Authorization: `Token ${localStorage.getItem("token")}` },
-    });
-    const connected_nodes = response.data;
-    const targetNode = connected_nodes.find(node => node.url === targetHost);
+        // Find the target node based on the host
+        const targetNode = connectedNodes.find(node => node.url === targethost);
+        if (!targetNode) {
+          throw new Error(`Target host ${targethost} not found among connected nodes.`);
+        }
 
-    if (targetNode) {
-      // Prepare the like payload
-      const likePayload = {
-        type: "like",
-        id: crypto.randomUUID(),
-        author: {
-          type: "author",
-          id: currentUser.id,
-          host: currentUser.host,
-          displayName: currentUser.displayName,
-          page: currentUser.page,
-          github: currentUser.github,
-          profileImage: currentUser.profileImage,
-        },
-        object: this.commentId 
-          ? `/comments/${this.commentId}` 
-          : `/posts/${this.postId}`,
-        published: new Date().toISOString()
-      };
+        // Basic Authentication credentials
+        const credentials = btoa(`${targetNode.username}:${targetNode.password}`);
 
-      // Send to target author's inbox (the author of the post/comment being liked)
-      const inboxUrl = `${targetHost}/api/authors/${targetAuthorId}/inbox/`;
-      const credentials = btoa(`${targetNode.username}:${targetNode.password}`);
-      const csrfToken = Cookies.get("csrftoken"); // Get CSRF token from cookies
+        // CSRF Token
+        const csrfToken = Cookies.get("csrftoken");
 
-      await axios.post(inboxUrl, likePayload, {
-        headers: {
-          Authorization: `Basic ${credentials}`,
-          "Content-Type": "application/json",
-          "X-CSRFToken": csrfToken,
-        },
-        withCredentials: true,
-      });
-
-      // Update local state
-      this.liked = true;
-      if (this.commentId) {
-        this.commentLikeCount += 1;
-      } else {
-        this.postLikeCount += 1;
+        // Send the like payload to the author's inbox
+        await axios.post(inboxUrl, payload, {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Basic ${credentials}`,
+            "X-CSRFToken": csrfToken,
+          },
+        });
+      } catch (error) {
+        console.error(`Error sending like to author ${authorId}'s inbox:`, error);
+        throw error;  // Re-throw to handle in distributeLike or elsewhere if needed
       }
-    }
-  } catch (error) {
-    console.error("Error toggling like:", error.response || error);
-    this.errorMessage = "An error occurred while toggling the like.";
-  }
-},
+    },
   },
 };
 </script>
