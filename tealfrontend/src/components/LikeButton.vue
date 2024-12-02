@@ -1,6 +1,10 @@
 <template>
   <div class="like-button">
-    <button @click="handleLike" :class="{ liked: liked }" :aria-pressed="liked">
+    <button 
+      @click="handleLike(postId, likeData, postData, targetHost)" 
+      :class="{ liked: liked }" 
+      :aria-pressed="liked"
+    >
       <i :class="liked ? 'fas fa-heart' : 'far fa-heart'"></i>
       <span class="like-count">{{ likeCount }}</span>
     </button>
@@ -24,10 +28,15 @@ export default {
   },
   data() {
     return {
+      postId: 'some-post-id',    // Replace with actual post ID
+      likeData: { /* like-related data */ },
+      postData: { /* post-related data */ },
+      targetHost: 'some-target-host', // Replace with actual target host
       liked: false,
-      errorMessage: "",
-      authID: "",
-      user: null,
+      likeCount: 0,
+      loading: false,
+      errorMessage: '',
+      authID: 'some-auth-id' // or fetch this dynamically
     };
   },
   mounted() {
@@ -55,7 +64,7 @@ export default {
      * Handles the like button click event.
      * Toggles the like status and sends like notification to the inbox.
      */
-    async handleLike() {
+     async handleLike(postId, likeData, postData, targethost) {
       if (!this.authID) {
         this.errorMessage = "User not authenticated.";
         return;
@@ -65,8 +74,8 @@ export default {
       this.liked = !this.liked;
 
       try {
-        // Call the function to send like to the inbox
-        await this.sendLikeToInbox();
+        // Call the function to send like to the inbox with the necessary parameters
+        await this.sendLikeToInbox(postId, likeData, postData, targethost);
       } catch (error) {
         console.error("Error sending like to inbox:", error);
         this.errorMessage = "An error occurred while sending like to inbox.";
