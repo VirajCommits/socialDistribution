@@ -4142,6 +4142,9 @@ def inbox_handler(request, author_serial):
                 # Parse author UUID from the author_id URL
                 author_uuid = author_id.rstrip('/').split('/')[-1]
 
+                if author_data.get('github')== None:
+                    author_data["github"]=''
+
                 # Get or create the author
                 author, created = Author.objects.get_or_create(
                     uuid=author_uuid,
