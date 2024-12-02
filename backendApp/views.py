@@ -4529,6 +4529,9 @@ def sync_remote_authors(request):
                             if not author_id:
                                 continue  # Skip if author ID is missing
 
+                            if Author.objects.filter(id=author_id).exists():
+                                continue  # Author already exists, skip to next
+
                             # Ensure username is unique
                             # unique_username = f"{author_data.get('displayName', '').lower()}_{author_id.split('/')[-1][:8]}"
 
