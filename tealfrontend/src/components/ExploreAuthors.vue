@@ -293,13 +293,17 @@ export default {
           }
         }
       );
-
+        // Update the UI instantly to show "Following"
+      this.pendingRequests.push(authorId);
       this.showNotification(
         "Follow request sent successfully!",
         "success",
         "fas fa-user-plus"
       );
+      this.relationships[authorId] = { is_following: true };
     } else {
+      console.log(`This is the author sending the request: ${user.displayName}`)
+      console.log(`This is a local author: ${targetAuthor.displayName}`);
       // For local authors, use your own endpoint
       // const csrfToken = Cookies.get("csrftoken"); // Get CSRF token from cookies
       await axios.post(
@@ -310,7 +314,7 @@ export default {
           
         }
       );
-
+      this.pendingRequests.push(authorId);
       this.showNotification(
         "Follow request sent successfully!",
         "success",
@@ -318,7 +322,7 @@ export default {
       );
     }
 
-    this.pendingRequests.push(authorId);
+    
     this.fetchAuthors();
   } catch (error) {
     this.showNotification(
