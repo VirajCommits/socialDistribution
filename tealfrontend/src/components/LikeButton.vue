@@ -82,7 +82,7 @@ export default {
         
         const inboxUrl = `${targethost}/api/authors/${authorId}/inbox/`;
 
-        console.log("GRRRRRRRR", this.user.host);
+        console.log("GRRRRRRRR", this.user.host, this.user.id, likeData.id);
 
         // Create the payload for the like action
         const payload = {
@@ -98,7 +98,7 @@ export default {
           },
           
           published: new Date().toISOString(), // Current timestamp
-          id: `http://${this.user.host}/api/authors/${this.user.id}/liked/${likeData.id}`,  // Like ID (usually a UUID)
+          id: `${this.user.host}/api/authors/${this.user.id}/liked/${likeData.id}`,  // Like ID (usually a UUID)
           object: postData.id,  // The post or comment that was liked
         };
 
