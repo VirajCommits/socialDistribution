@@ -29,12 +29,21 @@
             <span class="comment-author">{{ comment.author.displayName }}</span>
           </div>
 
-          <!-- Comment Text and Time -->
+          <!-- Comment Text -->
           <div class="comment-details">
             <p class="comment-text">{{ comment.content }}</p>
           </div>
+
+          <!-- Like Button for Each Comment -->
+          <LikeButton :commentId="comment.id" />
         </li>
       </ul>
+    </div>
+
+    <!-- Success Message -->
+    <div v-if="successMessage" class="success-message">
+      <i class="fas fa-check-circle"></i>
+      {{ successMessage }}
     </div>
 
     <!-- Error Message -->
@@ -80,9 +89,12 @@ export default {
       newComment: "",
       loading: true,
       errorMessage: "",
+      successMessage: "",
       // Default avatar in case the commenter hasn't set one
       defaultAvatar:
         "https://i.pinimg.com/originals/f1/0f/f7/f10ff70a7155e5ab666bcdd1b45b726d.jpg",
+      user: null,
+      authID: "",
     };
   },
   mounted() {
@@ -115,8 +127,12 @@ export default {
     // Fetch comments for the given post ID
     async fetchComments() {
       try {
-        const apiUrl = `http://localhost:8000/service/api/posts/${this.postId}/comments/`;
-        const response = await axios.get(apiUrl);
+        const apiUrl = `/posts/${encodeURIComponent(this.postId)}/comments/`;
+        const response = await axios.get(apiUrl, {
+          headers: {
+            Authorization: `Token ${localStorage.getItem("token")}`,
+          },
+        });
         this.comments = response.data || [];
         this.loading = false;
       } catch (error) {
@@ -135,16 +151,14 @@ export default {
       if (!this.newComment.trim()) return;
 
       try {
-        // Retrieve the author ID of the logged-in user from local storage
-        const currentAuthor = JSON.parse(localStorage.getItem("user"));
-        const currentAuthorId = currentAuthor ? currentAuthor.id : null;
-
-        if (!currentAuthorId) {
+        // Ensure the user is authenticated
+        if (!this.authID) {
           this.errorMessage = "User not authenticated.";
           return;
         }
 
-        const apiUrl = `http://localhost:8000/service/api/posts/${this.postId}/comment/`;
+        // Prepare the comment payload
+        const apiUrl = `/posts/${encodeURIComponent(this.postId)}/comment/`;
         const payload = {
           content: this.newComment.trim(),
           contentType: "text/plain",
@@ -173,10 +187,10 @@ export default {
         this.errorMessage = "An error occurred while submitting the comment.";
       }
     },
+
     /**
-     * Formats the timestamp to a more readable format.
-     * @param {String} timestamp - The original timestamp.
-     * @returns {String} - The formatted timestamp.
+     * Distributes the newly created comment to relevant authors' inboxes.
+     * @param {Object} commentData - The data of the newly created comment.
      */
     async distributeComment(commentData) {
       try {
@@ -472,7 +486,7 @@ export default {
 .comment-details {
   display: flex;
   flex-direction: column;
-  align-items: center; /* Center-aligns the comment text and time */
+  align-items: flex-start; /* Aligns text to the left */
   width: 100%;
 }
 
@@ -480,15 +494,25 @@ export default {
   font-size: 0.95rem;
   color: #333333;
   margin: 0.5rem 0;
-  text-align: center; /* Center-aligns the comment text */
+  text-align: left; /* Aligns text to the left */
   max-width: 400px; /* Limits the width for better readability */
   width: 100%; /* Ensures the text takes the available width */
 }
 
-.comment-time {
-  font-size: 0.75rem;
-  color: #999999;
-  text-align: center;
+/* Success Message */
+.success-message {
+  display: flex;
+  align-items: center;
+  background-color: #dff0d8;
+  color: #3c763d;
+  padding: 0.75rem 1rem;
+  border: 1px solid #d6e9c6;
+  border-radius: 8px;
+  margin-top: 1rem;
+}
+
+.success-message i {
+  margin-right: 0.5rem;
 }
 
 /* Error Message */
@@ -498,6 +522,7 @@ export default {
   background-color: #ffe5e5;
   color: #cc0000;
   padding: 0.75rem 1rem;
+  border: 1px solid #e74c3c;
   border-radius: 8px;
   margin-top: 1rem;
 }
@@ -549,37 +574,6 @@ export default {
 
 .comment-form button:hover {
   background-color: #357abd;
-}
-
-.comment-form button:disabled {
-  background-color: #a0c4e8;
-  cursor: not-allowed;
-}
-
-/* Responsive Design for Smaller Screens */
-@media (max-width: 600px) {
-  .comment-section {
-    padding: 1rem;
-  }
-
-  .comment-avatar {
-    width: 35px;
-    height: 35px;
-  }
-
-  .comment-author {
-    font-size: 0.95rem;
-  }
-
-  .comment-text {
-    max-width: 100%; /* Allow full width on small screens */
-    padding: 0 1rem; /* Add some padding for better appearance */
-  }
-
-  .comment-form button {
-    padding: 0.5rem 1rem;
-    font-size: 0.9rem;
-  }
 }
 
 .comment-form button:disabled {

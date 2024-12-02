@@ -58,34 +58,6 @@
                 </span>
               </div>
             </div>
-            <button
-              v-if="isFriend(author)"
-              @click="handleUnfollow(author)"
-              class="friend-button"
-            >
-              <i class="fas fa-user-friends"></i> Friend
-            </button>
-            <button
-              v-else-if="isFollowing(author)"
-              @click="handleUnfollow(author)"
-              class="following-button"
-            >
-              <i class="fas fa-user-check"></i> Following
-            </button>
-            <button
-              v-else-if="hasPendingRequest(author)"
-              @click="handlePendingRequest(author)"
-              class="pending-button"
-            >
-              <i class="fas fa-clock"></i> Request Pending
-            </button>
-            <button
-              v-else
-              @click="sendFollowRequest(author.id)"
-              class="follow-button"
-            >
-              <i class="fas fa-user-plus"></i> Follow
-            </button>
           </div>
 
           <!-- Follow/Unfollow Buttons -->
@@ -250,15 +222,12 @@ export default {
       if (!this.token) return;
 
       try {
-        const response = await axios.get(
-          "http://localhost:8000/service/api/authors/pending_requests/",
-          {
-            headers: {
-              Authorization: `Token ${this.token}`,
-              "Content-Type": "application/json",
-            },
-          }
-        );
+        const response = await axios.get("/authors/pending_requests/", {
+          headers: {
+            Authorization: `Token ${this.token}`,
+            "Content-Type": "application/json",
+          },
+        });
         this.pendingRequests = response.data.map((req) => req.object.id);
       } catch (error) {
         console.error("Error fetching pending requests:", error);
@@ -366,7 +335,7 @@ export default {
       try {
         const authorUUID = author.id.split("/").pop();
         await axios.delete(
-          `http://localhost:8000/service/api/authors/${authorUUID}/remove_follow_request/`,
+          `/authors/${authorUUID}/remove_follow_request/`,
           {
             headers: { Authorization: `Token ${this.token}` },
           }
@@ -391,31 +360,29 @@ export default {
       }
     },
     async fetchRelationshipStatus(author) {
-        try {
-            const authorUUID = author.id.split("/").pop();
-            const response = await axios.get(
-                `http://localhost:8000/service/api/authors/${authorUUID}/relationship/`,
-                {
-                    headers: { Authorization: `Token ${this.token}` }
-                }
-            );
-            this.relationships[author.id] = response.data;
-        } catch (error) {
-            console.error("Error fetching relationship status:", error);
-        }
+      try {
+        const authorUUID = author.id.split("/").pop();
+        const response = await axios.get(
+          `/authors/${authorUUID}/relationship/`,
+          {
+            headers: { Authorization: `Token ${this.token}` },
+          }
+        );
+        this.relationships[author.id] = response.data;
+      } catch (error) {
+        console.error("Error fetching relationship status:", error);
+      }
     },
-
     async fetchAllRelationships() {
-        for (const author of this.authors) {
-            await this.fetchRelationshipStatus(author);
-        }
+      for (const author of this.authors) {
+        await this.fetchRelationshipStatus(author);
+      }
     },
-
     isFriend(author) {
-        return this.relationships[author.id]?.is_friend || false;
+      return this.relationships[author.id]?.is_friend || false;
     },
     isFollowing(author) {
-        return this.relationships[author.id]?.is_following || false;
+      return this.relationships[author.id]?.is_following || false;
     },
     hasPendingRequest(author) {
       return this.pendingRequests.includes(author.id);
@@ -441,13 +408,13 @@ export default {
       // Check if we're in production
       const isProduction = window.location.hostname.includes("herokuapp.com");
 
-      ws.onmessage = async (event) => {
-        const data = JSON.parse(event.data);
-        if (data.type === "follow_request_notification") {
-          // Refresh the data when a follow request is updated
-          await this.fetchAuthors();
-          await this.fetchAllRelationships();
-          await this.fetchPendingRequests();
+      // Set up the WebSocket URL based on environment
+      const wsProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+      const wsHost = isProduction 
+        ? window.location.hostname                   // Production host
+        : 'localhost:8000';                          // Development host
+      
+      const wsUrl = `${wsProtocol}://${wsHost}/ws/notifications/${uuid}/`;
 
       console.log("Setting up WebSocket connection to:", wsUrl);
 

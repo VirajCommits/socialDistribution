@@ -7,12 +7,15 @@ import CreatePost from '../components/CreatePost.vue';
 import AuthorPosts from '../components/AuthorPosts.vue';
 import EditPost from '../components/EditPost.vue';
 import ExploreAuthors from '../components/ExploreAuthors.vue';
+// Import your PostDetail component if needed
+import PostDetail from '../components/PostDetail.vue';
+import PublicProfilePage from '../components/PublicProfilePage.vue';
 
 const routes = [
   { path: '/login', component: UserLogin },
   { path: '/signup', component: UserSignup },
-  { path: '/', redirect: '/login' }, 
-  { path: '/stream', component: StreamPage }, 
+  { path: '/', redirect: '/login' },
+  { path: '/stream', component: StreamPage },
   { path: '/profile', component: ProfilePage },
   { path: '/addPost', component: CreatePost },
   { path: '/posts/all', component: AuthorPosts },
@@ -24,6 +27,14 @@ const routes = [
     component: EditPost,
     props: true,
   },
+  {
+    path: "/authors/:authorId/public",
+    name: "PublicProfile",
+    component: PublicProfilePage,
+    props: true,
+  },
+
+
   {
     path: '/swagger',
     beforeEnter() {
@@ -41,8 +52,9 @@ const routes = [
 ];
 
 const router = createRouter({
-  history: createWebHistory(''),
+  history: createWebHistory(),
   routes,
 });
+
 
 export default router;
