@@ -19,9 +19,11 @@ export default {
   props: {
     commentId: {
       type: String,
+      required: true,
     },
     postId: {
       type: String,
+      required: true,
     }
   },
   data() {
@@ -72,18 +74,6 @@ export default {
 
       if (!this.liked) {
         this.likeCount -= 1;
-      }
-
-      if (!postId) {
-        console.error("Error: Like must be associated with either a post.");
-        this.errorMessage = "Like must be associated with either a post.";
-        return;
-    }
-
-      if (!commentId) {
-          console.error("Error: Like must be associated with either a comment.");
-          this.errorMessage = "Like must be associated with either a comment.";
-          return;
       }
 
       console.log("GRRR postId", postId);
