@@ -82,7 +82,9 @@ export default {
         
         const inboxUrl = `${targethost}/api/authors/${authorId}/inbox/`;
 
-        console.log("GRRRRRRRR", this.user.host, this.user.id, likeData.id);
+        console.log("GRRRRRRRR", this.user.host);
+        console.log("GRRRRRRRR", this.user.id);
+        console.log("GRRRRRRRR", likeData.id);
 
         // Create the payload for the like action
         const payload = {
