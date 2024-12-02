@@ -197,13 +197,20 @@ export default {
                 break;
             }
         }
+
+        if (targetAuthors == this.user.host) {
+          // TODO : local likes implementation
+        }
+
+        else {
         // Distribute the comment to the target authors
-        for (const author of targetAuthors) {
-          const targethost = author.id.split('/authors/')[0];
-          const authorId = author.id.split("/").pop();
-          if (!processedAuthors.has(authorId)) {
-            await this.sendLikeToInbox(authorId, likeData, post, targethost);
-            processedAuthors.add(authorId);
+          for (const author of targetAuthors) {
+            const targethost = author.id.split('/authors/')[0];
+            const authorId = author.id.split("/").pop();
+            if (!processedAuthors.has(authorId)) {
+              await this.sendLikeToInbox(authorId, likeData, post, targethost);
+              processedAuthors.add(authorId);
+            }
           }
         }
 
