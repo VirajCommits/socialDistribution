@@ -268,7 +268,7 @@ export default {
           type: "post",
           title: this.form.title,
           id: postData.author.id+"/posts/"+postData.id,
-          page: postData.page,
+          page: postData.author.id+"/posts/"+postData.page,
           description: this.form.description,
           contentType: this.form.contentType,
           content: this.form.content,
