@@ -241,9 +241,10 @@ export default {
   console.log("This is the authorID: ", authorId);
   try {
     const targetUuid = authorId.split("/").pop();
-    const targethost = authorId.split('/authors/')[0];
+    let targethost = authorId.split('/authors/')[0];
     console.log("This is the host: ", targethost);
-
+    if ("/api" in targethost){targethost = targethost.split("/api")[0];}
+      
     // Fetch the list of connected nodes
     const response = await axios.get('/connected-nodes/', {
       headers: { Authorization: `Token ${this.token}` },
