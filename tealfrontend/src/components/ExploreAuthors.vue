@@ -487,7 +487,7 @@ export default {
         const targetNode = connectedNodes.find(node => node.url === targethost);
         if (targetNode) {
           // For remote nodes, send to their inbox
-          const inboxEndpoint = `${targethost}/api/authors/${targetUuid}/inbox/`;
+          const inboxEndpoint = `${targethost}/api/authors/${targetUuid}/inbox`;
           console.log('Sending unfollow request to remote inbox:', {
             endpoint: inboxEndpoint,
             credentials: {
