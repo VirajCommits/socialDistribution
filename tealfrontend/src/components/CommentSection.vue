@@ -226,7 +226,6 @@ export default {
                     author.id.split("/")[-1] !== currentAuthorId && 
                     author.host !== ourHost
                 );
-                console.log("TARGET AUTHORS IN COMMENT SECTION:" , targetAuthors)
                 break;
             }
             case "FRIENDS": {
@@ -246,8 +245,6 @@ export default {
                         follower => follower.uuid === postAuthorId
                     );
                     
-                    console.log('Is follower:', isFollower);
-                    console.log('Is followed:', isFollowed);
                     
                     // Only allow access if there's a mutual follow relationship
                     if (!isFollower || !isFollowed) {
@@ -277,11 +274,8 @@ export default {
                 break;
             }
         }
-
-        console.log("TARGET AUTHORS IN COMMENT SECTION before for loop:" , targetAuthors)
         // Distribute the comment to the target authors
         for (const author of targetAuthors) {
-          console.log("AUTHOR IN COMMENT SECTION:" , author)
           const targethost = author.id.split('/authors/')[0];
           const authorId = author.id.split("/").pop();
           if (!processedAuthors.has(authorId)) {

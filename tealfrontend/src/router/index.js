@@ -27,9 +27,17 @@ const routes = [
   {
     path: '/swagger',
     beforeEnter() {
-      window.location.href = 'http://localhost:8080/swagger';  // Redirect to Django's Swagger UI
-    }
-  }
+      window.location.href = 'https://teal-pranav-0e8aa7849ad7.herokuapp.com/swagger'; // Redirect to Swagger UI
+    },
+  },
+  {
+    path: '/posts/:postId',
+    name: 'PostDetail',
+    component: PostDetail,
+    props: true,
+  },
+  // Catch-all route to redirect to the main app
+  { path: '/:catchAll(.*)', redirect: '/stream' },
 ];
 
 const router = createRouter({
