@@ -254,6 +254,7 @@ export default {
         const connectedNodes = response.data;
 
         // Find the target node based on the host
+        targethost = targethost.slice(0, -1);
         const targetNode = connectedNodes.find(node => node.url === targethost);
         if (!targetNode) {
           throw new Error(`Target host ${targethost} not found among connected nodes.`);
