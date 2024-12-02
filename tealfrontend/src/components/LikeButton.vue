@@ -1,6 +1,6 @@
 <template>
   <div class="like-button">
-    <button @click="handleLike" :class="{ liked: liked }" :aria-pressed="liked">
+    <button @click="handleLike(postId, postData, targethost)" :class="{ liked: liked }" :aria-pressed="liked">
       <i :class="liked ? 'fas fa-heart' : 'far fa-heart'"></i>
       <span class="like-count">{{ likeCount }}</span>
     </button>
@@ -55,7 +55,7 @@ export default {
      * Handles the like button click event.
      * Toggles the like status and sends like notification to the inbox.
      */
-     async handleLike(postId, likeData, postData, targethost) {
+     async handleLike(postId, postData, targethost) {
       if (!this.authID) {
         this.errorMessage = "User not authenticated.";
         return;
@@ -71,7 +71,6 @@ export default {
             displayName: this.authDisplayName, // The authenticated user's display name
         },
         post: postId || null, // The ID of the post being liked (set to null if it's a comment)
-        comment: commentId || null, // The ID of the comment being liked (set to null if it's a post)
         published: new Date().toISOString(), // The current timestamp in ISO format
       };
 
