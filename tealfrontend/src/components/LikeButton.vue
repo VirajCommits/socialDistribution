@@ -64,6 +64,20 @@ export default {
       // Toggle like status
       this.liked = !this.liked;
 
+      const likeData = {
+        id: crypto.randomUUID(), // Generate a unique UUID for the Like object
+        author: {
+            id: this.authID, // The authenticated user's ID (from the frontend state)
+            displayName: this.authDisplayName, // The authenticated user's display name
+        },
+        post: postId || null, // The ID of the post being liked (set to null if it's a comment)
+        comment: commentId || null, // The ID of the comment being liked (set to null if it's a post)
+        published: new Date().toISOString(), // The current timestamp in ISO format
+      };
+
+      // Log for debugging
+      console.log("Created likeData object:", likeData);
+
       try {
         // Call the function to send like to the inbox with the necessary parameters
         await this.sendLikeToInbox(postId, likeData, postData, targethost);
