@@ -4763,6 +4763,8 @@ def send_follow_request_to_remote_authors(request, author_serial):
 
         # Get the target host from object_author
         target_host = object_author.get('host')
+        if "/api" in target_host:
+            target_host = target_host.split('/api')[0]
         if not target_host:
             # Extract the host from the 'id' field if 'host' is not provided
             target_host = '/'.join(object_author.get('id').split('/')[:3])
