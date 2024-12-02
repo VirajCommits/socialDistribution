@@ -296,7 +296,7 @@ export default {
         console.log("CONNECTED NODES:" , connectedNodes)
         console.log("CONNECTED NODES DATA:" , connected_nodes)
         console.log("TARGET HOST:" , targethost)
-        if (targethost.includes("/api")) { targethost = targethost.split("/api")[0]; }
+        if (host.includes("/api")) { host = host.split("/api")[0]; }
       
 
         console.log("HOST:" , host)
