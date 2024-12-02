@@ -1,6 +1,6 @@
 <template>
   <div class="like-button">
-    <button @click="handleLike(postId)" :class="{ liked: liked }" :aria-pressed="liked">
+    <button @click="handleLike(postId, commentId)" :class="{ liked: liked }" :aria-pressed="liked">
       <i :class="liked ? 'fas fa-heart' : 'far fa-heart'"></i>
       <span class="like-count">{{ likeCount }}</span>
     </button>
@@ -59,7 +59,7 @@ export default {
      * Handles the like button click event.
      * Toggles the like status and sends like notification to the inbox.
      */
-     async handleLike(postId) {
+     async handleLike(postId, commentId) {
       if (!this.authID) {
         this.errorMessage = "User not authenticated.";
         return;
@@ -85,6 +85,7 @@ export default {
             displayName: this.authDisplayName, // The authenticated user's display name
         },
         post: postId || null, // The ID of the post being liked (set to null if it's a comment)
+        comment: commentId || null,
         published: new Date().toISOString(), // The current timestamp in ISO format
       };
 
@@ -241,7 +242,7 @@ export default {
           
           published: new Date().toISOString(), // Current timestamp
           id: `${this.user.host}/api/authors/${this.user.id}/liked/${likeData.id}`,  // Like ID (usually a UUID)
-          object: postData.id,  // The post or comment that was liked
+          object: likeData.post || likeData.comment,  // The post or comment that was liked
         };
 
         console.log(`Sending like to inbox of author ${authorId}:`, payload);
