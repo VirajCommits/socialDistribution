@@ -1,6 +1,6 @@
 <template>
   <div class="like-button">
-    <button @click="toggleLike" :class="{ liked: liked }" :aria-pressed="liked">
+    <button @click="handleLike" :class="{ liked: liked }" :aria-pressed="liked">
       <i :class="liked ? 'fas fa-heart' : 'far fa-heart'"></i>
       <span class="like-count">{{ likeCount }}</span>
     </button>
