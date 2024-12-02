@@ -4537,6 +4537,8 @@ def sync_remote_authors(request):
 
                             # Ensure username is unique
                             # unique_username = f"{author_data.get('displayName', '').lower()}_{author_id.split('/')[-1][:8]}"
+                            if author_data.get('github')== None:
+                                author_data['github']=''
 
                             author_defaults = {
                                 'uuid': author_data.get('id').split('/')[-1],
