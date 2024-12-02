@@ -250,8 +250,8 @@ export default {
         // Assuming `response.data.following` contains the list of authors you're following
         this.stats = {
           following: response.data.following.length || 0, // Count the following list
-          followers: response.data.followers_count || 0, // Get followers count
-          friends: response.data.friends_count || 0, // Get friends count
+          followers: response.data.followers.length || 0, // Get followers count
+          friends: response.data.friends.length || 0, // Get friends count
         };
       } catch (error) {
         console.error("Error fetching stats:", error);
