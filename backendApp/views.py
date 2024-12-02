@@ -4487,7 +4487,7 @@ def process_follow_request(request, follow_request):
 @authentication_classes([])
 def sync_remote_authors(request):
 
-    print("INCOMING REQUEST BODY:" , request)
+    print("INCOMING REQUEST BODY:" ,)
     try:
         # Get all active remote nodes
         remote_nodes = ToWhichItsConnected.objects.filter(active=True)
@@ -4526,13 +4526,11 @@ def sync_remote_authors(request):
                         try:
                             # Get or create the author
                             author_id = author_data.get('id')
-                            username = author_data.get('username', '').strip()
                             if not author_id:
                                 continue  # Skip if author ID is missing
 
-                            # Generate a unique username if the incoming username is empty
-                            if not username:
-                                username = f"user_{uuid.uuid4().hex[:8]}"
+                            # Ensure username is unique
+                            # unique_username = f"{author_data.get('displayName', '').lower()}_{author_id.split('/')[-1][:8]}"
 
                             author_defaults = {
                                 'uuid': author_data.get('id').split('/')[-1],
@@ -4540,24 +4538,14 @@ def sync_remote_authors(request):
                                 'displayName': author_data.get('displayName', ''),
                                 'github': author_data.get('github', ''),
                                 'profileImage': author_data.get('profileImage', ''),
-                                'page': author_data.get('page', ''),
-                                'username': username,
+                                'is_active': True,  # Remote authors are not local users
                             }
-                            try:
-                                author, created = Author.objects.update_or_create(
-                                    id=author_id,
-                                    defaults=author_defaults
-                                )
-                                node_result['authors_synced'] += 1
+                            author, created = Author.objects.update_or_create(
+                                id=author_id,
+                                defaults=author_defaults
+                            )
+                            node_result['authors_synced'] += 1
 
-                            except Exception:
-                                # Generate a new unique username if there's a conflict
-                                author_defaults['username'] = f"user_{uuid.uuid4().hex[:8]}"
-                                author, created = Author.objects.update_or_create(
-                                    id=author_id,
-                                    defaults=author_defaults
-                                )
-                                node_result['authors_synced'] += 1
                         except Exception as e:
                             error_message = f"Error processing author {author_data.get('id')}: {e}"
                             node_result['errors'].append(error_message)
@@ -4584,6 +4572,7 @@ def sync_remote_authors(request):
             "message": str(e),
             "type": str(type(e).__name__)
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 @api_view(['GET'])
 def connected_nodes(request):

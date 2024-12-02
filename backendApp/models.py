@@ -21,10 +21,6 @@ class Author(AbstractUser):
         "self", symmetrical=False, related_name="following", blank=True
     )
 
-
-    class Meta:
-        unique_together=('id' , 'username' )
-
     def __str__(self):
         return self.displayName or self.username
 
