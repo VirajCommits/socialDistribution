@@ -1,10 +1,6 @@
 <template>
   <div class="like-button">
-    <button 
-      @click="handleLike(postId, likeData, postData, targetHost)" 
-      :class="{ liked: liked }" 
-      :aria-pressed="liked"
-    >
+    <button @click="handleLike" :class="{ liked: liked }" :aria-pressed="liked">
       <i :class="liked ? 'fas fa-heart' : 'far fa-heart'"></i>
       <span class="like-count">{{ likeCount }}</span>
     </button>
@@ -28,15 +24,10 @@ export default {
   },
   data() {
     return {
-      postId: 'some-post-id',    // Replace with actual post ID
-      likeData: { /* like-related data */ },
-      postData: { /* post-related data */ },
-      targetHost: 'some-target-host', // Replace with actual target host
       liked: false,
       likeCount: 0,
       loading: false,
       errorMessage: '',
-      authID: 'some-auth-id' // or fetch this dynamically
     };
   },
   mounted() {
