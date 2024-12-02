@@ -19,11 +19,11 @@ export default {
   props: {
     commentId: {
       type: String,
-      required: false,
+      required: true,
     },
     postId: {
       type: String,
-      required: false,
+      required: true,
     }
   },
   data() {
