@@ -241,7 +241,7 @@ export default {
           },
           
           published: new Date().toISOString(), // Current timestamp
-          id: `${this.user.host}/api/authors/${this.user.id}/liked/${likeData.id}`,  // Like ID (usually a UUID)
+          id: `${this.user.host}/api/authors/${this.user.id.split("/")[-1]}/like/${likeData.id}`,  // Like ID (usually a UUID)
           object: likeData.post || likeData.comment,  // The post or comment that was liked
         };
 
