@@ -1,6 +1,6 @@
 <template>
   <div class="like-button">
-    <button @click="handleLike(postId, postData, targethost)" :class="{ liked: liked }" :aria-pressed="liked">
+    <button @click="handleLike(postId)" :class="{ liked: liked }" :aria-pressed="liked">
       <i :class="liked ? 'fas fa-heart' : 'far fa-heart'"></i>
       <span class="like-count">{{ likeCount }}</span>
     </button>
@@ -59,7 +59,7 @@ export default {
      * Handles the like button click event.
      * Toggles the like status and sends like notification to the inbox.
      */
-     async handleLike(postId, postData, targethost) {
+     async handleLike(postId) {
       if (!this.authID) {
         this.errorMessage = "User not authenticated.";
         return;
@@ -85,10 +85,123 @@ export default {
 
       try {
         // Call the function to send like to the inbox with the necessary parameters
-        await this.sendLikeToInbox(postId, likeData, postData, targethost);
+        await this.distributeLike(likeData);
       } catch (error) {
         console.error("Error sending like to inbox:", error);
         this.errorMessage = "An error occurred while sending like to inbox.";
+      }
+    },
+
+    async distributeLike(likeData) {
+      try {
+        // Fetch the post details to get the author's information and visibility
+        const postApiUrl = `/posts/${encodeURIComponent(this.postId)}/`;
+        const postResponse = await axios.get(postApiUrl, {
+          headers: {
+            Authorization: `Token ${localStorage.getItem("token")}`,
+          },
+        });
+        const post = postResponse.data;
+
+        if (!post) {
+          console.warn("Post details not found. Skipping comment distribution.");
+          return;
+        }
+
+        const postAuthorId = post.author.id.split("/").pop();
+        const postVisibility = post.visibility || "PUBLIC";
+
+        // Fetch all authors (or fetch only relevant authors based on visibility)
+        const authorsResponse = await axios.get("/authors/", {
+          headers: {
+            Authorization: `Token ${localStorage.getItem("token")}`,
+          },
+        });
+        const authors = authorsResponse.data["authors"];
+
+        // Current user's ID
+        const currentAuthorId = this.authID;
+
+        // Track which authors have received the notification to prevent duplicates
+        const processedAuthors = new Set([currentAuthorId]); // Initialize with current author
+
+        // Determine the list of authors to send the comment to based on post visibility
+        let targetAuthors = [];
+
+        switch (postVisibility) {
+            case "PUBLIC": {
+                // Visible to everyone except the current author
+                const ourHost = this.user.host;
+    
+                // Filter out authors who:
+                // 1. Are not the current author
+                // 2. Don't have the same host as our user
+                targetAuthors = authors.filter(author => 
+                    author.id.split("/")[-1] !== currentAuthorId && 
+                    author.host !== ourHost
+                );
+                break;
+            }
+            case "FRIENDS": {
+                try {
+                    console.log("Checking FRIENDS visibility");
+                    const currentUser = JSON.parse(localStorage.getItem('user'));
+                    
+                    // First, check if the current user is a follower of the post author
+                    const postAuthorFollowers = await this.getFollowers(postAuthorId);
+                    const isFollower = postAuthorFollowers.some(
+                        follower => follower.uuid === currentUser.uuid
+                    );
+                    
+                    // Then check if the post author follows the current user
+                    const currentUserFollowers = await this.getFollowers(currentUser.uuid);
+                    const isFollowed = currentUserFollowers.some(
+                        follower => follower.uuid === postAuthorId
+                    );
+                    
+                    
+                    // Only allow access if there's a mutual follow relationship
+                    if (!isFollower || !isFollowed) {
+                        console.log('Not a mutual friend - access denied');
+                        throw new Error('You must be friends with the author to view this post');
+                    }
+                    
+                    // If we get here, they are friends, so include in targetAuthors
+                    targetAuthors = [currentUser];
+                    
+                } catch (error) {
+                    console.error('Error in FRIENDS visibility check:', error);
+                    throw error;
+                }
+                break;
+            }
+            case "UNLISTED": {
+                // Visible to all followers of the post author
+                targetAuthors = await this.getFollowers(postAuthorId);
+                break;
+            }
+            default: {
+                // Default to PUBLIC if visibility is undefined
+                targetAuthors = authors.filter(
+                    (author) => author.id.split("/").pop() !== currentAuthorId
+                );
+                break;
+            }
+        }
+        // Distribute the comment to the target authors
+        for (const author of targetAuthors) {
+          const targethost = author.id.split('/authors/')[0];
+          const authorId = author.id.split("/").pop();
+          if (!processedAuthors.has(authorId)) {
+            await this.sendLikeToInbox(authorId, likeData, post, targethost);
+            processedAuthors.add(authorId);
+          }
+        }
+
+        console.log("Comment distribution completed.");
+      } catch (error) {
+        console.error("Error distributing comment:", error);
+        // Optionally, set an error message or handle it as needed
       }
     },
 
@@ -158,6 +271,9 @@ export default {
     },
   },
 };
+
+
+
 </script>
 
 
