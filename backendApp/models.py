@@ -26,7 +26,7 @@ class Author(AbstractUser):
 
     def save(self, *args, **kwargs):
         if not self.id:
-            self.id = f"{self.host}authors/{self.uuid}"
+            self.id = f"{self.host}/authors/{self.uuid}"
         if not self.page:
             self.page = f"{self.host.replace('project/', '')}authors/{self.username}"
         if not self.displayName:
