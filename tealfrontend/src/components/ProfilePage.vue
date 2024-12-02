@@ -235,24 +235,26 @@ export default {
       this.$router.push("/addPost");
     },
 
-    showPost() {
-      this.$router.push("/posts/all");
-    },
     async fetchStats() {
       try {
-        // Debug logs
         const url = `/authors/${this.user.uuid}/stats/`;
-        
+
         const response = await axios.get(url, {
           headers: {
             Authorization: `Token ${localStorage.getItem("token")}`,
           },
         });
+
         console.log('Response:', response.data);
-        this.stats = response.data;
+
+        // Assuming `response.data.following` contains the list of authors you're following
+        this.stats = {
+          following: response.data.following.length || 0, // Count the following list
+          followers: response.data.followers_count || 0, // Get followers count
+          friends: response.data.friends_count || 0, // Get friends count
+        };
       } catch (error) {
         console.error("Error fetching stats:", error);
-        // More detailed error logging
         if (error.response) {
           console.log('Error status:', error.response.status);
         }
