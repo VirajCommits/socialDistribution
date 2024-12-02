@@ -9,7 +9,7 @@ import axios from 'axios';
 const isProduction = window.location.hostname.includes('herokuapp.com');
 const baseURL = isProduction
   ? 'https://project-teal-1-2b076456090f.herokuapp.com/api'
-  : 'http://127.0.0.1:8000/service/api';
+  : 'http://127.0.0.1:8000/api';
 
 // Axios configuration
 import Cookies from 'js-cookie';
@@ -23,23 +23,11 @@ console.log('Using API URL:', baseURL);
 
 // Create the Vue app
 const app = createApp(App);
-
-// Set up Axios base URL (replace with your API's base URL)
-axios.defaults.baseURL = 'http://localhost:8000/service/api';
-
 // Request Interceptor to add the Authorization header with the token
 axios.interceptors.request.use(
   config => {
     const token = localStorage.getItem('token'); // Get the token from localStorage
     if (token) {
-      console.log("inside config headers: =================== " , config.headers["Authorization"])
-      if(!config.headers["Authorization"]){
-        config.headers['Authorization'] = `Bearer ${token}`
-      }
-      if (config.headers["Authorization"] && !config.headers["Authorization"].startsWith("Basic ")){
-        config.headers['Authorization'] = `Bearer ${token}`; // Set the Authorization header
-        
-      }
       console.log("inside config headers: =================== " , config.headers["Authorization"])
       if(!config.headers["Authorization"]){
         config.headers['Authorization'] = `Bearer ${token}`
