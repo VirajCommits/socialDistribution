@@ -19,8 +19,12 @@ export default {
   props: {
     commentId: {
       type: String,
-      required: true,
+      required: false,
     },
+    postId: {
+      type: String,
+      required: false,
+    }
   },
   data() {
     return {
@@ -64,6 +68,8 @@ export default {
       // Toggle like status
       this.liked = !this.liked;
 
+      console.log("GRRR postId", postId);
+
       const likeData = {
         id: crypto.randomUUID(), // Generate a unique UUID for the Like object
         author: {
@@ -95,9 +101,9 @@ export default {
         
         const inboxUrl = `${targethost}/api/authors/${authorId}/inbox/`;
 
-        console.log("GRRRRRRRR", this.user.host);
-        console.log("GRRRRRRRR", this.user.id);
-        console.log("GRRRRRRRR", likeData.id);
+        console.log("GRRR this.user.host", this.user.host);
+        console.log("GRRR this.user.id", this.user.id);
+        console.log("GRRR likeData.id", likeData.id);
 
         // Create the payload for the like action
         const payload = {
