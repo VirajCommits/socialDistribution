@@ -4538,8 +4538,6 @@ def sync_remote_authors(request):
                                 'displayName': author_data.get('displayName', ''),
                                 'github': author_data.get('github', ''),
                                 'profileImage': author_data.get('profileImage', ''),
-                                'username': author_data.get('username',''),  # Ensure unique usernames
-                                'email': '',  # Email might not be available
                                 'is_active': True,  # Remote authors are not local users
                             }
                             author, created = Author.objects.update_or_create(
