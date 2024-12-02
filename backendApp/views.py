@@ -4553,6 +4553,7 @@ def sync_remote_authors(request):
                             node_result['authors_synced'] += 1
 
                         except Exception as e:
+                            print("THIS IS THE AUTHOR DATA", author_data)
                             error_message = f"Error processing author {author_data.get('id')}: {e}"
                             node_result['errors'].append(error_message)
                             continue  # Skip to the next author
