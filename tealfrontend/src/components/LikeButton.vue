@@ -97,7 +97,7 @@ export default {
 
         console.log("GRRRRRRRR", this.user.host);
         console.log("GRRRRRRRR", this.user.id);
-        console.log("GRRRRRRRR", this.likeData);
+        console.log("GRRRRRRRR", likeData.id);
 
         // Create the payload for the like action
         const payload = {
