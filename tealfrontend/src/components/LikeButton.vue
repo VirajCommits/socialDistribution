@@ -264,7 +264,7 @@ export default {
         }
         const targetNode = connectedNodes.find((node) => node.url === targetauthorHost);
         if (!targetNode) {
-          console.error(`No connected node matches the target host: ${targetAuthor.host}`);
+          console.error(`1111111111No connected node matches the target host: ${targetAuthor.host}`);
           this.errorMessage = "Unable to find a connected node for the target host.";
           return;
         }
