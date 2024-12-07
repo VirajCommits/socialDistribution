@@ -1,138 +1,283 @@
 <template>
   <div class="like-button">
-    <button @click="toggleLike" :class="{ liked: liked }" :aria-pressed="liked">
+    <button @click="handleLike(postId)" :class="{ liked: liked }" :aria-pressed="liked">
       <i :class="liked ? 'fas fa-heart' : 'far fa-heart'"></i>
       <span class="like-count">{{ likeCount }}</span>
     </button>
     <div v-if="loading" class="loading-spinner">
       <i class="fas fa-spinner fa-spin"></i>
     </div>
-    <p v-if="errorMessage" class="error-message">{{ errorMessage }}</p>
   </div>
 </template>
 
 <script>
 import axios from "axios";
-import Cookies from "js-cookie";
+import Cookies from 'js-cookie';
 
 export default {
   name: "LikeButton",
   props: {
-    postId: {
-      type: String,
-      required: true, // Optional for comments
-    },
     commentId: {
       type: String,
-      required: false, // Optional for posts
+      required: false,
     },
+    postId: {
+      type: String,
+      required: false,
+    }
   },
   data() {
     return {
       liked: false,
       likeCount: 0,
-      loading: true,
-      errorMessage: "",
+      loading: false,
+      errorMessage: '',
     };
   },
   mounted() {
-    this.fetchLikes();
+    this.initializeUser();
   },
   methods: {
-    async fetchLikes() {
+    /**
+     * Initializes user information from localStorage.
+     */
+    initializeUser() {
       try {
-        this.loading = true;
-        const apiUrl = `/posts/${encodeURIComponent(this.postId)}/`;
-
-        const response = await axios.get(apiUrl);
-        const likesArray = Array.isArray(response.data) ? response.data : response.data.src || [];
-        this.likeCount = likesArray.length;
-
-        // Check if the logged-in user has liked the post/comment
-        const currentUser = JSON.parse(localStorage.getItem("user"));
-        const currentAuthorId = currentUser ? currentUser.id : null;
-        if (currentAuthorId) {
-          this.liked = likesArray.some((like) => like.author.id === currentAuthorId);
+        this.user = JSON.parse(localStorage.getItem("user"));
+        if (this.user && this.user.id) {
+          this.authID = this.user.id.split("/").pop();
+        } else {
+          throw new Error("User information not found");
         }
       } catch (error) {
-        console.error("Error fetching likes:", error.response || error);
-        this.errorMessage = "An error occurred while fetching likes.";
-      } finally {
-        this.loading = false;
+        console.error("Error initializing user:", error);
+        this.errorMessage = "Failed to retrieve user information.";
       }
     },
-    async toggleLike() {
+
+    /**
+     * Handles the like button click event.
+     * Toggles the like status and sends like notification to the inbox.
+     */
+     async handleLike(postId) {
+      if (!this.authID) {
+        this.errorMessage = "User not authenticated.";
+        return;
+      }
+
+      // Toggle like status
+      this.liked = !this.liked;
+
+      console.log("GRRR postId", postId);
+
+      const likeData = {
+        id: crypto.randomUUID(), // Generate a unique UUID for the Like object
+        author: {
+            id: this.authID, // The authenticated user's ID (from the frontend state)
+            displayName: this.authDisplayName, // The authenticated user's display name
+        },
+        post: postId || null, // The ID of the post being liked (set to null if it's a comment)
+        published: new Date().toISOString(), // The current timestamp in ISO format
+      };
+
+      // Log for debugging
+      console.log("Created likeData object:", likeData);
+
       try {
-        const currentUser = JSON.parse(localStorage.getItem("user"));
-        if (!currentUser || !currentUser.id) {
-          this.errorMessage = "User not authenticated.";
+        // Call the function to send like to the inbox with the necessary parameters
+        await this.distributeLike(likeData);
+      } catch (error) {
+        console.error("Error sending like to inbox:", error);
+        this.errorMessage = "An error occurred while sending like to inbox.";
+      }
+    },
+
+    async distributeLike(likeData) {
+      try {
+        // Fetch the post details to get the author's information and visibility
+        const postApiUrl = `/posts/${encodeURIComponent(this.postId)}/`;
+        const postResponse = await axios.get(postApiUrl, {
+          headers: {
+            Authorization: `Token ${localStorage.getItem("token")}`,
+          },
+        });
+        const post = postResponse.data;
+
+        if (!post) {
+          console.warn("Post details not found. Skipping comment distribution.");
           return;
         }
 
-        const targetObjectUrl = this.commentId
-          ? `/posts/${encodeURIComponent(this.postId)}/comments/`
-          : `/posts/${encodeURIComponent(this.postId)}/`;
+        const postAuthorId = post.author.id.split("/").pop();
+        const postVisibility = post.visibility || "PUBLIC";
 
-        // Fetch the post/comment to get the author's details
-        const targetResponse = await axios.get(targetObjectUrl);
-        const targetAuthor = targetResponse.data.author;
+        // Fetch all authors (or fetch only relevant authors based on visibility)
+        const authorsResponse = await axios.get("/authors/", {
+          headers: {
+            Authorization: `Token ${localStorage.getItem("token")}`,
+          },
+        });
+        const authors = authorsResponse.data["authors"];
 
-        if (!targetAuthor || !targetAuthor.id || !targetAuthor.host) {
-          this.errorMessage = "Unable to identify the target author or their host.";
-          return;
+        // Current user's ID
+        const currentAuthorId = this.authID;
+
+        // Track which authors have received the notification to prevent duplicates
+        const processedAuthors = new Set([currentAuthorId]); // Initialize with current author
+
+        // Determine the list of authors to send the comment to based on post visibility
+        let targetAuthors = [];
+
+        switch (postVisibility) {
+            case "PUBLIC": {
+                // Visible to everyone except the current author
+                const ourHost = this.user.host;
+    
+                // Filter out authors who:
+                // 1. Are not the current author
+                // 2. Don't have the same host as our user
+                targetAuthors = authors.filter(author => 
+                    author.id.split("/")[-1] !== currentAuthorId && 
+                    author.host !== ourHost
+                );
+                break;
+            }
+            case "FRIENDS": {
+                try {
+                    console.log("Checking FRIENDS visibility");
+                    const currentUser = JSON.parse(localStorage.getItem('user'));
+                    
+                    // First, check if the current user is a follower of the post author
+                    const postAuthorFollowers = await this.getFollowers(postAuthorId);
+                    const isFollower = postAuthorFollowers.some(
+                        follower => follower.uuid === currentUser.uuid
+                    );
+                    
+                    // Then check if the post author follows the current user
+                    const currentUserFollowers = await this.getFollowers(currentUser.uuid);
+                    const isFollowed = currentUserFollowers.some(
+                        follower => follower.uuid === postAuthorId
+                    );
+                    
+                    
+                    // Only allow access if there's a mutual follow relationship
+                    if (!isFollower || !isFollowed) {
+                        console.log('Not a mutual friend - access denied');
+                        throw new Error('You must be friends with the author to view this post');
+                    }
+                    
+                    // If we get here, they are friends, so include in targetAuthors
+                    targetAuthors = [currentUser];
+                    
+                } catch (error) {
+                    console.error('Error in FRIENDS visibility check:', error);
+                    throw error;
+                }
+                break;
+            }
+            case "UNLISTED": {
+                // Visible to all followers of the post author
+                targetAuthors = await this.getFollowers(postAuthorId);
+                break;
+            }
+            default: {
+                // Default to PUBLIC if visibility is undefined
+                targetAuthors = authors.filter(
+                    (author) => author.id.split("/").pop() !== currentAuthorId
+                );
+                break;
+            }
+        }
+        // Distribute the comment to the target authors
+        for (const author of targetAuthors) {
+          const targethost = author.id.split('/authors/')[0];
+          const authorId = author.id.split("/").pop();
+          if (!processedAuthors.has(authorId)) {
+            await this.sendLikeToInbox(authorId, likeData, post, targethost);
+            processedAuthors.add(authorId);
+          }
         }
 
-        // Extract the target author ID from the full URL (if it's a full URL like /authors/<id>)
-        const targetAuthorId = targetAuthor.id.split("/").pop();  // Get the last part of the URL
+        console.log("Comment distribution completed.");
+      } catch (error) {
+        console.error("Error distributing comment:", error);
+        // Optionally, set an error message or handle it as needed
+      }
+    },
 
-        // Construct the full inbox URL using the target host and extracted author ID
-        const inboxUrl = `${targetAuthor.host}api/authors/${encodeURIComponent(targetAuthorId)}/inbox/`;
+    /**
+     * Sends the like action to the relevant author's inbox.
+     */
+     async sendLikeToInbox(authorId, likeData, postData, targethost) {
+      try {
+        console.log("SENDING LIKE TO INBOX IN LIKEBUTTON:", authorId, likeData, postData, targethost);
+        
+        const inboxUrl = `${targethost}/api/authors/${authorId}/inbox/`;
 
-        // Prepare the payload for the like action
+        console.log("GRRR this.user.host", this.user.host);
+        console.log("GRRR this.user.id", this.user.id);
+        console.log("GRRR likeData.id", likeData.id);
+
+        // Create the payload for the like action
         const payload = {
-          type: this.liked ? "unlike" : "like",
-          id: crypto.randomUUID(),
+          type: "like",
           author: {
             type: "author",
-            id: currentUser.id,
-            host: currentUser.host,
-            displayName: currentUser.displayName,
-            page: currentUser.page,
-            github: currentUser.github,
-            profileImage: currentUser.profileImage,
+            id: this.user.id,  // Use the current logged-in user's ID
+            host: this.user.host,
+            displayName: this.user.displayName,
+            page: this.user.page,
+            github: this.user.github,
+            profileImage: this.user.profileImage,
           },
-          object: targetObjectUrl,
-          published: new Date().toISOString(),
+          
+          published: new Date().toISOString(), // Current timestamp
+          id: `${this.user.host}/api/authors/${this.user.id}/liked/${likeData.id}`,  // Like ID (usually a UUID)
+          object: postData.id,  // The post or comment that was liked
         };
 
-        // Send the like/unlike action to the inbox
+        console.log(`Sending like to inbox of author ${authorId}:`, payload);
+
+        // Get connected nodes (similar to how you did for comments)
         const response = await axios.get('/connected-nodes/', {
           headers: { Authorization: `Token ${this.token}` },
         });
-        const connected_nodes = response.data;
-        const csrfToken = Cookies.get("csrftoken");
-        const targetNode = connected_nodes.find(node => node.url === targetAuthor.host);
+        const connectedNodes = response.data;
+
+        // Find the target node based on the host
+        const targetNode = connectedNodes.find(node => node.url === targethost);
+        if (!targetNode) {
+          throw new Error(`Target host ${targethost} not found among connected nodes.`);
+        }
+
+        // Basic Authentication credentials
         const credentials = btoa(`${targetNode.username}:${targetNode.password}`);
+
+        // CSRF Token
+        const csrfToken = Cookies.get("csrftoken");
+
+        // Send the like payload to the author's inbox
         await axios.post(inboxUrl, payload, {
           headers: {
             "Content-Type": "application/json",
             Authorization: `Basic ${credentials}`,
             "X-CSRFToken": csrfToken,
           },
-          withCredentials: true,
         });
-
-        // Toggle like state and update the counter
-        this.liked = !this.liked;
-        this.likeCount += this.liked ? 1 : -1;
       } catch (error) {
-        console.error("Error toggling like:", error.response || error);
-        this.errorMessage = error.response?.data || "An error occurred while toggling the like.";
+        console.error(`Error sending like to author ${authorId}'s inbox:`, error);
+        throw error;  // Re-throw to handle in distributeLike or elsewhere if needed
       }
     },
   },
 };
+
+
+
 </script>
+
+
+
 
 <style scoped>
 .like-button {
@@ -228,10 +373,16 @@ export default {
   }
 }
 
-/* Error Message Styles */
+/* Error Message Styles (Optional Enhancement) */
 .error-message {
   color: #ff6b6b;
   margin-top: 0.5rem;
   font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+}
+
+.error-message i {
+  margin-right: 0.3rem;
 }
 </style>
