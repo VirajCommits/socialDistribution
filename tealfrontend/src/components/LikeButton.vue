@@ -66,18 +66,31 @@ export default {
     async toggleLike() {
       try {
         const currentUser = JSON.parse(localStorage.getItem("user"));
-        const currentAuthorId = currentUser ? currentUser.id : null;
-
-        if (!currentAuthorId) {
+        if (!currentUser || !currentUser.id) {
           this.errorMessage = "User not authenticated.";
           return;
         }
 
-        const targetObjectId = this.commentId ? this.commentId : this.postId;
         const targetObjectUrl = this.commentId
-          ? `/comments/${this.commentId}/`
-          : `/posts/${this.postId}/`;
+          ? `/comments/${encodeURIComponent(this.commentId)}/`
+          : `/posts/${encodeURIComponent(this.postId)}/`;
 
+        // Fetch the post/comment to get the author's details
+        const targetResponse = await axios.get(targetObjectUrl);
+        const targetAuthor = targetResponse.data.author;
+
+        if (!targetAuthor || !targetAuthor.id || !targetAuthor.host) {
+          this.errorMessage = "Unable to identify the target author or their host.";
+          return;
+        }
+
+        const targetAuthorId = targetAuthor.id;
+        const targetHost = targetAuthor.host;
+
+        // Construct the full inbox URL using the target host and author ID
+        const inboxUrl = `${targetHost}/api/authors/${encodeURIComponent(targetAuthorId)}/inbox/`;
+
+        // Prepare the payload for the like action
         const payload = {
           type: this.liked ? "unlike" : "like",
           id: crypto.randomUUID(),
@@ -95,7 +108,6 @@ export default {
         };
 
         // Send the like/unlike action to the inbox
-        const inboxUrl = `/api/authors/${targetObjectId}/inbox/`;
         const csrfToken = Cookies.get("csrftoken");
         await axios.post(inboxUrl, payload, {
           headers: {
@@ -105,14 +117,14 @@ export default {
           withCredentials: true,
         });
 
-        // Toggle the like state and update the count
+        // Toggle like state and update the counter
         this.liked = !this.liked;
         this.likeCount += this.liked ? 1 : -1;
       } catch (error) {
         console.error("Error toggling like:", error.response || error);
-        this.errorMessage = "An error occurred while toggling the like.";
+        this.errorMessage = error.response?.data || "An error occurred while toggling the like.";
       }
-    },
+    }
   },
 };
 </script>
