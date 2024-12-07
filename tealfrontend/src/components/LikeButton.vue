@@ -63,37 +63,33 @@ export default {
     /**
      * Loads the initial like count for the post or comment.
      */
-     async loadInitialLikeCount() {
-        try {
-          this.loading = true;
+    async loadInitialLikeCount() {
+      try {
+        this.loading = true;
 
-          if (this.postId) {
-            // If this is a post, fetch like count for the post
-            const likesResponse = await axios.get(`/posts/${this.postId}/likes/`, {
-              headers: { Authorization: `Token ${localStorage.getItem("token")}` },
-            });
-            this.likeCount = likesResponse.data.length;
-            console.log("posts", likesResponse)
-            // Check if the current user has already liked this post
-            this.liked = likesResponse.data.some(like => like.author.id === this.authID);
-          } else if (this.commentId) {
-            // If this is a comment, fetch like count for the comment
-            const likesResponse = await axios.get(`/comments/${this.commentId}/likes/`, {
-              headers: { Authorization: `Token ${localStorage.getItem("token")}` },
-            });
-            this.likeCount = likesResponse.data.size;
-            console.log("comments", likesResponse)
-            // Check if the current user has already liked this comment
-            this.liked = likesResponse.data.src.some(like => like.author.id === this.authID);
-          }
-
-        } catch (error) {
-          console.error("Error fetching initial like count:", error);
-          this.errorMessage = "Failed to load like count.";
-        } finally {
-          this.loading = false;
+        if (this.postId) {
+          // If this is a post, fetch like count for the post
+          const likesResponse = await axios.get(`/posts/${this.postId}/likes/`, {
+            headers: { Authorization: `Token ${localStorage.getItem("token")}` },
+          });
+          this.likeCount = likesResponse.data.length;
+          this.liked = likesResponse.data.some(like => like.author.id === this.authID);
+        } else if (this.commentId) {
+          // If this is a comment, fetch like count for the comment
+          const likesResponse = await axios.get(`/comments/${this.commentId}/likes/`, {
+            headers: { Authorization: `Token ${localStorage.getItem("token")}` },
+          });
+          this.likeCount = likesResponse.data.size;
+          this.liked = likesResponse.data.src.some(like => like.author.id === this.authID);
         }
-      },
+
+      } catch (error) {
+        console.error("Error fetching initial like count:", error);
+        this.errorMessage = "Failed to load like count.";
+      } finally {
+        this.loading = false;
+      }
+    },
 
     /**
      * Handles the like button click event for either post or comment.
@@ -112,22 +108,16 @@ export default {
         this.loading = true;
 
         if (this.postId) {
-          if (this.liked) {
-            await this.likePost();
-          } else {
-            await this.unlikePost();
-          }
+          // Like/unlike the post
+          await this.toggleLike("post", this.postId);
         } else if (this.commentId) {
-          if (this.liked) {
-            await this.likeComment();
-          } else {
-            await this.unlikeComment();
-          }
+          // Like/unlike the comment
+          await this.toggleLike("comment", this.commentId);
         }
       } catch (error) {
         console.error("Error toggling like:", error);
         this.errorMessage = "Failed to update like status.";
-        // Revert state if error occurs
+        // Revert the state if an error occurs
         this.liked = previousLikedState;
         this.likeCount += this.liked ? 1 : -1;
       } finally {
@@ -136,75 +126,24 @@ export default {
     },
 
     /**
-     * API call to like a post.
+     * API call to toggle like (like or unlike) for a post or comment.
      */
-    async likePost() {
+    async toggleLike(type, id) {
+      const url = type === "post"
+        ? `/posts/${id}/like/`
+        : `/comments/${id}/like/`;
+
       try {
         const response = await axios.post(
-          `/posts/${this.postId}/like/`,
+          url,
           {},
           {
             headers: { Authorization: `Token ${localStorage.getItem("token")}` },
           }
         );
-        console.log("Post liked successfully:", response.data);
+        console.log(`${type.charAt(0).toUpperCase() + type.slice(1)} liked/unliked successfully`, response.data);
       } catch (error) {
-        console.error("Error liking post:", error);
-        throw error;
-      }
-    },
-
-    /**
-     * API call to unlike a post.
-     */
-    async unlikePost() {
-      try {
-        const response = await axios.delete(
-          `/posts/${this.postId}/unlike/`,
-          {
-            headers: { Authorization: `Token ${localStorage.getItem("token")}` },
-          }
-        );
-        console.log("Post unliked successfully:", response.data);
-      } catch (error) {
-        console.error("Error unliking post:", error);
-        throw error;
-      }
-    },
-
-    /**
-     * API call to like a comment.
-     */
-    async likeComment() {
-      try {
-        const response = await axios.post(
-          `/comments/${this.commentId}/unlike/`,
-          {},
-          {
-            headers: { Authorization: `Token ${localStorage.getItem("token")}` },
-          }
-        );
-        console.log("Comment liked successfully:", response.data);
-      } catch (error) {
-        console.error("Error liking comment:", error);
-        throw error;
-      }
-    },
-
-    /**
-     * API call to unlike a comment.
-     */
-    async unlikeComment() {
-      try {
-        const response = await axios.delete(
-          `/comments/${this.commentId}/like/`,
-          {
-            headers: { Authorization: `Token ${localStorage.getItem("token")}` },
-          }
-        );
-        console.log("Comment unliked successfully:", response.data);
-      } catch (error) {
-        console.error("Error unliking comment:", error);
+        console.error(`Error toggling like for ${type}:`, error);
         throw error;
       }
     }
