@@ -43,7 +43,7 @@ export default {
       try {
         this.loading = true;
         const apiUrl = this.commentId
-      ? `/comments/${encodeURIComponent(this.commentId)}/`
+      ? `/posts/${encodeURIComponent(this.postId)}/comments/`
       : `/posts/${encodeURIComponent(this.postId)}/`;
 
         const response = await axios.get(apiUrl);
@@ -72,7 +72,7 @@ export default {
         }
 
         const targetObjectUrl = this.commentId
-          ? `/comments/${encodeURIComponent(this.commentId)}/`
+          ? `/posts/${encodeURIComponent(this.postId)}/comments/`
           : `/posts/${encodeURIComponent(this.postId)}/`;
 
         // Fetch the post/comment to get the author's details
