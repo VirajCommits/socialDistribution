@@ -84,11 +84,11 @@ export default {
           return;
         }
 
-        const targetAuthorId = targetAuthor.id;
-        const targetHost = targetAuthor.host;
+        // Extract the target author ID from the full URL (if it's a full URL like /authors/<id>)
+        const targetAuthorId = targetAuthor.id.split("/").pop();  // Get the last part of the URL
 
-        // Construct the full inbox URL using the target host and author ID
-        const inboxUrl = `${targetHost}/api/authors/${encodeURIComponent(targetAuthorId)}/inbox/`;
+        // Construct the full inbox URL using the target host and extracted author ID
+        const inboxUrl = `${targetAuthor.host}/api/authors/${encodeURIComponent(targetAuthorId)}/inbox/`;
 
         // Prepare the payload for the like action
         const payload = {
@@ -124,7 +124,7 @@ export default {
         console.error("Error toggling like:", error.response || error);
         this.errorMessage = error.response?.data || "An error occurred while toggling the like.";
       }
-    }
+    },
   },
 };
 </script>
