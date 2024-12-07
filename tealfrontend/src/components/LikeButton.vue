@@ -274,6 +274,7 @@ export default {
         }
 
         const credentials = btoa(`${targetNode.username}:${targetNode.password}`);
+        console.log("payload:", likePayload);
         await axios.post(inboxUrl, likePayload, {
           headers: {
             "Content-Type": "application/json",
