@@ -1689,7 +1689,7 @@ def get_all_authors(request):
 
     **How to use:**
     - Send a `GET` request with the `author_id` as a URL parameter, which represents the UUID of the author.
-    - The response will return a paginated list of posts with details like the post title, content, visibility, and repost count.
+    - The response will return a paginated list of posts with details like the post title, content, and visibility.
     - The stream includes posts from mutual friends, followed authors, followers, and public posts. Posts are filtered based on visibility and relationship.
     - Pagination is used to limit the number of posts per page. You can navigate through pages using the `next` and `previous` fields in the response.
 
@@ -1773,10 +1773,6 @@ def get_all_authors(request):
                                     type=openapi.TYPE_STRING,
                                     format=openapi.FORMAT_DATETIME,
                                     description="Post publication timestamp",
-                                ),
-                                "repost_count": openapi.Schema(
-                                    type=openapi.TYPE_INTEGER,
-                                    description="Count of reposts",
                                 ),
                             },
                         ),
@@ -2553,138 +2549,7 @@ def get_author_stats(request, author_uuid):
             {'error': str(e)}, 
             status=status.HTTP_400_BAD_REQUEST
         )
-
-
-@swagger_auto_schema(
-    method="post",
-    operation_summary="Repost a Post",
-    operation_description="""
-    Allows a user to create a repost of an existing post. The original post must be public for reposting. 
-    This action will create a new post that references the original post, incrementing its repost count.
-    
-    **When to use:**
-    - Use this endpoint when you want to repost a public post to your profile. 
-    - This is helpful for users who want to share content from others with their followers.
-    
-    **How to use:**
-    - Send a `POST` request to this endpoint with the `post_id` of the original post that you wish to repost.
-    - The `post_id` should be provided as a path parameter and corresponds to the ID of the post you wish to repost.
-    - The request will check if the post is public and whether the current user has already reposted it. If either condition is not met, an appropriate error will be returned.
-    - If the repost is successful, a new post will be created on your profile referencing the original post, and the repost count of the original post will be updated.
-    
-    **Why use or not use:**
-    - Use this endpoint to share public posts from others and increase visibility for that post.
-    - Do not use this endpoint for reposting private posts, as only public posts can be reposted. 
-    - Avoid reposting a post you have already reposted, as it will trigger an error.
-    """,
-    manual_parameters=[
-        openapi.Parameter(
-            "post_id",
-            openapi.IN_PATH,
-            description="ID of the post to repost",
-            type=openapi.TYPE_INTEGER,
-            required=True,
-        )
-    ],
-    responses={
-        200: openapi.Response(
-            description="Post reposted successfully.",
-            schema=openapi.Schema(
-                type=openapi.TYPE_OBJECT,
-                properties={
-                    "message": openapi.Schema(
-                        type=openapi.TYPE_STRING, description="Success message"
-                    ),
-                    "repost_count": openapi.Schema(
-                        type=openapi.TYPE_INTEGER,
-                        description="Updated repost count of the original post",
-                    ),
-                },
-            ),
-        ),
-        400: openapi.Response(
-            description="You have already reposted this post.",
-            schema=openapi.Schema(
-                type=openapi.TYPE_OBJECT,
-                properties={
-                    "error": openapi.Schema(
-                        type=openapi.TYPE_STRING, description="Error message"
-                    )
-                },
-            ),
-        ),
-        403: openapi.Response(
-            description="Post is not public.",
-            schema=openapi.Schema(
-                type=openapi.TYPE_OBJECT,
-                properties={
-                    "error": openapi.Schema(
-                        type=openapi.TYPE_STRING, description="Error message"
-                    )
-                },
-            ),
-        ),
-        404: openapi.Response(
-            description="Post not found.",
-            schema=openapi.Schema(
-                type=openapi.TYPE_OBJECT,
-                properties={
-                    "error": openapi.Schema(
-                        type=openapi.TYPE_STRING, description="Error message"
-                    )
-                },
-            ),
-        ),
-        401: "Unauthorized",
-    },
-    tags=["Posts"],
-)
-@api_view(["POST"])
-@permission_classes([IsAuthenticated])
-def repost_post(request, post_id):
-    reposted_post = get_object_or_404(Post, id=post_id)
-
-    # Determine the original post
-    if reposted_post.is_repost:
-        original_post = get_object_or_404(Post, id=reposted_post.original_post_id)
-    else:
-        original_post = reposted_post
-
-    # Check if the original post is public
-    if original_post.visibility != "PUBLIC":
-        return Response({"error": "Post is not public."}, status=403)
-
-    # Check if the user has already reposted the original post
-    if request.user in original_post.reposted_by.all():
-        return Response({"error": "You have already reposted this post."}, status=400)
-
-    # Create a new post for the repost
-    new_repost = Post(
-        author=request.user,
-        title=f"Reposted: {original_post.author.displayName} {original_post.title}",
-        description=original_post.description,
-        content=original_post.content,
-        contentType=original_post.contentType,
-        visibility="PUBLIC",
-        published=timezone.now(),
-        is_repost=True,
-        original_post_id=original_post.id,  # Reference the original post ID
-    )
-    new_repost.save()
-
-    # Track the repost and increment the count
-    original_post.reposted_by.add(request.user)
-    original_post.repost_count += 1
-    original_post.save()
-
-    return Response(
-        {
-            "message": "Post reposted successfully.",
-            "repost_count": original_post.repost_count,
-        },
-        status=200,
-    )
-
+        
 
 @swagger_auto_schema(
     method="get",

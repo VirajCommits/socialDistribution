@@ -67,11 +67,6 @@ urlpatterns = [
         name="post_comment",
     ),
     path("api/posts/<uuid:post_id>/like/", views.like_post, name="like_post"),
-    path(
-        "api/posts/<uuid:post_id>/repost/",
-        views.repost_post,
-        name="repost_post",
-    ),
     # Follow request paths
     path(
         "api/authors/<uuid:author_uuid>/send_follow_request/",
