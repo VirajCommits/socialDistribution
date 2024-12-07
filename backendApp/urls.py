@@ -165,6 +165,11 @@ urlpatterns = [
         name="comment_likes",
     ),
     path(
+        "api/comments/<uuid:comment_id>/",
+        views.CommentDetailView.as_view(),
+        name="comment_detail",
+    ),
+    path(
         "api/authors/<uuid:author_uuid>/",
         views.update_author_profile,
         name="update_author_profile",

@@ -1,155 +1,292 @@
 <template>
   <div class="like-button">
-    <button @click="handleLike" :class="{ liked: liked }" :aria-pressed="liked">
+    <button @click="toggleLike" :class="{ liked: liked }" :aria-pressed="liked">
       <i :class="liked ? 'fas fa-heart' : 'far fa-heart'"></i>
       <span class="like-count">{{ likeCount }}</span>
     </button>
     <div v-if="loading" class="loading-spinner">
       <i class="fas fa-spinner fa-spin"></i>
     </div>
-    <div v-if="errorMessage" class="error-message">
-      <i class="fas fa-exclamation-circle"></i>{{ errorMessage }}
-    </div>
   </div>
 </template>
 
 <script>
 import axios from "axios";
+import Cookies from 'js-cookie';
+
 
 export default {
   name: "LikeButton",
   props: {
-    commentId: {
-      type: String,
-      required: false,
-    },
     postId: {
       type: String,
-      required: false,
-    }
+      required: false, // Optional for comments
+    },
+    commentId: {
+      type: String,
+      required: false, // Optional for posts
+    },
   },
   data() {
     return {
       liked: false,
-      likeCount: 0,
-      loading: false,
-      errorMessage: '',
-      authID: null,
-      user: null,
+      postLikeCount: 0, // Separate counter for post likes
+      commentLikeCount: 0, // Separate counter for comment likes
+      loading: true,
+      errorMessage: "",
     };
   },
+  computed: {
+    likeCount() {
+      // Dynamically return the correct like count
+      return this.commentId ? this.commentLikeCount : this.postLikeCount;
+    },
+  },
   mounted() {
-    this.initializeUser();
-    this.loadInitialLikeCount(); // Fetch the initial like count
+    this.commentId ? this.fetchCommentLikes() : this.fetchPostLikes();
+    this.token = localStorage.getItem("token"); // Retrieve the JWT token
+    this.user = JSON.parse(localStorage.getItem("user")); // Retrieve the user object
   },
   methods: {
-    /**
-     * Initializes user information from localStorage.
-     */
-    initializeUser() {
+    async fetchPostLikes() {
       try {
-        this.user = JSON.parse(localStorage.getItem("user"));
-        if (this.user && this.user.id) {
-          this.authID = this.user.id.split("/").pop();
+        const apiUrl = `/posts/${this.postId}/likes/`;
+        const response = await axios.get(apiUrl);
+        const likesArray = Array.isArray(response.data) ? response.data : response.data.src || [];
+        this.postLikeCount = likesArray.length;
+
+        // Check if the logged-in user has liked the post
+        const currentUser = JSON.parse(localStorage.getItem("user"));
+        const currentAuthorId = currentUser ? currentUser.id : null;
+        if (currentAuthorId) {
+          this.liked = likesArray.some((like) => like.author.id === currentAuthorId);
+        }
+      } catch (error) {
+        console.error("Error fetching post likes:", error.response || error);
+        this.errorMessage = "An error occurred while fetching post likes.";
+      } finally {
+        this.loading = false;
+      }
+    },
+    async fetchCommentLikes() {
+      try {
+        const apiUrl = `/comments/${this.commentId}/likes/`;
+        const response = await axios.get(apiUrl);
+        const likesArray = Array.isArray(response.data) ? response.data : response.data.src || [];
+        this.commentLikeCount = likesArray.length;
+
+        // Check if the logged-in user has liked the comment
+        const currentUser = JSON.parse(localStorage.getItem("user"));
+        const currentAuthorId = currentUser ? currentUser.id : null;
+        if (currentAuthorId) {
+          this.liked = likesArray.some((like) => like.author.id === currentAuthorId);
+        }
+      } catch (error) {
+        console.error("Error fetching comment likes:", error.response || error);
+        this.errorMessage = "An error occurred while fetching comment likes.";
+      } finally {
+        this.loading = false;
+      }
+    },
+    async toggleLike() {
+      console.log("Like button clicked");
+
+      try {
+        console.log("Liked state before action:", this.liked);
+
+        const jwtToken = localStorage.getItem("token"); // Fetch token from localStorage
+        const csrfToken = Cookies.get("csrftoken"); // CSRF token from cookies
+
+        console.log("JWT token:", jwtToken); // Debug token
+        console.log("User object:", this.user);
+
+        // Ensure the user is authenticated
+        if (!this.user || !jwtToken) {
+          this.errorMessage = "User not authenticated.";
+          return;
+        }
+
+        console.log("User authenticated:", this.user); // Debug user
+
+        if (this.liked) {
+          console.warn("Unliking is not implemented.");
+          return;
+        }
+
+        console.log("Preparing like action...");
+
+        // Check whether we are liking a post or a comment
+        if (this.commentId) {
+          // Handle comment likes
+          await this.likeComment(jwtToken, csrfToken);
+        } else if (this.postId) {
+          // Handle post likes
+          await this.likePost(jwtToken, csrfToken);
         } else {
-          throw new Error("User information not found");
+          console.error("Invalid state: No postId or commentId provided.");
         }
       } catch (error) {
-        console.error("Error initializing user:", error);
-        this.errorMessage = "Failed to retrieve user information.";
+        console.error("Error toggling like:", error.response || error);
+        this.errorMessage = "An error occurred while toggling the like.";
       }
     },
 
-    /**
-     * Loads the initial like count for the post or comment.
-     */
-    async loadInitialLikeCount() {
+    async likePost(jwtToken, csrfToken) {
       try {
-        this.loading = true;
+        console.log("Liking a post...");
 
-        if (this.postId) {
-          // If this is a post, fetch like count for the post
-          const likesResponse = await axios.get(`/posts/${this.postId}/likes/`, {
-            headers: { Authorization: `Token ${localStorage.getItem("token")}` },
+        const likePayload = {
+          type: "like",
+          id: crypto.randomUUID(),
+          author: {
+            type: "author",
+            id: this.user.id,
+            host: this.user.host,
+            displayName: this.user.displayName,
+            page: this.user.page,
+            github: this.user.github,
+            profileImage: this.user.profileImage,
+          },
+          object: `/posts/${this.postId}/`,
+          published: new Date().toISOString(),
+        };
+
+        const targetItemUrl = `posts/${this.postId}/`;
+        console.log("Target item URL for post:", targetItemUrl);
+
+        const targetResponse = await axios.get(targetItemUrl, {
+          headers: {
+            Authorization: `Token ${jwtToken}`,
+          },
+        });
+        console.log("Target post response:", targetResponse.data);
+
+        const targetAuthor = targetResponse.data.author;
+        if (targetAuthor.host === this.user.host) {
+          // Same-node handling
+          console.log("Same-node request for post. Handling like locally.");
+          const likeApiUrl = `posts/${this.postId}/like/`;
+
+          await axios.post(likeApiUrl, likePayload, {
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Token ${jwtToken}`,
+              "X-CSRFToken": csrfToken,
+            },
+            withCredentials: true,
           });
-          this.likeCount = likesResponse.data.length;
-          this.liked = likesResponse.data.some(like => like.author.id === this.authID);
-        } else if (this.commentId) {
-          // If this is a comment, fetch like count for the comment
-          const likesResponse = await axios.get(`/comments/${this.commentId}/likes/`, {
-            headers: { Authorization: `Token ${localStorage.getItem("token")}` },
+
+          this.liked = true;
+          this.postLikeCount += 1;
+        } else {
+          // Handle remote-node requests
+          console.log("Remote-node request for post. Sending to inbox.");
+          await this.sendToInbox(targetAuthor, likePayload, jwtToken);
+        }
+      } catch (error) {
+        console.error("Error liking post:", error.response || error);
+        this.errorMessage = "An error occurred while liking the post.";
+      }
+    },
+
+    async likeComment(jwtToken, csrfToken) {
+      try {
+        console.log("Liking a comment...");
+
+        const likePayload = {
+          type: "like",
+          id: crypto.randomUUID(),
+          author: {
+            type: "author",
+            id: this.user.id,
+            host: this.user.host,
+            displayName: this.user.displayName,
+            page: this.user.page,
+            github: this.user.github,
+            profileImage: this.user.profileImage,
+          },
+          object: `/comments/${this.commentId}/`,
+          published: new Date().toISOString(),
+        };
+
+        const targetItemUrl = `comments/${this.commentId}/`;
+        console.log("Target item URL for comment:", targetItemUrl);
+
+        const targetResponse = await axios.get(targetItemUrl, {
+          headers: {
+            Authorization: `Token ${jwtToken}`,
+          },
+        });
+        console.log("Target comment response:", targetResponse.data);
+
+        const targetAuthor = targetResponse.data.author;
+        if (targetAuthor.host === this.user.host) {
+          // Same-node handling
+          console.log("Same-node request for comment. Handling like locally.");
+          const likeApiUrl = `comments/${this.commentId}/like/`;
+
+          await axios.post(likeApiUrl, likePayload, {
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Token ${jwtToken}`,
+              "X-CSRFToken": csrfToken,
+            },
+            withCredentials: true,
           });
-          this.likeCount = likesResponse.data.size;
-          this.liked = likesResponse.data.src.some(like => like.author.id === this.authID);
-        }
 
+          this.liked = true;
+          this.commentLikeCount += 1;
+        } else {
+          // Handle remote-node requests
+          console.log("Remote-node request for comment. Sending to inbox.");
+          await this.sendToInbox(targetAuthor, likePayload, jwtToken);
+        }
       } catch (error) {
-        console.error("Error fetching initial like count:", error);
-        this.errorMessage = "Failed to load like count.";
-      } finally {
-        this.loading = false;
+        console.error("Error liking comment:", error.response || error);
+        this.errorMessage = "An error occurred while liking the comment.";
       }
     },
 
-    /**
-     * Handles the like button click event for either post or comment.
-     */
-    async handleLike() {
-      if (!this.authID) {
-        this.errorMessage = "User not authenticated.";
-        return;
-      }
-
-      const previousLikedState = this.liked;
-      this.liked = !this.liked;
-      this.likeCount += this.liked ? 1 : -1;
-
+    async sendToInbox(targetAuthor, likePayload, jwtToken) {
       try {
-        this.loading = true;
+        const inboxUrl = `${targetAuthor.host}authors/${targetAuthor.id.split("/").pop()}/inbox`;
+        console.log("Inbox URL:", inboxUrl);
 
-        if (this.postId) {
-          // Like/unlike the post
-          await this.toggleLike("post", this.postId);
-        } else if (this.commentId) {
-          // Like/unlike the comment
-          await this.toggleLike("comment", this.commentId);
+        const response = await axios.get("/connected-nodes/", {
+          headers: {
+            Authorization: `Token ${jwtToken}`,
+          },
+        });
+        const connectedNodes = response.data;
+
+        const targetNode = connectedNodes.find((node) => node.url === targetAuthor.host);
+        if (!targetNode) {
+          console.error(`No connected node matches the target host: ${targetAuthor.host}`);
+          this.errorMessage = "Unable to find a connected node for the target host.";
+          return;
         }
+
+        const credentials = btoa(`${targetNode.username}:${targetNode.password}`);
+        await axios.post(inboxUrl, likePayload, {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Basic ${credentials}`,
+          },
+        });
+
+        console.log("Like sent to inbox successfully.");
       } catch (error) {
-        console.error("Error toggling like:", error);
-        this.errorMessage = "Failed to update like status.";
-        // Revert the state if an error occurs
-        this.liked = previousLikedState;
-        this.likeCount += this.liked ? 1 : -1;
-      } finally {
-        this.loading = false;
+        console.error("Error sending like to inbox:", error.response || error);
+        this.errorMessage = "An error occurred while sending the like to the inbox.";
       }
     },
 
-    /**
-     * API call to toggle like (like or unlike) for a post or comment.
-     */
-    async toggleLike(type, id) {
-      const url = type === "post"
-        ? `/posts/${id}/like/`
-        : `/comments/${id}/like/`;
-
-      try {
-        const response = await axios.post(
-          url,
-          {},
-          {
-            headers: { Authorization: `Token ${localStorage.getItem("token")}` },
-          }
-        );
-        console.log(`${type.charAt(0).toUpperCase() + type.slice(1)} liked/unliked successfully`, response.data);
-      } catch (error) {
-        console.error(`Error toggling like for ${type}:`, error);
-        throw error;
-      }
-    }
   },
 };
 </script>
+
+
+
 
 <style scoped>
 .like-button {
