@@ -1,6 +1,6 @@
 <template>
   <div class="like-button">
-    <button @click="handleLike(postId)" :class="{ liked: liked }" :aria-pressed="liked">
+    <button @click="handleLike" :class="{ liked: liked }" :aria-pressed="liked">
       <i :class="liked ? 'fas fa-heart' : 'far fa-heart'"></i>
       <span class="like-count">{{ likeCount }}</span>
     </button>
@@ -67,20 +67,20 @@ export default {
       try {
         this.loading = true;
 
-        if (this.commentId) {
-          // If this is a comment, make an API call to get the like count for the comment
-          const response = await axios.get(`/api/comments/${this.commentId}/like/`, {
+        if (this.postId) {
+          // If this is a post, fetch like count for the post
+          const likesResponse = await axios.get(`/api/likes/${this.postId}/stream/`, {
             headers: { Authorization: `Token ${localStorage.getItem("token")}` },
           });
-          this.likeCount = response.data.like_count || 0;
-          this.liked = response.data.liked || false; // Set the initial liked status based on the API response
-        } else if (this.postId) {
-          // If this is a post, make an API call to get the like count for the post
-          const response = await axios.get(`/api/posts/${this.postId}/like/`, {
+          this.likeCount = likesResponse.data.length;
+          this.liked = likesResponse.data.some(like => like.author.id === this.authID);
+        } else if (this.commentId) {
+          // If this is a comment, fetch like count for the comment
+          const likesResponse = await axios.get(`/api/comments/${this.commentId}/likes/`, {
             headers: { Authorization: `Token ${localStorage.getItem("token")}` },
           });
-          this.likeCount = response.data.like_count || 0;
-          this.liked = response.data.liked || false; // Set the initial liked status based on the API response
+          this.likeCount = likesResponse.data.size;
+          this.liked = likesResponse.data.src.some(like => like.author.id === this.authID);
         }
 
       } catch (error) {
@@ -92,10 +92,9 @@ export default {
     },
 
     /**
-     * Handles the like button click event.
-     * Toggles the like status and sends like notification to the inbox.
+     * Handles the like button click event for either post or comment.
      */
-    async handleLike(postId) {
+    async handleLike() {
       if (!this.authID) {
         this.errorMessage = "User not authenticated.";
         return;
@@ -108,18 +107,19 @@ export default {
       try {
         this.loading = true;
 
-        // Send like/unlike request to the backend
-        if (this.liked) {
-          if (this.commentId) {
-            await this.likeComment(this.commentId);
+        if (this.postId) {
+          // Like/unlike the post
+          if (this.liked) {
+            await this.likePost();
           } else {
-            await this.likePost(postId);
+            await this.unlikePost();
           }
-        } else {
-          if (this.commentId) {
-            await this.unlikeComment(this.commentId);
+        } else if (this.commentId) {
+          // Like/unlike the comment
+          if (this.liked) {
+            await this.likeComment();
           } else {
-            await this.unlikePost(postId);
+            await this.unlikeComment();
           }
         }
       } catch (error) {
@@ -136,10 +136,10 @@ export default {
     /**
      * API call to like a post.
      */
-    async likePost(postId) {
+    async likePost() {
       try {
         const response = await axios.post(
-          `/api/posts/${postId}/like/`,
+          `/api/posts/${this.postId}/like/`,
           {},
           {
             headers: { Authorization: `Token ${localStorage.getItem("token")}` },
@@ -155,10 +155,10 @@ export default {
     /**
      * API call to unlike a post.
      */
-    async unlikePost(postId) {
+    async unlikePost() {
       try {
         const response = await axios.delete(
-          `/api/posts/${postId}/like/`,
+          `/api/posts/${this.postId}/like/`,
           {
             headers: { Authorization: `Token ${localStorage.getItem("token")}` },
           }
@@ -173,10 +173,10 @@ export default {
     /**
      * API call to like a comment.
      */
-    async likeComment(commentId) {
+    async likeComment() {
       try {
         const response = await axios.post(
-          `/api/comments/${commentId}/like/`,
+          `/api/comments/${this.commentId}/like/`,
           {},
           {
             headers: { Authorization: `Token ${localStorage.getItem("token")}` },
@@ -192,10 +192,10 @@ export default {
     /**
      * API call to unlike a comment.
      */
-    async unlikeComment(commentId) {
+    async unlikeComment() {
       try {
         const response = await axios.delete(
-          `/api/comments/${commentId}/like/`,
+          `/api/comments/${this.commentId}/like/`,
           {
             headers: { Authorization: `Token ${localStorage.getItem("token")}` },
           }
@@ -205,11 +205,10 @@ export default {
         console.error("Error unliking comment:", error);
         throw error;
       }
-    },
+    }
   },
 };
 </script>
-
 
 <style scoped>
 .like-button {
