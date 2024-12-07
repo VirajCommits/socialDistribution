@@ -69,14 +69,14 @@ export default {
 
         if (this.postId) {
           // If this is a post, fetch like count for the post
-          const likesResponse = await axios.get(`/api/likes/${this.postId}/stream/`, {
+          const likesResponse = await axios.get(`/likes/${this.postId}/stream/`, {
             headers: { Authorization: `Token ${localStorage.getItem("token")}` },
           });
           this.likeCount = likesResponse.data.length;
           this.liked = likesResponse.data.some(like => like.author.id === this.authID);
         } else if (this.commentId) {
           // If this is a comment, fetch like count for the comment
-          const likesResponse = await axios.get(`/api/comments/${this.commentId}/likes/`, {
+          const likesResponse = await axios.get(`/comments/${this.commentId}/likes/`, {
             headers: { Authorization: `Token ${localStorage.getItem("token")}` },
           });
           this.likeCount = likesResponse.data.size;
@@ -139,7 +139,7 @@ export default {
     async likePost() {
       try {
         const response = await axios.post(
-          `/api/posts/${this.postId}/like/`,
+          `/posts/${this.postId}/like/`,
           {},
           {
             headers: { Authorization: `Token ${localStorage.getItem("token")}` },
@@ -158,7 +158,7 @@ export default {
     async unlikePost() {
       try {
         const response = await axios.delete(
-          `/api/posts/${this.postId}/like/`,
+          `/posts/${this.postId}/like/`,
           {
             headers: { Authorization: `Token ${localStorage.getItem("token")}` },
           }
@@ -176,7 +176,7 @@ export default {
     async likeComment() {
       try {
         const response = await axios.post(
-          `/api/comments/${this.commentId}/like/`,
+          `/comments/${this.commentId}/like/`,
           {},
           {
             headers: { Authorization: `Token ${localStorage.getItem("token")}` },
@@ -195,7 +195,7 @@ export default {
     async unlikeComment() {
       try {
         const response = await axios.delete(
-          `/api/comments/${this.commentId}/like/`,
+          `/comments/${this.commentId}/like/`,
           {
             headers: { Authorization: `Token ${localStorage.getItem("token")}` },
           }
