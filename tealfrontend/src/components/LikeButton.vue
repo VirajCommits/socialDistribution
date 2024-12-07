@@ -63,38 +63,35 @@ export default {
     /**
      * Loads the initial like count for the post or comment.
      */
-    async loadInitialLikeCount() {
-      try {
-        this.loading = true;
+     async loadInitialLikeCount() {
+        try {
+          this.loading = true;
 
-        if (this.authID) {
           if (this.postId) {
-            // Fetch like data for the post
+            // If this is a post, fetch like count for the post
             const likesResponse = await axios.get(`/posts/${this.postId}/likes/`, {
               headers: { Authorization: `Token ${localStorage.getItem("token")}` },
             });
             this.likeCount = likesResponse.data.length;
-
-            // Check if the user has liked the post
+            // Check if the current user has already liked this post
             this.liked = likesResponse.data.some(like => like.author.id === this.authID);
           } else if (this.commentId) {
-            // Fetch like data for the comment
+            // If this is a comment, fetch like count for the comment
             const likesResponse = await axios.get(`/comments/${this.commentId}/likes/`, {
               headers: { Authorization: `Token ${localStorage.getItem("token")}` },
             });
             this.likeCount = likesResponse.data.size;
-
-            // Check if the user has liked the comment
+            // Check if the current user has already liked this comment
             this.liked = likesResponse.data.src.some(like => like.author.id === this.authID);
           }
+
+        } catch (error) {
+          console.error("Error fetching initial like count:", error);
+          this.errorMessage = "Failed to load like count.";
+        } finally {
+          this.loading = false;
         }
-      } catch (error) {
-        console.error("Error fetching initial like count:", error);
-        this.errorMessage = "Failed to load like count.";
-      } finally {
-        this.loading = false;
-      }
-    },
+      },
 
     /**
      * Handles the like button click event for either post or comment.
