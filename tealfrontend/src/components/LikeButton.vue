@@ -20,7 +20,7 @@ export default {
   props: {
     postId: {
       type: String,
-      required: false, // Optional for comments
+      required: true, // Optional for comments
     },
     commentId: {
       type: String,
