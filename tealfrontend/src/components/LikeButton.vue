@@ -249,7 +249,7 @@ export default {
 
     async sendToInbox(targetAuthor, likePayload, jwtToken) {
       try {
-        const inboxUrl = `${targetAuthor.host}authors/${targetAuthor.id.split("/").pop()}/inbox`;
+        const inboxUrl = `${targetAuthor.host}api/authors/${targetAuthor.id.split("/").pop()}/inbox`;
         console.log("Inbox URL:", inboxUrl);
 
         const response = await axios.get("/connected-nodes/", {
@@ -257,16 +257,17 @@ export default {
             Authorization: `Token ${jwtToken}`,
           },
         });
+        console.log("Target author host:", targetAuthor.host);
         const connectedNodes = response.data;
-        const targetauthorHost = targetAuthor.host;
-        console.log('BEFOREtargetauthorHost:', targetauthorHost);
-        if (targetauthorHost.endsWith("/")) {
-          targetauthorHost = targetauthorHost.slice(0, -1);
-        }
-        console.log('AFTERtargetauthorHost:', targetauthorHost);
+        console.log("Connected nodes:", connectedNodes);
+        //const targetauthorHost = targetAuthor.host.split("/").pop();
+        const targetauthorHost = targetAuthor.host.replace(/\/+$/, "");
+        console.log("Target author host:", targetauthorHost);
         const targetNode = connectedNodes.find((node) => node.url === targetauthorHost);
+        //const targetNode = connectedNodes.find((node) => node.url === targethost);
+        console.log("Target node:", targetNode);
         if (!targetNode) {
-          console.error(`1111111111No connected node matches the target host: ${targetAuthor.host}`);
+          console.error(`No connected node matches the target host: ${targetAuthor.host}`);
           this.errorMessage = "Unable to find a connected node for the target host.";
           return;
         }
