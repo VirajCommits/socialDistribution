@@ -108,10 +108,17 @@ export default {
         };
 
         // Send the like/unlike action to the inbox
+        const response = await axios.get('/connected-nodes/', {
+          headers: { Authorization: `Token ${this.token}` },
+        });
+        const connected_nodes = response.data;
         const csrfToken = Cookies.get("csrftoken");
+        const targetNode = connected_nodes.find(node => node.url === targetAuthor.host);
+        const credentials = btoa(`${targetNode.username}:${targetNode.password}`);
         await axios.post(inboxUrl, payload, {
           headers: {
             "Content-Type": "application/json",
+            Authorization: `Basic ${credentials}`,
             "X-CSRFToken": csrfToken,
           },
           withCredentials: true,
