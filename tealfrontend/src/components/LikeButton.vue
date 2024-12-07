@@ -69,7 +69,7 @@ export default {
 
         if (this.postId) {
           // If this is a post, fetch like count for the post
-          const likesResponse = await axios.get(`/likes/${this.postId}/stream/`, {
+          const likesResponse = await axios.get(`/posts/${this.postId}/likes/`, {
             headers: { Authorization: `Token ${localStorage.getItem("token")}` },
           });
           this.likeCount = likesResponse.data.length;
