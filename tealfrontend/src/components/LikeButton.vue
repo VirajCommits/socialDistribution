@@ -258,7 +258,7 @@ export default {
           },
         });
         const connectedNodes = response.data;
-        const targetAuthorHost = targetAuthor.host.replace(/\/$/, "")
+        const targetAuthorHost = targetAuthor.host.replace(/\/$/, "");
         const targetNode = connectedNodes.find((node) => node.url === targetAuthorHost);
         if (!targetNode) {
           console.error(`No connected node matches the target host: ${targetAuthor.host}`);
