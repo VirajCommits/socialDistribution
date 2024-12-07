@@ -107,7 +107,7 @@ export default {
     async likePost(postId) {
       try {
         const response = await axios.post(
-          `/api/posts/${postId}/like/`,
+          `/posts/${postId}/like/`,
           {},
           {
             headers: { Authorization: `Token ${localStorage.getItem("token")}` },
@@ -126,7 +126,7 @@ export default {
     async unlikePost(postId) {
       try {
         const response = await axios.delete(
-          `/api/posts/${postId}/like/`,
+          `/posts/${postId}/like/`,
           {
             headers: { Authorization: `Token ${localStorage.getItem("token")}` },
           }
@@ -144,7 +144,7 @@ export default {
     async likeComment(commentId) {
       try {
         const response = await axios.post(
-          `/api/comments/${commentId}/like/`,
+          `/comments/${commentId}/like/`,
           {},
           {
             headers: { Authorization: `Token ${localStorage.getItem("token")}` },
@@ -163,7 +163,7 @@ export default {
     async unlikeComment(commentId) {
       try {
         const response = await axios.delete(
-          `/api/comments/${commentId}/like/`,
+          `/comments/${commentId}/like/`,
           {
             headers: { Authorization: `Token ${localStorage.getItem("token")}` },
           }
