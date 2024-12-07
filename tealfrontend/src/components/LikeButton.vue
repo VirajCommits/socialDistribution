@@ -67,7 +67,7 @@ export default {
 
       // Toggle like status
       this.liked = !this.liked;
-      
+
       this.likeCount += this.liked ? 1 : -1;
 
       console.log("GRRR postId", postId);
@@ -104,6 +104,9 @@ export default {
           },
         });
         const post = postResponse.data;
+
+        // update like count
+        this.likeCount = post.likeCount || this.likeCount
 
         if (!post) {
           console.warn("Post details not found. Skipping comment distribution.");
