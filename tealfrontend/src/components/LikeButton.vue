@@ -73,6 +73,7 @@ export default {
               headers: { Authorization: `Token ${localStorage.getItem("token")}` },
             });
             this.likeCount = likesResponse.data.length;
+            console.log("posts", likesResponse)
             // Check if the current user has already liked this post
             this.liked = likesResponse.data.some(like => like.author.id === this.authID);
           } else if (this.commentId) {
@@ -81,6 +82,7 @@ export default {
               headers: { Authorization: `Token ${localStorage.getItem("token")}` },
             });
             this.likeCount = likesResponse.data.size;
+            console.log("comments", likesResponse)
             // Check if the current user has already liked this comment
             this.liked = likesResponse.data.src.some(like => like.author.id === this.authID);
           }
