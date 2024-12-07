@@ -186,6 +186,11 @@ urlpatterns = [
     #     name="test_connection",
     # ),
     path(
+        'api/authors/<str:author_serial>/inbox', 
+        views.inbox_handler, 
+        name='inbox'
+    ),
+    path(
         'api/authors/<str:author_serial>/inbox/', 
         views.inbox_handler, 
         name='inbox'

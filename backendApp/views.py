@@ -969,80 +969,116 @@ def stream_page_likes(request, post_id):
     return Response(serializer.data, status=200)
 
 
-@swagger_auto_schema(
-    method="GET",
-    operation_summary="Retrieve all posts for a specific author",
-    operation_description="""
-    Fetch all posts created by the author specified by the `author_serial` UUID.
+def construct_likes_data(post):
+    likes = Like.objects.filter(post=post).order_by('-published')[:5]
+    likes_data = {
+        "type": "likes",
+        "page": f"{post.author.page}/posts/{post.id}",
+        "id": f"{post.author.host}authors/{post.author.uuid}/posts/{post.id}/likes",
+        "page_number": 1,
+        "size": 5,
+        "count": post.likes.count(),
+        "src": []
+    }
 
-    **When to use:**
-    - Use this endpoint when you need to retrieve all posts created by a specific author.
-    - It is helpful when displaying a list of posts for a given author or fetching a specific author's content.
+    for like in likes:
+        like_data = {
+            "type": "like",
+            "author": {
+                "type": "author",
+                "id": f"{like.author.host}authors/{like.author.uuid}",
+                "page": like.author.page,
+                "host": like.author.host,
+                "displayName": like.author.displayName,
+                "github": like.author.github,
+                "profileImage": like.author.profileImage
+            },
+            "published": like.published.isoformat(),
+            "id": f"{like.author.host}authors/{like.author.uuid}/liked/{like.id}",
+            "object": f"{post.author.page}/posts/{post.id}"
+        }
+        likes_data["src"].append(like_data)
 
-    **How to use:**
-    - Send a `GET` request to this endpoint, including the `author_serial` parameter in the URL path.
-    - The `author_serial` parameter should be the unique UUID identifier for the author whose posts you want to fetch.
-    - You can paginate the response to limit the number of posts returned at once.
+    return likes_data
 
-    **Why to use or not use:**
-    - Use this endpoint to get a complete list of posts for an author.
-    - This is a read-only operation, meaning you can view the posts but cannot modify them.
-    - If the author does not exist, you will receive a `404` error.
-    - This API supports pagination to handle large datasets. Be sure to check the paginated results.
-    """,
-    manual_parameters=[
-        openapi.Parameter(
-            "author_serial",
-            openapi.IN_PATH,
-            description="UUID of the author whose posts you want to retrieve",
-            type=openapi.TYPE_STRING,
-            required=True,
-        )
-    ],
-    responses={
-        200: openapi.Response(
-            description="A list of posts for the specified author",
-            schema=openapi.Schema(
-                type=openapi.TYPE_OBJECT,
-                properties={
-                    "type": openapi.Schema(type=openapi.TYPE_STRING, example="posts"),
-                    "items": openapi.Schema(
-                        type=openapi.TYPE_ARRAY,
-                        items=openapi.Schema(
-                            type=openapi.TYPE_OBJECT,
-                            properties={
-                                "id": openapi.Schema(
-                                    type=openapi.TYPE_STRING, example="post_id_here"
-                                ),
-                                "author_id": openapi.Schema(
-                                    type=openapi.TYPE_STRING, example="author_id_here"
-                                ),
-                                "title": openapi.Schema(
-                                    type=openapi.TYPE_STRING,
-                                    example="Sample Post Title",
-                                ),
-                                "content": openapi.Schema(
-                                    type=openapi.TYPE_STRING,
-                                    example="Post content goes here...",
-                                ),
-                                "published": openapi.Schema(
-                                    type=openapi.TYPE_STRING,
-                                    example="2023-01-01T00:00:00Z",
-                                ),
-                            },
-                        ),
-                    ),
-                },
-            ),
-        ),
-        404: "Author not found",
-    },
-    tags=["Posts"],
-)
+def construct_comments_data(post):
+    comments = Comment.objects.filter(post=post).order_by('-published')[:5]
+    comments_data = {
+        "type": "comments",
+        "page": f"{post.author.page}/posts/{post.id}",
+        "id": f"{post.author.host}authors/{post.author.uuid}/posts/{post.id}/comments",
+        "page_number": 1,
+        "size": 5,
+        "count": post.comments.count(),
+        "src": []
+    }
+
+    for comment in comments:
+        comment_data = {
+            "type": "comment",
+            "author": {
+                "type": "author",
+                "id": f"{comment.author.host}authors/{comment.author.uuid}",
+                "page": comment.author.page,
+                "host": comment.author.host,
+                "displayName": comment.author.displayName,
+                "github": comment.author.github,
+                "profileImage": comment.author.profileImage
+            },
+            "comment": comment.content,
+            "contentType": comment.contentType,
+            "published": comment.published.isoformat(),
+            "id": f"{comment.post.author.host}authors/{comment.post.author.uuid}/comments/{comment.id}",
+            "post": f"{post.author.host}authors/{post.author.uuid}/posts/{post.id}",
+            "page": f"{comment.author.page}/posts/{post.id}",
+        }
+        comments_data["src"].append(comment_data)
+
+    return comments_data
+
+def construct_posts_data(author):
+    # Get all public and friends-only posts of the author
+    posts = Post.objects.filter(author=author, visibility__in=['PUBLIC', 'FRIENDS']).order_by('-published')
+
+    posts_data = {
+        "type": "posts",
+        "page_number": 1,
+        "size": len(posts),
+        "count": posts.count(),
+        "src": []
+    }
+
+    for post in posts:
+        post_data = {
+            "type": "post",
+            "title": post.title,
+            "id": f"{post.author.host}authors/{post.author.uuid}/posts/{post.id}",
+            "page": f"{post.author.page}/posts/{post.id}",
+            "description": post.description,
+            "contentType": post.contentType,
+            "content": post.content,
+            "author": {
+                "type": "author",
+                "id": f"{post.author.host}authors/{post.author.uuid}",
+                "host": post.author.host,
+                "displayName": post.author.displayName,
+                "page": post.author.page,
+                "github": post.author.github,
+                "profileImage": post.author.profileImage,
+            },
+            "published": post.published.isoformat(),
+            "visibility": post.visibility,
+            "comments": construct_comments_data(post),
+            "likes": construct_likes_data(post),
+        }
+        posts_data["src"].append(post_data)
+
+    return posts_data
+
+
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def get_all_posts(request, author_serial):
-    print("(((((((((((((((((((((((((((((())))))))))))))))))))))))))))))")
     author_serial = unquote(author_serial)
     author = get_object_or_404(Author, uuid=author_serial)
     posts = Post.objects.filter(author=author).order_by("-edited_at")
@@ -1052,9 +1088,19 @@ def get_all_posts(request, author_serial):
     paginator.page_size = 100  # Adjust as needed
     result_page = paginator.paginate_queryset(posts, request)
 
-    serializer = PostSerializer(result_page, many=True)
+    # Use the helper function to construct post data
+    posts_data = construct_posts_data(author)
+    
+    # Update the posts_data to only include paginated results
+    # paginated_posts_data = {
+    #     "type": posts_data["type"],
+    #     "page_number": 1,  # Updated by paginator if needed
+    #     "size": len(result_page),
+    #     "count": posts.count(),
+    #     "src": [construct_posts_data(post)["src"] for post in result_page]
+    # }
 
-    return paginator.get_paginated_response({"type": "posts", "items": serializer.data})
+    return paginator.get_paginated_response(posts_data)
 
 
 @swagger_auto_schema(
@@ -4097,6 +4143,9 @@ def inbox_handler(request, author_serial):
                 # Parse author UUID from the author_id URL
                 author_uuid = author_id.rstrip('/').split('/')[-1]
 
+                if author_data.get('github')== None:
+                    author_data["github"]=''
+
                 # Get or create the author
                 author, created = Author.objects.get_or_create(
                     uuid=author_uuid,
@@ -4598,17 +4647,24 @@ def sync_remote_authors(request):
                             if not author_id:
                                 continue  # Skip if author ID is missing
 
+                            if Author.objects.filter(id=author_id).exists():
+                                print("Skipping author", author_id)
+                                continue  # Author already exists, skip to next
+
+
+
                             # Ensure username is unique
                             # unique_username = f"{author_data.get('displayName', '').lower()}_{author_id.split('/')[-1][:8]}"
+                            if author_data.get('github')== None:
+                                author_data['github']=''
 
                             author_defaults = {
                                 'uuid': author_data.get('id').split('/')[-1],
+                                'username':author_data.get('id').split('/')[-1],
                                 'host': author_data.get('host', base_url),
                                 'displayName': author_data.get('displayName', ''),
                                 'github': author_data.get('github', ''),
                                 'profileImage': author_data.get('profileImage', ''),
-                                'username': author_data.get('username',''),  # Ensure unique usernames
-                                'email': '',  # Email might not be available
                                 'is_active': True,  # Remote authors are not local users
                             }
                             author, created = Author.objects.update_or_create(
@@ -4618,6 +4674,7 @@ def sync_remote_authors(request):
                             node_result['authors_synced'] += 1
 
                         except Exception as e:
+                            print("THIS IS THE AUTHOR DATA", author_data)
                             error_message = f"Error processing author {author_data.get('id')}: {e}"
                             node_result['errors'].append(error_message)
                             continue  # Skip to the next author
@@ -4824,6 +4881,8 @@ def send_follow_request_to_remote_authors(request, author_serial):
 
         # Get the target host from object_author
         target_host = object_author.get('host')
+        if "/api" in target_host:
+            target_host = target_host.split('/api')[0]
         if not target_host:
             # Extract the host from the 'id' field if 'host' is not provided
             target_host = '/'.join(object_author.get('id').split('/')[:3])

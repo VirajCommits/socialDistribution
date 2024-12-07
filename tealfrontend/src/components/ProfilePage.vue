@@ -50,7 +50,7 @@
 
         <!-- Stats Section -->
         <div class="stats-container">
-          <div class="stat-card" @click="showFollowingList">
+          <div class="stat-card">
             <div class="stat-value">
               <span class="stat-number">{{ stats.following }}</span>
               <span class="stat-label">FOLLOWING</span>
@@ -59,7 +59,8 @@
               <i class="fas fa-user-plus"></i>
             </div>
           </div>
-          <div class="stat-card" @click="showFollowersList">
+
+          <div class="stat-card">
             <div class="stat-value">
               <span class="stat-number">{{ stats.followers }}</span>
               <span class="stat-label">FOLLOWERS</span>
@@ -68,7 +69,8 @@
               <i class="fas fa-users"></i>
             </div>
           </div>
-          <div class="stat-card" @click="showFriendsList">
+
+          <div class="stat-card">
             <div class="stat-value">
               <span class="stat-number">{{ stats.friends }}</span>
               <span class="stat-label">FRIENDS</span>
@@ -78,6 +80,7 @@
             </div>
           </div>
         </div>
+
 
         <!-- Profile Details -->
         <div v-if="user" class="profile-details">
@@ -246,13 +249,9 @@ export default {
         });
 
         console.log('Response:', response.data);
-
-        // Assuming `response.data.following` contains the list of authors you're following
-        this.stats = {
-          following: response.data.following || 0, // Count the following list
-          followers: response.data.followers || 0, // Get followers count
-          friends: response.data.friends || 0, // Get friends count
-        };
+        this.stats.following = response.data.following?.length || 0;
+        this.stats.followers = response.data.followers?.length || 0;
+        this.stats.friends = response.data.friends?.length || 0;
       } catch (error) {
         console.error("Error fetching stats:", error);
         if (error.response) {
@@ -342,7 +341,7 @@ export default {
             formData.append('profileImage', file);
             const csrfToken = Cookies.get("csrftoken"); // Get CSRF token from cookies
             
-            const response = await axios.post(
+            const response = await axios.put(
               `/authors/${this.user.uuid}/`,
               formData,
               {
@@ -385,7 +384,7 @@ export default {
 
     async saveChanges() {
       try {
-        const response = await axios.post(
+        const response = await axios.put(
           `/authors/${this.user.uuid}/`,
           this.editedUser,
           {
@@ -419,7 +418,7 @@ export default {
 
     async updateProfileImage() {
       try {
-        await axios.post(
+        await axios.put(
           `/authors/${this.user.uuid}/`,
           { ...this.user, profileImage: this.newImageUrl },
           {
