@@ -161,7 +161,7 @@ export default {
     async unlikePost() {
       try {
         const response = await axios.delete(
-          `/posts/${this.postId}/like/`,
+          `/posts/${this.postId}/unlike/`,
           {
             headers: { Authorization: `Token ${localStorage.getItem("token")}` },
           }
@@ -179,7 +179,7 @@ export default {
     async likeComment() {
       try {
         const response = await axios.post(
-          `/comments/${this.commentId}/like/`,
+          `/comments/${this.commentId}/unlike/`,
           {},
           {
             headers: { Authorization: `Token ${localStorage.getItem("token")}` },
