@@ -26,15 +26,24 @@ schema_view = get_schema_view(
 
 urlpatterns = [
     # path("", views.defaultPath, name="defaultPath"),
-    path("api/signup/", views.signup, name="signup"),
-    path("api/login/", views.login, name="login"),
+    path("api/signup/",
+         views.signup,
+         name="signup"
+    ),
+    path("api/login/",
+         views.login,
+         name="login"
+    ),
     # Swagger paths
     path(
         "swagger/",
         schema_view.with_ui("swagger", cache_timeout=0),
         name="schema-swagger-ui",
     ),
-    path("redoc/", schema_view.with_ui("redoc", cache_timeout=0), name="schema-redoc"),
+    path("redoc/",
+         schema_view.with_ui("redoc", cache_timeout=0),
+         name="schema-redoc"
+    ),
     # API paths
     path(
         "api/authors/<path:author_serial>/posts/",
@@ -66,7 +75,10 @@ urlpatterns = [
         views.post_comment,
         name="post_comment",
     ),
-    path("api/posts/<uuid:post_id>/like/", views.like_post, name="like_post"),
+    path("api/posts/<uuid:post_id>/like/",
+         views.like_post,
+         name="like_post"
+    ),
     # Follow request paths
     path(
         "api/authors/<uuid:author_uuid>/send_follow_request/",
@@ -175,11 +187,6 @@ urlpatterns = [
         views.PublicPostsView.as_view(),
         name="public-author-posts",
     ),
-    # path(
-    #     "nodes/<int:pk>/test_connection/",
-    #     TestRemoteNodeConnectionView.as_view(),
-    #     name="test_connection",
-    # ),
     path(
         'api/authors/<str:author_serial>/inbox', 
         views.inbox_handler, 
@@ -209,7 +216,9 @@ urlpatterns = [
         name="specific_follower_handler"
     ),
     path(
-        "stream", TemplateView.as_view(template_name="index.html"), name="stream"
+        "stream",
+        TemplateView.as_view(template_name="index.html"),
+        name="stream"
     ),
     path(
         "api/sync_remote_authors/",
@@ -217,8 +226,11 @@ urlpatterns = [
         name="sync_remote_authors",
     ),
     
-    path('api/connected-nodes/', views.connected_nodes, name='connected_nodes'),
-    path('api/connected-nodes/', views.connected_nodes, name='connected_nodes'),
+    path('api/connected-nodes/',
+         views.connected_nodes,
+         name='connected_nodes'
+    ),
+    
     # Catch-all route for Vue frontend
     re_path(
         r"^(?!api|admin|swagger|static|media).*$",
