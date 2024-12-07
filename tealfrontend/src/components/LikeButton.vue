@@ -260,11 +260,9 @@ export default {
         console.log("Target author host:", targetAuthor.host);
         const connectedNodes = response.data;
         console.log("Connected nodes:", connectedNodes);
-        //const targetauthorHost = targetAuthor.host.split("/").pop();
-        const targetauthorHost = targetAuthor.host.replace(/\/+$/, "");
+        const targetauthorHost = targetauthorHost.split('/api')[0];
         console.log("Target author host:", targetauthorHost);
         const targetNode = connectedNodes.find((node) => node.url === targetauthorHost);
-        //const targetNode = connectedNodes.find((node) => node.url === targethost);
         console.log("Target node:", targetNode);
         if (!targetNode) {
           console.error(`No connected node matches the target host: ${targetAuthor.host}`);
