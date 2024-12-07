@@ -261,14 +261,14 @@ export default {
     async sendNotificationToInbox(authorId, postData, host) {
       try {
         console.log("This is the host:" , host)
-        const inboxUrl = `${host}api/authors/${authorId}/inbox/`;
+        const inboxUrl = `${host}authors/${authorId}/inbox`;
         console.log("POST DATA:" , postData , inboxUrl)
 
         const payload = {
           type: "post",
           title: this.form.title,
-          id: postData.id,
-          page: postData.page,
+          id: postData.author.id+"/posts/"+postData.id,
+          page: postData.author.id+"/posts/"+postData.page,
           description: this.form.description,
           contentType: this.form.contentType,
           content: this.form.content,
@@ -286,7 +286,8 @@ export default {
           visibility: this.form.visibility,
         };
 
-        const targethost = authorId.split('/authors/')[0];
+        let targethost = authorId.split('/authors/')[0];
+        if (targethost.includes("/api")) { targethost = targethost.split("/api")[0]; }
         const response = await axios.get('/connected-nodes/', {
           headers: { Authorization: `Token ${this.token}` },
         });
@@ -295,9 +296,11 @@ export default {
         console.log("CONNECTED NODES:" , connectedNodes)
         console.log("CONNECTED NODES DATA:" , connected_nodes)
         console.log("TARGET HOST:" , targethost)
+        if (host.includes("/api")) { host = host.split("/api")[0]; }
+      
 
         console.log("HOST:" , host)
-        const targetNode = connected_nodes.find(node => node.url+'/' === host);
+        const targetNode = connected_nodes.find(node => node.url === host);
         console.log("TARGET NODE:" , targetNode)
         const credentials = btoa(`${targetNode.username}:${targetNode.password}`);
         console.log(payload)

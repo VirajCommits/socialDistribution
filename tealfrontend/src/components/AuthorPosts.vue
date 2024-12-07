@@ -182,7 +182,7 @@ export default {
         const response = await axios.get(apiUrl);
         // Safely access the API response structure
         this.posts =
-          response.data?.results?.items || response.data?.items || [];
+          response.data?.results?.src || response.data?.src || [];
         this.loading = false;
       } catch (error) {
         console.error("Error fetching posts:", error.response || error);

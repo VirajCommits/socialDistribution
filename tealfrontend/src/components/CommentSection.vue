@@ -290,7 +290,8 @@ export default {
         }
         // Distribute the comment to the target authors
         for (const author of targetAuthors) {
-          const targethost = author.id.split('/authors/')[0];
+          let targethost = author.id.split('/authors/')[0];
+          if (targethost.includes("/api")) { targethost = targethost.split("/api")[0]; }
           const authorId = author.id.split("/").pop();
           if (!processedAuthors.has(authorId)) {
             await this.sendCommentToInbox(authorId, commentData, post, targethost);
@@ -314,33 +315,24 @@ export default {
     async sendCommentToInbox(authorId, commentData, postData, targethost) {
       try {
         console.log("SENDING COMMENT TO INBOX IN COMMENT SECTION:" , authorId, commentData, postData, targethost)
-        const inboxUrl = `${targethost}/api/authors/${authorId}/inbox/`;
+        const inboxUrl = `${targethost}/api/authors/${authorId}/inbox`;
 
         const payload = {
-          type: "comment",
-          id: commentData.id,
-          content: commentData.content,
-          contentType: commentData.contentType,
-          published: commentData.published || new Date().toISOString(),
-          author: {
-            type: "author",
-            id: this.user.id,
-            host: this.user.host,
-            displayName: this.user.displayName,
-            page: this.user.page,
-            github: this.user.github,
-            profileImage: this.user.profileImage,
-          },
-          post: {
-            id: postData.id,
-            title: postData.title,
-            description: postData.description,
-            contentType: postData.contentType,
-            content: postData.content,
-            published: postData.published,
-            visibility: postData.visibility,
-            author: postData.author,
-          },
+            "type": "comment",
+            "author": {
+                "type": "author",
+                "id": `${commentData.author.id}`, // Changed to template literal
+                "page": commentData.author.page,
+                "host": commentData.author.host,
+                "displayName": commentData.author.displayName,
+                "github": commentData.author.github,
+                "profileImage": commentData.author.profileImage
+            },
+            "comment": commentData.content,
+            "contentType": commentData.contentType,
+            "published": commentData.published,
+            "id": `${postData.author.host}authors/${postData.author.uuid}/comments/${commentData.id}`, // Changed to template literal
+            "post": `${postData.author.host}authors/${postData.author.uuid}/posts/${postData.id}`, // Changed to template literal
         };
 
         console.log(`Sending comment to inbox of author ${authorId}:`, payload);

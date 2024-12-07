@@ -241,9 +241,10 @@ export default {
   console.log("This is the authorID: ", authorId);
   try {
     const targetUuid = authorId.split("/").pop();
-    const targethost = authorId.split('/authors/')[0];
+    let targethost = authorId.split('/authors/')[0];
     console.log("This is the host: ", targethost);
-
+    if (targethost.includes("/api")) { targethost = targethost.split("/api")[0]; }
+      
     // Fetch the list of connected nodes
     const response = await axios.get('/connected-nodes/', {
       headers: { Authorization: `Token ${this.token}` },
@@ -293,13 +294,17 @@ export default {
           }
         }
       );
-
+        // Update the UI instantly to show "Following"
+      this.pendingRequests.push(authorId);
       this.showNotification(
         "Follow request sent successfully!",
         "success",
         "fas fa-user-plus"
       );
+      this.relationships[authorId] = { is_following: true };
     } else {
+      console.log(`This is the author sending the request: ${user.displayName}`)
+      console.log(`This is a local author: ${targetAuthor.displayName}`);
       // For local authors, use your own endpoint
       // const csrfToken = Cookies.get("csrftoken"); // Get CSRF token from cookies
       await axios.post(
@@ -310,7 +315,7 @@ export default {
           
         }
       );
-
+      this.pendingRequests.push(authorId);
       this.showNotification(
         "Follow request sent successfully!",
         "success",
@@ -318,7 +323,7 @@ export default {
       );
     }
 
-    this.pendingRequests.push(authorId);
+    
     this.fetchAuthors();
   } catch (error) {
     this.showNotification(
@@ -482,7 +487,7 @@ export default {
         const targetNode = connectedNodes.find(node => node.url === targethost);
         if (targetNode) {
           // For remote nodes, send to their inbox
-          const inboxEndpoint = `${targethost}/api/authors/${targetUuid}/inbox/`;
+          const inboxEndpoint = `${targethost}/api/authors/${targetUuid}/inbox`;
           console.log('Sending unfollow request to remote inbox:', {
             endpoint: inboxEndpoint,
             credentials: {
