@@ -43,8 +43,8 @@ export default {
       try {
         this.loading = true;
         const apiUrl = this.commentId
-          ? `/comments/${this.commentId}/likes/`
-          : `/posts/${this.postId}/likes/`;
+      ? `/comments/${encodeURIComponent(this.commentId)}/`
+      : `/posts/${encodeURIComponent(this.postId)}/`;
 
         const response = await axios.get(apiUrl);
         const likesArray = Array.isArray(response.data) ? response.data : response.data.src || [];
