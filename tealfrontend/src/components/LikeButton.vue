@@ -249,7 +249,11 @@ export default {
 
     async sendToInbox(targetAuthor, likePayload, jwtToken) {
       try {
-        const inboxUrl = `${targetAuthor.host}api/authors/${targetAuthor.id.split("/").pop()}/inbox`;
+        let targetauthorHost = targetAuthor.host;
+        if (targetAuthor.host.includes("/api/")) {
+            targetauthorHost = targetAuthor.host.split("/api/")[0];
+        }
+        const inboxUrl = `${targetauthorHost}api/authors/${targetAuthor.id.split("/").pop()}/inbox`;
         console.log("Inbox URL:", inboxUrl);
 
         const response = await axios.get("/connected-nodes/", {
@@ -260,7 +264,6 @@ export default {
         console.log("Target author host:", targetAuthor.host);
         const connectedNodes = response.data;
         console.log("Connected nodes:", connectedNodes);
-        const targetauthorHost = targetAuthor.host.split('/api/')[0];
         console.log("Target author host:", targetauthorHost);
         const targetNode = connectedNodes.find((node) => node.url === targetauthorHost);
         console.log("Target node:", targetNode);
