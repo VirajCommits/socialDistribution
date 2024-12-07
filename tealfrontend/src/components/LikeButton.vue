@@ -34,9 +34,11 @@ export default {
       errorMessage: '',
     };
   },
-  mounted() {
+  async mounted() {
     this.initializeUser();
+    await this.fetchInitialLikeState();
   },
+
   methods: {
     /**
      * Initializes user information from localStorage.
@@ -55,6 +57,26 @@ export default {
       }
     },
 
+    async fetchInitialLikeState() {
+      try {
+        const response = await axios.get(`/posts/${this.postId}/likes/`, {
+          headers: { Authorization: `Token ${localStorage.getItem("token")}` },
+        });
+
+        // Check if the current user has already liked the post
+        this.liked = response.data.some(
+          (like) => like.author.id === this.user.id
+        );
+
+        // Set the like count from the total likes
+        this.likeCount = response.data.length;
+      } catch (error) {
+        console.error("Error fetching like state:", error);
+        this.errorMessage = "Failed to fetch like state.";
+      }
+    },
+
+
     /**
      * Handles the like button click event.
      * Toggles the like status and sends like notification to the inbox.
@@ -65,32 +87,54 @@ export default {
         return;
       }
 
-      // Toggle like status
+      const previousLikedState = this.liked;
       this.liked = !this.liked;
-
       this.likeCount += this.liked ? 1 : -1;
 
-      console.log("GRRR postId", postId);
-
+      try {
+        if (this.liked) {
+          // Send a new like
+          await this.addLike(postId);
+        } else {
+          // Remove the like
+          await this.removeLike(postId);
+        }
+      } catch (error) {
+        console.error("Error toggling like:", error);
+        this.errorMessage = "Failed to update like status.";
+        // Revert the state if an error occurs
+        this.liked = previousLikedState;
+        this.likeCount += this.liked ? 1 : -1;
+      }
+    },
+    async addLike(postId) {
       const likeData = {
-        id: crypto.randomUUID(), // Generate a unique UUID for the Like object
+        id: crypto.randomUUID(),
         author: {
-            id: this.authID, // The authenticated user's ID (from the frontend state)
-            displayName: this.authDisplayName, // The authenticated user's display name
+          id: this.user.id,
+          displayName: this.user.displayName,
         },
-        post: postId || null, // The ID of the post being liked (set to null if it's a comment)
-        published: new Date().toISOString(), // The current timestamp in ISO format
+        post: postId,
+        published: new Date().toISOString(),
       };
 
-      // Log for debugging
-      console.log("Created likeData object:", likeData);
-
       try {
-        // Call the function to send like to the inbox with the necessary parameters
         await this.distributeLike(likeData);
       } catch (error) {
-        console.error("Error sending like to inbox:", error);
-        this.errorMessage = "An error occurred while sending like to inbox.";
+        console.error("Error adding like:", error);
+        throw error;
+      }
+    },
+
+    async removeLike(postId) {
+      try {
+        // Remove the like from the server (example API endpoint)
+        await axios.delete(`/posts/${postId}/likes/`, {
+          headers: { Authorization: `Token ${localStorage.getItem("token")}` },
+        });
+      } catch (error) {
+        console.error("Error removing like:", error);
+        throw error;
       }
     },
 
@@ -104,9 +148,6 @@ export default {
           },
         });
         const post = postResponse.data;
-
-        // update like count
-        this.likeCount = post.likeCount || this.likeCount
 
         if (!post) {
           console.warn("Post details not found. Skipping comment distribution.");
