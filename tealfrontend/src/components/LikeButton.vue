@@ -67,22 +67,27 @@ export default {
       try {
         this.loading = true;
 
-        if (this.postId) {
-          // If this is a post, fetch like count for the post
-          const likesResponse = await axios.get(`/posts/${this.postId}/likes/`, {
-            headers: { Authorization: `Token ${localStorage.getItem("token")}` },
-          });
-          this.likeCount = likesResponse.data.length;
-          this.liked = likesResponse.data.some(like => like.author.id === this.authID);
-        } else if (this.commentId) {
-          // If this is a comment, fetch like count for the comment
-          const likesResponse = await axios.get(`/comments/${this.commentId}/likes/`, {
-            headers: { Authorization: `Token ${localStorage.getItem("token")}` },
-          });
-          this.likeCount = likesResponse.data.size;
-          this.liked = likesResponse.data.src.some(like => like.author.id === this.authID);
-        }
+        if (this.authID) {
+          if (this.postId) {
+            // Fetch like data for the post
+            const likesResponse = await axios.get(`/posts/${this.postId}/likes/`, {
+              headers: { Authorization: `Token ${localStorage.getItem("token")}` },
+            });
+            this.likeCount = likesResponse.data.length;
 
+            // Check if the user has liked the post
+            this.liked = likesResponse.data.some(like => like.author.id === this.authID);
+          } else if (this.commentId) {
+            // Fetch like data for the comment
+            const likesResponse = await axios.get(`/comments/${this.commentId}/likes/`, {
+              headers: { Authorization: `Token ${localStorage.getItem("token")}` },
+            });
+            this.likeCount = likesResponse.data.size;
+
+            // Check if the user has liked the comment
+            this.liked = likesResponse.data.src.some(like => like.author.id === this.authID);
+          }
+        }
       } catch (error) {
         console.error("Error fetching initial like count:", error);
         this.errorMessage = "Failed to load like count.";
@@ -108,14 +113,12 @@ export default {
         this.loading = true;
 
         if (this.postId) {
-          // Like/unlike the post
           if (this.liked) {
             await this.likePost();
           } else {
             await this.unlikePost();
           }
         } else if (this.commentId) {
-          // Like/unlike the comment
           if (this.liked) {
             await this.likeComment();
           } else {
@@ -125,7 +128,7 @@ export default {
       } catch (error) {
         console.error("Error toggling like:", error);
         this.errorMessage = "Failed to update like status.";
-        // Revert the state if an error occurs
+        // Revert state if error occurs
         this.liked = previousLikedState;
         this.likeCount += this.liked ? 1 : -1;
       } finally {
