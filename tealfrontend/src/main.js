@@ -5,14 +5,16 @@ import router from './router/index.js';
 import axios from 'axios';
 
 // Get the base URL from the environment variable or default to localhost
-// const baseURL = process.env.VUE_APP_API_BASE_URL || 'http://localhost:8000/service/api';
+// const baseURL = process.env.VUE_APP_API_BASE_URL || 'http://localhost:8000/api';
 const isProduction = window.location.hostname.includes('herokuapp.com');
 const baseURL = isProduction
-  ? 'https://teal-darrenkrz-c0d7276a7808.herokuapp.com/service/api'
-  : 'http://127.0.0.1:8000/service/api';
+  ? 'https://teal-darrenkrz-c0d7276a7808.herokuapp.com/api'
+  : 'http://127.0.0.1:8000/api';
 
 // Axios configuration
+import Cookies from 'js-cookie';
 axios.defaults.headers.common['Content-Type'] = 'application/json';
+axios.defaults.headers.common["X-CSRFToken"] = Cookies.get("csrftoken");
 axios.defaults.withCredentials = true;
 axios.defaults.baseURL = baseURL;
 
@@ -26,7 +28,22 @@ axios.interceptors.request.use(
   config => {
     const token = localStorage.getItem('token'); // Get the token from localStorage
     if (token) {
-      config.headers['Authorization'] = `Bearer ${token}`; // Set the Authorization header
+      console.log("inside config headers: =================== " , config.headers["Authorization"])
+      if(!config.headers["Authorization"]){
+        config.headers['Authorization'] = `Bearer ${token}`
+      }
+      if (config.headers["Authorization"] && !config.headers["Authorization"].startsWith("Basic ")){
+        config.headers['Authorization'] = `Bearer ${token}`; // Set the Authorization header
+        
+      }
+      console.log("inside config headers: =================== " , config.headers["Authorization"])
+      if(!config.headers["Authorization"]){
+        config.headers['Authorization'] = `Bearer ${token}`
+      }
+      if (config.headers["Authorization"] && !config.headers["Authorization"].startsWith("Basic ")){
+        config.headers['Authorization'] = `Bearer ${token}`; // Set the Authorization header
+        
+      }
       // console.log('Token found and added to request');
     } else {
       // console.log('No token found in localStorage');

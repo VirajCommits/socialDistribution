@@ -12,6 +12,8 @@
 
 <script>
 import axios from "axios";
+import Cookies from 'js-cookie';
+
 
 export default {
   name: "LikeButton",
@@ -42,6 +44,8 @@ export default {
   },
   mounted() {
     this.commentId ? this.fetchCommentLikes() : this.fetchPostLikes();
+    this.token = localStorage.getItem("token"); // Retrieve the JWT token
+    this.user = JSON.parse(localStorage.getItem("user")); // Retrieve the user object
   },
   methods: {
     async fetchPostLikes() {
@@ -85,85 +89,202 @@ export default {
       }
     },
     async toggleLike() {
-  try {
-    const currentUser = JSON.parse(localStorage.getItem("user"));
-    const currentAuthorId = currentUser ? currentUser.id : null;
+      console.log("Like button clicked");
 
-    if (!currentAuthorId) {
-      this.errorMessage = "User not authenticated.";
-      return;
-    }
+      try {
+        console.log("Liked state before action:", this.liked);
 
-    if (this.liked) {
-      console.warn("Unliking is not implemented.");
-      return;
-    }
+        const jwtToken = localStorage.getItem("token"); // Fetch token from localStorage
+        const csrfToken = Cookies.get("csrftoken"); // CSRF token from cookies
 
-    // Get the target item (post or comment) details
-    const targetItemUrl = this.commentId
-      ? `/comments/${this.commentId}/`
-      : `/posts/${this.postId}/`;
-    
-    const targetResponse = await axios.get(targetItemUrl);
-    const targetItem = targetResponse.data;
+        console.log("JWT token:", jwtToken); // Debug token
+        console.log("User object:", this.user);
 
-    // Get the author of the post/comment that is being liked
-    const targetAuthor = targetItem.author;
-    const targetAuthorId = targetAuthor.uuid;
-    const targetHost = targetAuthor.host;
+        // Ensure the user is authenticated
+        if (!this.user || !jwtToken) {
+          this.errorMessage = "User not authenticated.";
+          return;
+        }
 
-    // Get connected nodes
-    const response = await axios.get('/connected-nodes/', {
-      headers: { Authorization: `Token ${localStorage.getItem("token")}` },
-    });
-    const connected_nodes = response.data;
-    const targetNode = connected_nodes.find(node => node.url === targetHost);
+        console.log("User authenticated:", this.user); // Debug user
 
-    if (targetNode) {
-      // Prepare the like payload
-      const likePayload = {
-        type: "like",
-        id: crypto.randomUUID(),
-        author: {
-          type: "author",
-          id: currentUser.id,
-          host: currentUser.host,
-          displayName: currentUser.displayName,
-          page: currentUser.page,
-          github: currentUser.github,
-          profileImage: currentUser.profileImage,
-        },
-        object: this.commentId 
-          ? `/comments/${this.commentId}` 
-          : `/posts/${this.postId}`,
-        published: new Date().toISOString()
-      };
+        if (this.liked) {
+          console.warn("Unliking is not implemented.");
+          return;
+        }
 
-      // Send to target author's inbox (the author of the post/comment being liked)
-      const inboxUrl = `${targetHost}/service/api/authors/${targetAuthorId}/inbox/`;
-      const credentials = btoa(`${targetNode.username}:${targetNode.password}`);
+        console.log("Preparing like action...");
 
-      await axios.post(inboxUrl, likePayload, {
-        headers: {
-          Authorization: `Basic ${credentials}`,
-          "Content-Type": "application/json",
-        },
-        withCredentials: true,
-      });
-
-      // Update local state
-      this.liked = true;
-      if (this.commentId) {
-        this.commentLikeCount += 1;
-      } else {
-        this.postLikeCount += 1;
+        // Check whether we are liking a post or a comment
+        if (this.commentId) {
+          // Handle comment likes
+          await this.likeComment(jwtToken, csrfToken);
+        } else if (this.postId) {
+          // Handle post likes
+          await this.likePost(jwtToken, csrfToken);
+        } else {
+          console.error("Invalid state: No postId or commentId provided.");
+        }
+      } catch (error) {
+        console.error("Error toggling like:", error.response || error);
+        this.errorMessage = "An error occurred while toggling the like.";
       }
-    }
-  } catch (error) {
-    console.error("Error toggling like:", error.response || error);
-    this.errorMessage = "An error occurred while toggling the like.";
-  }
-},
+    },
+
+    async likePost(jwtToken, csrfToken) {
+      try {
+        console.log("Liking a post...");
+
+        const likePayload = {
+          type: "like",
+          id: crypto.randomUUID(),
+          author: {
+            type: "author",
+            id: this.user.id,
+            host: this.user.host,
+            displayName: this.user.displayName,
+            page: this.user.page,
+            github: this.user.github,
+            profileImage: this.user.profileImage,
+          },
+          object: `/posts/${this.postId}/`,
+          published: new Date().toISOString(),
+        };
+
+        const targetItemUrl = `posts/${this.postId}/`;
+        console.log("Target item URL for post:", targetItemUrl);
+
+        const targetResponse = await axios.get(targetItemUrl, {
+          headers: {
+            Authorization: `Token ${jwtToken}`,
+          },
+        });
+        console.log("Target post response:", targetResponse.data);
+
+        const targetAuthor = targetResponse.data.author;
+        if (targetAuthor.host === this.user.host) {
+          // Same-node handling
+          console.log("Same-node request for post. Handling like locally.");
+          const likeApiUrl = `posts/${this.postId}/like/`;
+
+          await axios.post(likeApiUrl, likePayload, {
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Token ${jwtToken}`,
+              "X-CSRFToken": csrfToken,
+            },
+            withCredentials: true,
+          });
+
+          this.liked = true;
+          this.postLikeCount += 1;
+        } else {
+          // Handle remote-node requests
+          console.log("Remote-node request for post. Sending to inbox.");
+          await this.sendToInbox(targetAuthor, likePayload, jwtToken);
+        }
+      } catch (error) {
+        console.error("Error liking post:", error.response || error);
+        this.errorMessage = "An error occurred while liking the post.";
+      }
+    },
+
+    async likeComment(jwtToken, csrfToken) {
+      try {
+        console.log("Liking a comment...");
+
+        const likePayload = {
+          type: "like",
+          id: crypto.randomUUID(),
+          author: {
+            type: "author",
+            id: this.user.id,
+            host: this.user.host,
+            displayName: this.user.displayName,
+            page: this.user.page,
+            github: this.user.github,
+            profileImage: this.user.profileImage,
+          },
+          object: `/comments/${this.commentId}/`,
+          published: new Date().toISOString(),
+        };
+
+        const targetItemUrl = `comments/${this.commentId}/`;
+        console.log("Target item URL for comment:", targetItemUrl);
+
+        const targetResponse = await axios.get(targetItemUrl, {
+          headers: {
+            Authorization: `Token ${jwtToken}`,
+          },
+        });
+        console.log("Target comment response:", targetResponse.data);
+
+        const targetAuthor = targetResponse.data.author;
+        if (targetAuthor.host === this.user.host) {
+          // Same-node handling
+          console.log("Same-node request for comment. Handling like locally.");
+          const likeApiUrl = `comments/${this.commentId}/like/`;
+
+          await axios.post(likeApiUrl, likePayload, {
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Token ${jwtToken}`,
+              "X-CSRFToken": csrfToken,
+            },
+            withCredentials: true,
+          });
+
+          this.liked = true;
+          this.commentLikeCount += 1;
+        } else {
+          // Handle remote-node requests
+          console.log("Remote-node request for comment. Sending to inbox.");
+          await this.sendToInbox(targetAuthor, likePayload, jwtToken);
+        }
+      } catch (error) {
+        console.error("Error liking comment:", error.response || error);
+        this.errorMessage = "An error occurred while liking the comment.";
+      }
+    },
+
+    async sendToInbox(targetAuthor, likePayload, jwtToken) {
+      try {
+        const inboxUrl = `${targetAuthor.host}api/authors/${targetAuthor.id.split("/").pop()}/inbox`;
+        console.log("Inbox URL:", inboxUrl);
+
+        const response = await axios.get("/connected-nodes/", {
+          headers: {
+            Authorization: `Token ${jwtToken}`,
+          },
+        });
+        console.log("Target author host:", targetAuthor.host);
+        const connectedNodes = response.data;
+        console.log("Connected nodes:", connectedNodes);
+        const targetauthorHost = targetAuthor.host.split('/api/')[0];
+        console.log("Target author host:", targetauthorHost);
+        const targetNode = connectedNodes.find((node) => node.url === targetauthorHost);
+        console.log("Target node:", targetNode);
+        if (!targetNode) {
+          console.error(`No connected node matches the target host: ${targetAuthor.host}`);
+          this.errorMessage = "Unable to find a connected node for the target host.";
+          return;
+        }
+
+        const credentials = btoa(`${targetNode.username}:${targetNode.password}`);
+        await axios.post(inboxUrl, likePayload, {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Basic ${credentials}`,
+          },
+        });
+
+        console.log("Like sent to inbox successfully.");
+      } catch (error) {
+        console.error("Error sending like to inbox:", error.response || error);
+        this.errorMessage = "An error occurred while sending the like to the inbox.";
+      }
+    },
+
   },
 };
 </script>
