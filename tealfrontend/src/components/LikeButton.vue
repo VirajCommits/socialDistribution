@@ -7,12 +7,14 @@
     <div v-if="loading" class="loading-spinner">
       <i class="fas fa-spinner fa-spin"></i>
     </div>
+    <div v-if="errorMessage" class="error-message">
+      <i class="fas fa-exclamation-circle"></i>{{ errorMessage }}
+    </div>
   </div>
 </template>
 
 <script>
 import axios from "axios";
-import Cookies from 'js-cookie';
 
 export default {
   name: "LikeButton",
@@ -32,13 +34,13 @@ export default {
       likeCount: 0,
       loading: false,
       errorMessage: '',
+      authID: null,
+      user: null,
     };
   },
-  async mounted() {
+  mounted() {
     this.initializeUser();
-    await this.fetchInitialLikeState();
   },
-
   methods: {
     /**
      * Initializes user information from localStorage.
@@ -57,31 +59,11 @@ export default {
       }
     },
 
-    async fetchInitialLikeState() {
-      try {
-        const response = await axios.get(`/posts/${this.postId}/likes/`, {
-          headers: { Authorization: `Token ${localStorage.getItem("token")}` },
-        });
-
-        // Check if the current user has already liked the post
-        this.liked = response.data.some(
-          (like) => like.author.id === this.user.id
-        );
-
-        // Set the like count from the total likes
-        this.likeCount = response.data.length;
-      } catch (error) {
-        console.error("Error fetching like state:", error);
-        this.errorMessage = "Failed to fetch like state.";
-      }
-    },
-
-
     /**
      * Handles the like button click event.
      * Toggles the like status and sends like notification to the inbox.
      */
-     async handleLike(postId) {
+    async handleLike(postId) {
       if (!this.authID) {
         this.errorMessage = "User not authenticated.";
         return;
@@ -92,12 +74,21 @@ export default {
       this.likeCount += this.liked ? 1 : -1;
 
       try {
+        this.loading = true;
+
+        // Send like/unlike request to the backend
         if (this.liked) {
-          // Send a new like
-          await this.addLike(postId);
+          if (this.commentId) {
+            await this.likeComment(this.commentId);
+          } else {
+            await this.likePost(postId);
+          }
         } else {
-          // Remove the like
-          await this.removeLike(postId);
+          if (this.commentId) {
+            await this.unlikeComment(this.commentId);
+          } else {
+            await this.unlikePost(postId);
+          }
         }
       } catch (error) {
         console.error("Error toggling like:", error);
@@ -105,225 +96,87 @@ export default {
         // Revert the state if an error occurs
         this.liked = previousLikedState;
         this.likeCount += this.liked ? 1 : -1;
-      }
-    },
-    async addLike(postId) {
-      const likeData = {
-        id: crypto.randomUUID(),
-        author: {
-          id: this.user.id,
-          displayName: this.user.displayName,
-        },
-        post: postId,
-        published: new Date().toISOString(),
-      };
-
-      try {
-        await this.distributeLike(likeData);
-      } catch (error) {
-        console.error("Error adding like:", error);
-        throw error;
-      }
-    },
-
-    async removeLike(postId) {
-      try {
-        // Remove the like from the server (example API endpoint)
-        await axios.delete(`/posts/${postId}/likes/`, {
-          headers: { Authorization: `Token ${localStorage.getItem("token")}` },
-        });
-      } catch (error) {
-        console.error("Error removing like:", error);
-        throw error;
-      }
-    },
-
-    async distributeLike(likeData) {
-      try {
-        // Fetch the post details to get the author's information and visibility
-        const postApiUrl = `/posts/${encodeURIComponent(this.postId)}/`;
-        const postResponse = await axios.get(postApiUrl, {
-          headers: {
-            Authorization: `Token ${localStorage.getItem("token")}`,
-          },
-        });
-        const post = postResponse.data;
-
-        if (!post) {
-          console.warn("Post details not found. Skipping comment distribution.");
-          return;
-        }
-
-        const postAuthorId = post.author.id.split("/").pop();
-        const postVisibility = post.visibility || "PUBLIC";
-
-        // Fetch all authors (or fetch only relevant authors based on visibility)
-        const authorsResponse = await axios.get("/authors/", {
-          headers: {
-            Authorization: `Token ${localStorage.getItem("token")}`,
-          },
-        });
-        const authors = authorsResponse.data["authors"];
-
-        // Current user's ID
-        const currentAuthorId = this.authID;
-
-        // Track which authors have received the notification to prevent duplicates
-        const processedAuthors = new Set([currentAuthorId]); // Initialize with current author
-
-        // Determine the list of authors to send the comment to based on post visibility
-        let targetAuthors = [];
-
-        switch (postVisibility) {
-            case "PUBLIC": {
-                // Visible to everyone except the current author
-                const ourHost = this.user.host;
-    
-                // Filter out authors who:
-                // 1. Are not the current author
-                // 2. Don't have the same host as our user
-                targetAuthors = authors.filter(author => 
-                    author.id.split("/")[-1] !== currentAuthorId && 
-                    author.host !== ourHost
-                );
-                break;
-            }
-            case "FRIENDS": {
-                try {
-                    console.log("Checking FRIENDS visibility");
-                    const currentUser = JSON.parse(localStorage.getItem('user'));
-                    
-                    // First, check if the current user is a follower of the post author
-                    const postAuthorFollowers = await this.getFollowers(postAuthorId);
-                    const isFollower = postAuthorFollowers.some(
-                        follower => follower.uuid === currentUser.uuid
-                    );
-                    
-                    // Then check if the post author follows the current user
-                    const currentUserFollowers = await this.getFollowers(currentUser.uuid);
-                    const isFollowed = currentUserFollowers.some(
-                        follower => follower.uuid === postAuthorId
-                    );
-                    
-                    
-                    // Only allow access if there's a mutual follow relationship
-                    if (!isFollower || !isFollowed) {
-                        console.log('Not a mutual friend - access denied');
-                        throw new Error('You must be friends with the author to view this post');
-                    }
-                    
-                    // If we get here, they are friends, so include in targetAuthors
-                    targetAuthors = [currentUser];
-                    
-                } catch (error) {
-                    console.error('Error in FRIENDS visibility check:', error);
-                    throw error;
-                }
-                break;
-            }
-            case "UNLISTED": {
-                // Visible to all followers of the post author
-                targetAuthors = await this.getFollowers(postAuthorId);
-                break;
-            }
-            default: {
-                // Default to PUBLIC if visibility is undefined
-                targetAuthors = authors.filter(
-                    (author) => author.id.split("/").pop() !== currentAuthorId
-                );
-                break;
-            }
-        }
-        // Distribute the comment to the target authors
-        for (const author of targetAuthors) {
-          const targethost = author.id.split('/authors/')[0];
-          const authorId = author.id.split("/").pop();
-          if (!processedAuthors.has(authorId)) {
-            await this.sendLikeToInbox(authorId, likeData, post, targethost);
-            processedAuthors.add(authorId);
-          }
-        }
-
-        console.log("Comment distribution completed.");
-      } catch (error) {
-        console.error("Error distributing comment:", error);
-        // Optionally, set an error message or handle it as needed
+      } finally {
+        this.loading = false;
       }
     },
 
     /**
-     * Sends the like action to the relevant author's inbox.
+     * API call to like a post.
      */
-     async sendLikeToInbox(authorId, likeData, postData, targethost) {
+    async likePost(postId) {
       try {
-        console.log("SENDING LIKE TO INBOX IN LIKEBUTTON:", authorId, likeData, postData, targethost);
-        
-        const inboxUrl = `${targethost}/api/authors/${authorId}/inbox/`;
-
-        console.log("GRRR this.user.host", this.user.host);
-        console.log("GRRR this.user.id", this.user.id);
-        console.log("GRRR likeData.id", likeData.id);
-
-        // Create the payload for the like action
-        const payload = {
-          type: "like",
-          author: {
-            type: "author",
-            id: this.user.id,  // Use the current logged-in user's ID
-            host: this.user.host,
-            displayName: this.user.displayName,
-            page: this.user.page,
-            github: this.user.github,
-            profileImage: this.user.profileImage,
-          },
-          
-          published: new Date().toISOString(), // Current timestamp
-          id: `${this.user.host}/api/authors/${this.user.id}/liked/${likeData.id}`,  // Like ID (usually a UUID)
-          object: postData.id,  // The post or comment that was liked
-        };
-
-        console.log(`Sending like to inbox of author ${authorId}:`, payload);
-
-        // Get connected nodes (similar to how you did for comments)
-        const response = await axios.get('/connected-nodes/', {
-          headers: { Authorization: `Token ${this.token}` },
-        });
-        const connectedNodes = response.data;
-
-        // Find the target node based on the host
-        const targetNode = connectedNodes.find(node => node.url === targethost);
-        if (!targetNode) {
-          throw new Error(`Target host ${targethost} not found among connected nodes.`);
-        }
-
-        // Basic Authentication credentials
-        const credentials = btoa(`${targetNode.username}:${targetNode.password}`);
-
-        // CSRF Token
-        const csrfToken = Cookies.get("csrftoken");
-
-        // Send the like payload to the author's inbox
-        await axios.post(inboxUrl, payload, {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Basic ${credentials}`,
-            "X-CSRFToken": csrfToken,
-          },
-        });
+        const response = await axios.post(
+          `/api/posts/${postId}/like/`,
+          {},
+          {
+            headers: { Authorization: `Token ${localStorage.getItem("token")}` },
+          }
+        );
+        console.log("Post liked successfully:", response.data);
       } catch (error) {
-        console.error(`Error sending like to author ${authorId}'s inbox:`, error);
-        throw error;  // Re-throw to handle in distributeLike or elsewhere if needed
+        console.error("Error liking post:", error);
+        throw error;
+      }
+    },
+
+    /**
+     * API call to unlike a post.
+     */
+    async unlikePost(postId) {
+      try {
+        const response = await axios.delete(
+          `/api/posts/${postId}/like/`,
+          {
+            headers: { Authorization: `Token ${localStorage.getItem("token")}` },
+          }
+        );
+        console.log("Post unliked successfully:", response.data);
+      } catch (error) {
+        console.error("Error unliking post:", error);
+        throw error;
+      }
+    },
+
+    /**
+     * API call to like a comment.
+     */
+    async likeComment(commentId) {
+      try {
+        const response = await axios.post(
+          `/api/comments/${commentId}/like/`,
+          {},
+          {
+            headers: { Authorization: `Token ${localStorage.getItem("token")}` },
+          }
+        );
+        console.log("Comment liked successfully:", response.data);
+      } catch (error) {
+        console.error("Error liking comment:", error);
+        throw error;
+      }
+    },
+
+    /**
+     * API call to unlike a comment.
+     */
+    async unlikeComment(commentId) {
+      try {
+        const response = await axios.delete(
+          `/api/comments/${commentId}/like/`,
+          {
+            headers: { Authorization: `Token ${localStorage.getItem("token")}` },
+          }
+        );
+        console.log("Comment unliked successfully:", response.data);
+      } catch (error) {
+        console.error("Error unliking comment:", error);
+        throw error;
       }
     },
   },
 };
-
-
-
 </script>
-
-
-
 
 <style scoped>
 .like-button {

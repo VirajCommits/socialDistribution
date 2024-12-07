@@ -598,6 +598,48 @@ def like_comment(request, comment_id):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
     else:
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    
+@api_view(["DELETE"])
+@permission_classes([IsAuthenticated])
+def unlike_post(request, post_id):
+    """
+    API to handle unliking a specific post by post_id.
+    """
+    post = get_object_or_404(Post, id=post_id)
+    author = request.user
+
+    # Check if the user has already liked the post
+    existing_like = Like.objects.filter(post=post, author=author).first()
+    if not existing_like:
+        return Response(
+            {"detail": "You have not liked this post yet."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    existing_like.delete()
+    return Response({"detail": "Post unliked successfully."}, status=status.HTTP_200_OK)
+
+
+@api_view(["DELETE"])
+@permission_classes([IsAuthenticated])
+def unlike_comment(request, comment_id):
+    """
+    API to handle unliking a specific comment by comment_id.
+    """
+    comment = get_object_or_404(Comment, id=comment_id)
+    author = request.user
+
+    # Check if the user has already liked the comment
+    existing_like = Like.objects.filter(comment=comment, author=author).first()
+    if not existing_like:
+        return Response(
+            {"detail": "You have not liked this comment yet."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    existing_like.delete()
+    return Response({"detail": "Comment unliked successfully."}, status=status.HTTP_200_OK)
 
 
 @swagger_auto_schema(
