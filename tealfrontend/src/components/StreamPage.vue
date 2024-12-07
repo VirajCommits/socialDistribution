@@ -136,8 +136,6 @@
 import axios from "axios";
 import LikeButton from "./LikeButton.vue";
 import CommentSection from "./CommentSection.vue";
-import Cookies from 'js-cookie';
-
 
 export default {
   name: "StreamPage",
