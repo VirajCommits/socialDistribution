@@ -190,6 +190,12 @@ urlpatterns = [
         name='inbox'
     ),
     path(
+        'api/authors/<str:author_serial>/inbox/', 
+        views.inbox_handler, 
+        name='inbox'
+    ),
+
+    path(
         'api/authors/<str:author_serial>/sendRemoteRequest/', 
         views.send_follow_request_to_remote_authors, 
         name='send_follow_request_to_remote_authors'
