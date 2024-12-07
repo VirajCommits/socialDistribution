@@ -88,7 +88,7 @@ export default {
         const targetAuthorId = targetAuthor.id.split("/").pop();  // Get the last part of the URL
 
         // Construct the full inbox URL using the target host and extracted author ID
-        const inboxUrl = `${targetAuthor.host}/api/authors/${encodeURIComponent(targetAuthorId)}/inbox/`;
+        const inboxUrl = `${targetAuthor.host}api/authors/${encodeURIComponent(targetAuthorId)}/inbox/`;
 
         // Prepare the payload for the like action
         const payload = {
