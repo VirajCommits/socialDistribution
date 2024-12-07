@@ -250,8 +250,8 @@ export default {
     async sendToInbox(targetAuthor, likePayload, jwtToken) {
       try {
         let targetauthorHost = targetAuthor.host;
-        if (targetAuthor.host.includes("/api/")) {
-            targetauthorHost = targetAuthor.host.split("/api/")[0];
+        if (targetAuthor.host.includes("api/")) {
+            targetauthorHost = targetAuthor.host.split("api/")[0];
         }
         const inboxUrl = `${targetauthorHost}api/authors/${targetAuthor.id.split("/").pop()}/inbox`;
         console.log("Inbox URL:", inboxUrl);
