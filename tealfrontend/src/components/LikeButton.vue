@@ -260,7 +260,7 @@ export default {
         console.log("Target author host:", targetAuthor.host);
         const connectedNodes = response.data;
         console.log("Connected nodes:", connectedNodes);
-        const targetauthorHost = targetauthorHost.split('/api')[0];
+        const targetauthorHost = targetAuthor.host.split('/api/')[0];
         console.log("Target author host:", targetauthorHost);
         const targetNode = connectedNodes.find((node) => node.url === targetauthorHost);
         console.log("Target node:", targetNode);
