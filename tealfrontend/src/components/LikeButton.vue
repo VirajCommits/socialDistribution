@@ -258,7 +258,10 @@ export default {
           },
         });
         const connectedNodes = response.data;
-        const targetauthorHost = targetAuthor.host.split("/").pop();
+        const targetauthorHost = targetAuthor.host;
+        if (targetauthorHost.endsWith("/")) {
+          targetauthorHost.slice(0, -1);
+        }
         const targetNode = connectedNodes.find((node) => node.url === targetauthorHost);
         if (!targetNode) {
           console.error(`No connected node matches the target host: ${targetAuthor.host}`);
