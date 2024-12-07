@@ -227,14 +227,6 @@ urlpatterns = [
          views.connected_nodes,
          name='connected_nodes'
     ),
-    path('api/posts/<uuid:post_id>/unlike/',
-         views.unlike_post,
-         name='unlike_post'
-    ),
-    path('api/comments/<uuid:comment_id>/unlike/',
-         views.unlike_comment,
-         name='unlike_comment'
-    ),
     
     # Catch-all route for Vue frontend
     re_path(
