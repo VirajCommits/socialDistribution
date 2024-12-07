@@ -718,6 +718,25 @@ def like_post(request, post_id):
     else:
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+class CommentDetailView(APIView):
+    def get(self, request, comment_id):
+        try:
+            comment = Comment.objects.get(id=comment_id)
+            data = {
+                "id": str(comment.id),
+                "author": {
+                    "id": comment.author.id,
+                    "displayName": comment.author.username,
+                    "host": comment.author.host,
+                },
+                "content": comment.content,
+                "published": comment.published,
+            }
+            return Response(data, status=status.HTTP_200_OK)
+        except Comment.DoesNotExist:
+            return Response(
+                {"detail": "Comment not found"}, status=status.HTTP_404_NOT_FOUND
+            )
 
 @swagger_auto_schema(
     method="get",
@@ -4182,10 +4201,66 @@ def inbox_handler(request, author_serial):
                         comment.save()
 
                 return Response({'message': 'Post added to inbox and created locally.'}, status=status.HTTP_201_CREATED)
+            
             elif item_type == 'like':
-                print("WE ARE INSIDE THE LIKE SECTION ...IMPLEMENT THE INBOX!")
-                return Response({'message': 'Comment added to inbox and created locally.'}, status=status.HTTP_201_CREATED)
-                pass
+                try:
+                    # Extract data
+                    like_data = request.data
+                    author_data = like_data.get('author', {})
+                    target_data = like_data.get('object', {})
+                    like_id = like_data.get('id', str(uuid.uuid4()))  # Generate a UUID if not provided
+
+                    # Parse and validate the target
+                    target_id = target_data.get('id', '').rstrip('/')
+                    if '/posts/' in target_id:
+                        # Like is for a Post
+                        post_uuid = target_id.split('/')[-1]
+                        target = get_object_or_404(Post, id=post_uuid)
+                    elif '/comments/' in target_id:
+                        # Like is for a Comment
+                        comment_uuid = target_id.split('/')[-1]
+                        target = get_object_or_404(Comment, id=comment_uuid)
+                    else:
+                        return Response({'error': 'Invalid target for like.'}, status=status.HTTP_400_BAD_REQUEST)
+
+                    # Get or create the author
+                    author_id = author_data.get('id', '').rstrip('/')
+                    author_uuid = author_id.split('/')[-1]
+                    author, _ = Author.objects.get_or_create(
+                        uuid=author_uuid,
+                        defaults={
+                            'displayName': author_data.get('displayName', ''),
+                            'host': author_data.get('host', ''),
+                            'page': author_data.get('page', ''),
+                            'github': author_data.get('github', ''),
+                            'profileImage': author_data.get('profileImage', ''),
+                        }
+                    )
+
+                    # Create or update the Like
+                    like, created = Like.objects.get_or_create(
+                        id=like_id,
+                        defaults={
+                            'author': author,
+                            'post': target if isinstance(target, Post) else None,
+                            'comment': target if isinstance(target, Comment) else None,
+                            'published': like_data.get('published', timezone.now())
+                        }
+                    )
+
+                    # Optionally update existing like's timestamp
+                    if not created:
+                        like.published = like_data.get('published', like.published)
+                        like.save()
+
+                    # Add the like to the inbox
+                    inbox.likes.add(like)
+
+                    return Response({'message': 'Like added to inbox successfully.'}, status=status.HTTP_201_CREATED)
+
+                except Exception as e:
+                    print(f"Error processing like: {e}")
+                    return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
             elif item_type == 'comment':
                 data = request.data

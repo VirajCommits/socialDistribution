@@ -222,6 +222,12 @@ urlpatterns = [
         name="sync_remote_authors",
     ),
     
+    path(
+        "api/comments/<uuid:comment_id>/",
+        views.CommentDetailView.as_view(),
+        name="comment_detail",
+    ),
+    
     path('api/connected-nodes/', views.connected_nodes, name='connected_nodes'),
     path('api/connected-nodes/', views.connected_nodes, name='connected_nodes'),
     # Catch-all route for Vue frontend
