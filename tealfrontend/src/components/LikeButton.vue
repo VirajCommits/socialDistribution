@@ -67,6 +67,8 @@ export default {
 
       // Toggle like status
       this.liked = !this.liked;
+      
+      this.likeCount += this.liked ? 1 : -1;
 
       console.log("GRRR postId", postId);
 
