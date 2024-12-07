@@ -42,9 +42,7 @@ export default {
     async fetchLikes() {
       try {
         this.loading = true;
-        const apiUrl = this.commentId
-      ? `/posts/${encodeURIComponent(this.postId)}/comments/`
-      : `/posts/${encodeURIComponent(this.postId)}/`;
+        const apiUrl = `/posts/${encodeURIComponent(this.postId)}/`;
 
         const response = await axios.get(apiUrl);
         const likesArray = Array.isArray(response.data) ? response.data : response.data.src || [];
