@@ -261,11 +261,10 @@ export default {
             Authorization: `Token ${jwtToken}`,
           },
         });
-        console.log("Target author host:", targetAuthor.host);
         const connectedNodes = response.data;
         console.log("Connected nodes:", connectedNodes);
-        console.log("Target author host:", targetauthorHost);
         const targetAuthorHostToFind = targetauthorHost.replace(/\/$/, "");
+        console.log("Target author host:", targetAuthorHostToFind);
         const targetNode = connectedNodes.find((node) => node.url === targetAuthorHostToFind);
         console.log("Target node:", targetNode);
         if (!targetNode) {

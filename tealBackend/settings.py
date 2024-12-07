@@ -149,7 +149,7 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',  # or your desired database backend
         'NAME': env.db('DATABASE_URL', default='sqlite:///' + str(BASE_DIR / 'db.sqlite3')),
-        'CONN_MAX_AGE': 600,
+        'CONN_MAX_AGE': 5,
     }
 }
 # Password validation
