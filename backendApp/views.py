@@ -47,8 +47,6 @@ from datetime import datetime
 
 from rest_framework.test import APIRequestFactory
 from django.urls import reverse
-from rest_framework_simplejwt.authentication import JWTAuthentication
-
 
 
 def defaultPath(request):

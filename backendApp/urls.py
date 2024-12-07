@@ -9,8 +9,6 @@ from rest_framework import permissions
 
 # from .views import TestRemoteNodeConnectionView
 
-# from .views import TestRemoteNodeConnectionView
-
 schema_view = get_schema_view(
     openapi.Info(
         title="Your API Title",
@@ -25,7 +23,6 @@ schema_view = get_schema_view(
 )
 
 urlpatterns = [
-    # path("", views.defaultPath, name="defaultPath"),
     path("api/signup/",
          views.signup,
          name="signup"
