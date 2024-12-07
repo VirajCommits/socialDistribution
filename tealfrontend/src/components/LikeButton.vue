@@ -40,6 +40,7 @@ export default {
   },
   mounted() {
     this.initializeUser();
+    this.loadInitialLikeCount(); // Fetch the initial like count
   },
   methods: {
     /**
@@ -56,6 +57,37 @@ export default {
       } catch (error) {
         console.error("Error initializing user:", error);
         this.errorMessage = "Failed to retrieve user information.";
+      }
+    },
+
+    /**
+     * Loads the initial like count for the post or comment.
+     */
+    async loadInitialLikeCount() {
+      try {
+        this.loading = true;
+
+        if (this.commentId) {
+          // If this is a comment, make an API call to get the like count for the comment
+          const response = await axios.get(`/api/comments/${this.commentId}/like/`, {
+            headers: { Authorization: `Token ${localStorage.getItem("token")}` },
+          });
+          this.likeCount = response.data.like_count || 0;
+          this.liked = response.data.liked || false; // Set the initial liked status based on the API response
+        } else if (this.postId) {
+          // If this is a post, make an API call to get the like count for the post
+          const response = await axios.get(`/api/posts/${this.postId}/like/`, {
+            headers: { Authorization: `Token ${localStorage.getItem("token")}` },
+          });
+          this.likeCount = response.data.like_count || 0;
+          this.liked = response.data.liked || false; // Set the initial liked status based on the API response
+        }
+
+      } catch (error) {
+        console.error("Error fetching initial like count:", error);
+        this.errorMessage = "Failed to load like count.";
+      } finally {
+        this.loading = false;
       }
     },
 
@@ -107,7 +139,7 @@ export default {
     async likePost(postId) {
       try {
         const response = await axios.post(
-          `/posts/${postId}/like/`,
+          `/api/posts/${postId}/like/`,
           {},
           {
             headers: { Authorization: `Token ${localStorage.getItem("token")}` },
@@ -126,7 +158,7 @@ export default {
     async unlikePost(postId) {
       try {
         const response = await axios.delete(
-          `/posts/${postId}/like/`,
+          `/api/posts/${postId}/like/`,
           {
             headers: { Authorization: `Token ${localStorage.getItem("token")}` },
           }
@@ -144,7 +176,7 @@ export default {
     async likeComment(commentId) {
       try {
         const response = await axios.post(
-          `/comments/${commentId}/like/`,
+          `/api/comments/${commentId}/like/`,
           {},
           {
             headers: { Authorization: `Token ${localStorage.getItem("token")}` },
@@ -163,7 +195,7 @@ export default {
     async unlikeComment(commentId) {
       try {
         const response = await axios.delete(
-          `/comments/${commentId}/like/`,
+          `/api/comments/${commentId}/like/`,
           {
             headers: { Authorization: `Token ${localStorage.getItem("token")}` },
           }
@@ -177,6 +209,7 @@ export default {
   },
 };
 </script>
+
 
 <style scoped>
 .like-button {
