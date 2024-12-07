@@ -258,8 +258,8 @@ export default {
           },
         });
         const connectedNodes = response.data;
-        const targetauthorHost = targetAuthor.host.split("/").pop();
-        const targetNode = connectedNodes.find((node) => node.url === targetauthorHost);
+        const targetAuthorHost = targetAuthor.host.replace(/\/$/, "")
+        const targetNode = connectedNodes.find((node) => node.url === targetAuthorHost);
         if (!targetNode) {
           console.error(`No connected node matches the target host: ${targetAuthor.host}`);
           this.errorMessage = "Unable to find a connected node for the target host.";
