@@ -147,7 +147,7 @@ export default {
             github: this.user.github,
             profileImage: this.user.profileImage,
           },
-          object: `${this.user.host}/posts/${this.postId}/`,
+          object: `${this.user.host}posts/${this.postId}/`,
           published: new Date().toISOString(),
         };
         console.log("printingPAYLOAD", likePayload);
@@ -206,7 +206,7 @@ export default {
             github: this.user.github,
             profileImage: this.user.profileImage,
           },
-          object: `/comments/${this.commentId}/`,
+          object: `${this.user.host}comments/${this.commentId}/`,
           published: new Date().toISOString(),
         };
 
