@@ -135,23 +135,6 @@ export default {
       try {
         console.log("Liking a post...");
 
-        const likePayload = {
-          type: "like",
-          id: crypto.randomUUID(),
-          author: {
-            type: "author",
-            id: this.user.id,
-            host: this.user.host,
-            displayName: this.user.displayName,
-            page: this.user.page,
-            github: this.user.github,
-            profileImage: this.user.profileImage,
-          },
-          object: `${this.user.host}posts/${this.postId}/`,
-          published: new Date().toISOString(),
-        };
-        console.log("printingPAYLOAD", likePayload);
-
         const targetItemUrl = `posts/${this.postId}/`;
         console.log("Target item URL for post:", targetItemUrl);
 
@@ -163,6 +146,24 @@ export default {
         console.log("Target post response:", targetResponse.data);
 
         const targetAuthor = targetResponse.data.author;
+
+        const likePayload = {
+          type: "like",
+          author: {
+            type: "author",
+            id: this.user.id,
+            host: this.user.host,
+            displayName: this.user.displayName,
+            page: this.user.page,
+            github: this.user.github,
+            profileImage: this.user.profileImage,
+          },
+          id: `${this.user.id}/liked/${crypto.randomUUID()}`,
+          object: `${targetAuthor}/posts/${this.commentId}/`,
+          published: new Date().toISOString(),
+        };
+        console.log("printingPAYLOAD", likePayload);
+
         if (targetAuthor.host === this.user.host) {
           // Same-node handling
           console.log("Same-node request for post. Handling like locally.");
@@ -193,23 +194,6 @@ export default {
     async likeComment(jwtToken, csrfToken) {
       try {
         console.log("Liking a comment...");
-
-        const likePayload = {
-          type: "like",
-          id: crypto.randomUUID(),
-          author: {
-            type: "author",
-            id: this.user.id,
-            host: this.user.host,
-            displayName: this.user.displayName,
-            page: this.user.page,
-            github: this.user.github,
-            profileImage: this.user.profileImage,
-          },
-          object: `${this.user.host}comments/${this.commentId}/`,
-          published: new Date().toISOString(),
-        };
-
         const targetItemUrl = `comments/${this.commentId}/`;
         console.log("Target item URL for comment:", targetItemUrl);
 
@@ -221,6 +205,23 @@ export default {
         console.log("Target comment response:", targetResponse.data);
 
         const targetAuthor = targetResponse.data.author;
+
+        const likePayload = {
+          type: "like",
+          author: {
+            type: "author",
+            id: this.user.id,
+            host: this.user.host,
+            displayName: this.user.displayName,
+            page: this.user.page,
+            github: this.user.github,
+            profileImage: this.user.profileImage,
+          },
+          id: `${this.user.id}/liked/${crypto.randomUUID()}`,
+          object: `${targetAuthor}/comments/${this.commentId}/`,
+          published: new Date().toISOString(),
+        };
+
         if (targetAuthor.host === this.user.host) {
           // Same-node handling
           console.log("Same-node request for comment. Handling like locally.");
