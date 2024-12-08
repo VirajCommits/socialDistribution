@@ -161,7 +161,7 @@ export default {
             profileImage: this.user.profileImage,
           },
           id: `${this.user.id}/liked/${crypto.randomUUID()}`,
-          object: `${targetAuthor}/posts/${this.postId}/`,
+          object: `${targetAuthor.id}/posts/${this.postId}/`,
           published: new Date().toISOString(),
         };
         console.log("printingPAYLOAD", likePayload);
