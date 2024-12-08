@@ -194,33 +194,35 @@ export default {
     async likeComment(jwtToken, csrfToken) {
       try {
         console.log("Liking a comment...");
+
         const targetItemUrl = `comments/${this.commentId}/`;
         console.log("Target item URL for comment:", targetItemUrl);
 
         const targetResponse = await axios.get(targetItemUrl, {
-          headers: {
-            Authorization: `Token ${jwtToken}`,
-          },
-        });
-        console.log("Target comment response:", targetResponse.data);
+        headers: {
+          Authorization: `Token ${jwtToken}`,
+        },
+      });
+      console.log("Target comment response:", targetResponse.data);
 
-        const targetAuthor = targetResponse.data.author;
+      const targetAuthor = targetResponse.data.author;
 
-        const likePayload = {
-          type: "like",
-          author: {
-            type: "author",
-            id: this.user.id,
-            host: this.user.host,
-            displayName: this.user.displayName,
-            page: this.user.page,
-            github: this.user.github,
-            profileImage: this.user.profileImage,
-          },
-          id: `${this.user.id}/liked/${crypto.randomUUID()}`,
-          object: `${targetAuthor}/comments/${this.commentId}/`,
-          published: new Date().toISOString(),
-        };
+      // Construct the "like" payload
+      const likePayload = {
+        type: "like",
+        author: {
+          type: "author",
+          id: this.user.id, 
+          page: this.user.page, 
+          host: this.user.host, 
+          displayName: this.user.displayName, 
+          github: this.user.github,
+          profileImage: this.user.profileImage,
+        },
+        published: new Date().toISOString(), // ISO 8601 timestamp
+        id: `${this.user.id}/liked/${crypto.randomUUID()}`, // Unique "like" ID
+        object: `${targetAuthor}/posts/${this.postId}`, // Reference the post or comment
+      };
 
         if (targetAuthor.host === this.user.host) {
           // Same-node handling
