@@ -206,6 +206,8 @@ export default {
       console.log("Target comment response:", targetResponse.data);
 
       const targetAuthor = targetResponse.data.author;
+      
+      console.log("TARGETAUTHOR:", targetAuthor);
 
       // Construct the "like" payload
       const likePayload = {
@@ -221,7 +223,7 @@ export default {
         },
         published: new Date().toISOString(), // ISO 8601 timestamp
         id: `${this.user.id}/liked/${crypto.randomUUID()}`, // Unique "like" ID
-        object: `${targetAuthor}/posts/${this.postId}`, // Reference the post or comment
+        object: `${targetAuthor}/posts/${this.commentId}`, // Reference the post or comment
       };
 
         if (targetAuthor.host === this.user.host) {
