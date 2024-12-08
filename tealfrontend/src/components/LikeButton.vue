@@ -147,6 +147,8 @@ export default {
 
         const targetAuthor = targetResponse.data.author;
 
+        console.log("TARGETAUTHOR:", targetAuthor);
+
         const likePayload = {
           type: "like",
           author: {
@@ -159,7 +161,7 @@ export default {
             profileImage: this.user.profileImage,
           },
           id: `${this.user.id}/liked/${crypto.randomUUID()}`,
-          object: `${targetAuthor}/posts/${this.commentId}/`,
+          object: `${targetAuthor}/posts/${this.postId}/`,
           published: new Date().toISOString(),
         };
         console.log("printingPAYLOAD", likePayload);
