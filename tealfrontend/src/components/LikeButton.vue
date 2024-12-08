@@ -150,6 +150,7 @@ export default {
           object: `/posts/${this.postId}/`,
           published: new Date().toISOString(),
         };
+        console.log(likePayload);
 
         const targetItemUrl = `posts/${this.postId}/`;
         console.log("Target item URL for post:", targetItemUrl);
