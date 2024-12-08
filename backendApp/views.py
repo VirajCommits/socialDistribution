@@ -4152,6 +4152,7 @@ def inbox_handler(request, author_serial):
                     
                     author_data = like_data.get('author', {})
                     like_id = like_data.get('id', str(uuid.uuid4()))  # Generate a UUID if not provided
+                    print("LIKEID:", like_id)
                     target_id = like_data.get('object')
                     
                     print("PRINTING TARGET ID:", target_id)

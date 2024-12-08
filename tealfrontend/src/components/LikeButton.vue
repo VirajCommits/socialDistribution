@@ -225,7 +225,7 @@ export default {
         },
         published: new Date().toISOString(), // ISO 8601 timestamp
         id: `${this.user.id}/liked/${crypto.randomUUID()}`, // Unique "like" ID
-        object: `${targetAuthor}/posts/${this.commentId}`, // Reference the post or comment
+        object: `${targetAuthor.host}/comments/${this.commentId}`, // Reference the post or comment
       };
 
         if (targetAuthor.host === this.user.host) {
