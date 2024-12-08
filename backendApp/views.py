@@ -4149,12 +4149,11 @@ def inbox_handler(request, author_serial):
                     # Extract data
                     like_data = request.data
                     print("FULL LIKE DATA:", like_data)
+                    
                     author_data = like_data.get('author', {})
-                    #target_data = like_data.get('object')
                     like_id = like_data.get('id', str(uuid.uuid4()))  # Generate a UUID if not provided
-
-                    # Parse and validate the target
-                    target_id = like_data.get('object', None)
+                    target_id = like_data.get('object')
+                    
                     print("PRINTING TARGET ID:", target_id)
                     if '/posts/' in target_id:
                         # Like is for a Post
