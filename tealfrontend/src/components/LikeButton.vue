@@ -147,7 +147,7 @@ export default {
             github: this.user.github,
             profileImage: this.user.profileImage,
           },
-          object: `/posts/${this.postId}/`,
+          object: `${this.host}/posts/${this.postId}/`,
           published: new Date().toISOString(),
         };
         console.log("printingPAYLOAD", likePayload);
