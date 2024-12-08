@@ -4148,6 +4148,7 @@ def inbox_handler(request, author_serial):
                 try:
                     # Extract data
                     like_data = request.data
+                    print("FULL LIKE DATA:", like_data)
                     author_data = like_data.get('author', {})
                     #target_data = like_data.get('object')
                     like_id = like_data.get('id', str(uuid.uuid4()))  # Generate a UUID if not provided
