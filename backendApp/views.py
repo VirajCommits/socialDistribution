@@ -4158,15 +4158,17 @@ def inbox_handler(request, author_serial):
                     print("PRINTING TARGET ID:", target_id)
                     if '/posts/' in target_id:
                         # Like is for a Post
+                        print("INSIDE IF STATEMENT FOR POSTS")
                         post_uuid = target_id.split('/')[-1]
                         target = get_object_or_404(Post, id=post_uuid)
                     elif '/comments/' in target_id:
                         # Like is for a Comment
+                        print("INSIDE IF STATEMENT FOR COMMENTS")
                         comment_uuid = target_id.split('/')[-1]
                         target = get_object_or_404(Comment, id=comment_uuid)
                     else:
                         return Response({'error': 'Invalid target for like.'}, status=status.HTTP_400_BAD_REQUEST)
-
+                    print("MADE IT PAST IFS")
                     # Get or create the author
                     author_id = author_data.get('id', '').rstrip('/')
                     author_uuid = author_id.split('/')[-1]
