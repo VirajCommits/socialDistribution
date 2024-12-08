@@ -4154,7 +4154,7 @@ def inbox_handler(request, author_serial):
                     like_id = like_data.get('id', str(uuid.uuid4()))  # Generate a UUID if not provided
 
                     # Parse and validate the target
-                    target_id = like_data.get('object', '').rstrip('/')
+                    target_id = like_data.get('object', None)
                     print("PRINTING TARGET ID:", target_id)
                     if '/posts/' in target_id:
                         # Like is for a Post
