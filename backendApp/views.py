@@ -4171,8 +4171,8 @@ def inbox_handler(request, author_serial):
                         return Response({'error': 'Invalid target for like.'}, status=status.HTTP_400_BAD_REQUEST)
                     print("MADE IT PAST IFS")
                     # Get or create the author
-                    author_id = author_data.get('host', '').rstrip('/')
-                    author_uuid = author_id.split('/')[0]
+                    author_id = author_data.get('id', '').rstrip('/')
+                    author_uuid = author_id.split('/')[-1]
                     author, _ = Author.objects.get_or_create(
                         uuid=author_uuid,
                         defaults={
