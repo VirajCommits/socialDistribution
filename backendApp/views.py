@@ -4160,6 +4160,7 @@ def inbox_handler(request, author_serial):
                         # Like is for a Post
                         print("INSIDE IF STATEMENT FOR POSTS")
                         post_uuid = target_id.split('/')[-1]
+                        print("printing post UUID:", post_uuid)
                         target = get_object_or_404(Post, id=post_uuid)
                     elif '/comments/' in target_id:
                         # Like is for a Comment
