@@ -172,12 +172,12 @@ def create_post(request, author_serial):
 
     serializer = PostSerializer(data=data)
 
-    print("YES CR4EATING POSTS")
+    # print("YES CR4EATING POSTS")
 
     if serializer.is_valid():
         post = serializer.save()
         response_serializer = PostSerializer(post)
-        print("POSTS CREATED SUCCESFULLY")
+        # print("POSTS CREATED SUCCESFULLY")
 
         return Response(response_serializer.data, status=status.HTTP_201_CREATED)
     else:
@@ -390,6 +390,13 @@ def post_detail(request, author_serial, post_serial):
 
     # Handle PUT request for updating the post
     if request.method == "PUT" and not action:
+        
+        if post.author != request.user:
+            return Response(
+                {"error": "You do not have permission to edit this post."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
         data = request.data
         if "content" in data:
             markdown_content = data["content"]

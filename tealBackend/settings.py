@@ -1,3 +1,4 @@
+import sys
 import environ
 from pathlib import Path
 import os
@@ -207,3 +208,10 @@ CHANNEL_LAYERS = {
 
 # Activate Django-Heroku.
 django_heroku.settings(locals())
+
+
+if 'test' in sys.argv:
+    DATABASES['default'] = {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': ':memory:',  # Use an in-memory database for faster tests
+    }

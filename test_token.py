@@ -1,9 +1,22 @@
 import os
 import django
+from django.core.management import call_command
+from rest_framework_simplejwt.tokens import AccessToken
+from backendApp.models import Author
 
+# Set up Django environment
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "tealBackend.settings")
 django.setup()
 
-from rest_framework_simplejwt.tokens import AccessToken
-token = AccessToken('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzMyMjM1MDUzLCJpYXQiOjE3MzIyMzE0NTMsImp0aSI6IjI3YWUwY2ZlYmQ5MzQ4YjBhYzMzMzFiM2Q5ODRlZTA2IiwidXNlcl9pZCI6Imh0dHBzOi8vc29jaWFsLWRpc3RyaWJ1dGlvbi0xLTNhZGI4NGYxMjBkOS5oZXJva3VhcHAuY29tL2F1dGhvcnMvODkxMWE3MzItMjcyNy00M2UwLTk2OWEtZjM2N2M3NTk2NGU1In0._RkEwfTTZZLhOc7zIylROMCvQkW7JmcsMilTkTcDEjk')
-print(token.payload)
+# Ensure migrations are applied
+call_command("migrate", verbosity=0)
+
+# Create a test user dynamically
+test_user = Author.objects.create_user(username="testuser", password="password123")
+
+# Generate a fresh token
+token = AccessToken.for_user(test_user)  # Keep it as an AccessToken object
+
+# Print the token and its payload for debugging
+# print(f"Generated Token: {str(token)}")
+# print(f"Token Payload: {token.payload}")
