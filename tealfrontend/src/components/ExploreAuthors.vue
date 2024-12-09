@@ -454,9 +454,9 @@ export default {
       };
 
       ws.onclose = () => {
-        //console.log(
+        // console.log(
         //  "WebSocket connection closed, attempting to reconnect..."
-        );
+        // );
         setTimeout(() => this.setupWebSocket(), 1000);
       };
 
