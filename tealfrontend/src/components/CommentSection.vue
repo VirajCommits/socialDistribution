@@ -244,7 +244,7 @@ export default {
             }
             case "FRIENDS": {
                 try {
-                    console.log("Checking FRIENDS visibility");
+                    // console.log("Checking FRIENDS visibility");
                     const currentUser = JSON.parse(localStorage.getItem('user'));
                     
                     // First, check if the current user is a follower of the post author
@@ -262,7 +262,7 @@ export default {
                     
                     // Only allow access if there's a mutual follow relationship
                     if (!isFollower || !isFollowed) {
-                        console.log('Not a mutual friend - access denied');
+                        // console.log('Not a mutual friend - access denied');
                         throw new Error('You must be friends with the author to view this post');
                     }
                     
@@ -299,7 +299,7 @@ export default {
           }
         }
 
-        console.log("Comment distribution completed.");
+        // console.log("Comment distribution completed.");
       } catch (error) {
         console.error("Error distributing comment:", error);
         // Optionally, set an error message or handle it as needed
@@ -314,7 +314,7 @@ export default {
      */
     async sendCommentToInbox(authorId, commentData, postData, targethost) {
       try {
-        console.log("SENDING COMMENT TO INBOX IN COMMENT SECTION:" , authorId, commentData, postData, targethost)
+        // console.log("SENDING COMMENT TO INBOX IN COMMENT SECTION:" , authorId, commentData, postData, targethost)
         const inboxUrl = `${targethost}/api/authors/${authorId}/inbox`;
 
         const payload = {
@@ -335,20 +335,20 @@ export default {
             "post": `${postData.author.host}authors/${postData.author.uuid}/posts/${postData.id}`, // Changed to template literal
         };
 
-        console.log(`Sending comment to inbox of author ${authorId}:`, payload);
+        // console.log(`Sending comment to inbox of author ${authorId}:`, payload);
 
         const response = await axios.get('/connected-nodes/', {
           headers: { Authorization: `Token ${this.token}` },
         });
         const connectedNodes = response;
         const connected_nodes = response.data;
-        console.log("CONNECTED NODES IN COMMENT SECTION:" , connectedNodes)
-        console.log("CONNECTED NODES DATA IN COMMENT SECTION:" , connected_nodes)
-        console.log("TARGET HOST IN COMMENT SECTION:" , targethost)
+        // console.log("CONNECTED NODES IN COMMENT SECTION:" , connectedNodes)
+        // console.log("CONNECTED NODES DATA IN COMMENT SECTION:" , connected_nodes)
+        // console.log("TARGET HOST IN COMMENT SECTION:" , targethost)
 
-        console.log("HOST IN COMMENT SECTION:" , targethost)
+        // console.log("HOST IN COMMENT SECTION:" , targethost)
         const targetNode = connected_nodes.find(node => node.url === targethost);
-        console.log("TARGET NODE IN COMMENT SECTION:" , targetNode)
+        // console.log("TARGET NODE IN COMMENT SECTION:" , targetNode)
         const credentials = btoa(`${targetNode.username}:${targetNode.password}`);
 
         const csrfToken = Cookies.get("csrftoken"); // Get CSRF token from cookies

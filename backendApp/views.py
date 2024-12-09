@@ -1,3 +1,4 @@
+# Swagger auto schemas adapted from chatGPT, "Create a swagger autoschema for x function"
 import copy
 import uuid
 from rest_framework.decorators import api_view, authentication_classes, permission_classes

@@ -321,7 +321,7 @@ export default {
 
         // Update was successful
         this.successMessage = "Post updated successfully!";
-        console.log("Post updated:", response.data);
+        //console.log("Post updated:", response.data);
 
         // Distribute the updated post via inbox
         await this.distributePostUpdate(response.data);
@@ -357,9 +357,9 @@ export default {
             // Send to all authors except the current author
             for (const author of authors) {
               const authorId = author.id.split("/").pop();
-              console.log(
-                `Current Author ID: ${currentAuthorId}, Author ID: ${authorId}`
-              );
+              //console.log(
+              //  `Current Author ID: ${currentAuthorId}, Author ID: ${authorId}`
+              //);
 
               if (
                 authorId !== currentAuthorId &&
@@ -385,7 +385,7 @@ export default {
           }
           case "UNLISTED": {
             // Typically, do not send to any inboxes
-            console.log("UNLISTED visibility: No distribution.");
+            //console.log("UNLISTED visibility: No distribution.");
             break;
           }
           default:
@@ -426,7 +426,7 @@ export default {
           visibility: this.editablePost.visibility,
         };
 
-        console.log(`Sending update to inbox of author ${authorId}:`, payload);
+        //(`Sending update to inbox of author ${authorId}:`, payload);
         const csrfToken = Cookies.get("csrftoken"); 
         await axios.post(inboxUrl, payload, {
           headers: {

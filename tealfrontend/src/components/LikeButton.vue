@@ -89,16 +89,16 @@ export default {
       }
     },
     async toggleLike() {
-      console.log("Like button clicked");
+      //console.log("Like button clicked");
 
       try {
-        console.log("Liked state before action:", this.liked);
+        //console.log("Liked state before action:", this.liked);
 
         const jwtToken = localStorage.getItem("token"); // Fetch token from localStorage
         const csrfToken = Cookies.get("csrftoken"); // CSRF token from cookies
 
-        console.log("JWT token:", jwtToken); // Debug token
-        console.log("User object:", this.user);
+        //console.log("JWT token:", jwtToken); // Debug token
+        //console.log("User object:", this.user);
 
         // Ensure the user is authenticated
         if (!this.user || !jwtToken) {
@@ -106,14 +106,14 @@ export default {
           return;
         }
 
-        console.log("User authenticated:", this.user); // Debug user
+        //console.log("User authenticated:", this.user); // Debug user
 
         if (this.liked) {
           console.warn("Unliking is not implemented.");
           return;
         }
 
-        console.log("Preparing like action...");
+        //console.log("Preparing like action...");
 
         // Check whether we are liking a post or a comment
         if (this.commentId) {
@@ -133,21 +133,21 @@ export default {
 
     async likePost(jwtToken, csrfToken) {
       try {
-        console.log("Liking a post...");
+        //console.log("Liking a post...");
 
         const targetItemUrl = `posts/${this.postId}/`;
-        console.log("Target item URL for post:", targetItemUrl);
+        //console.log("Target item URL for post:", targetItemUrl);
 
         const targetResponse = await axios.get(targetItemUrl, {
           headers: {
             Authorization: `Token ${jwtToken}`,
           },
         });
-        console.log("Target post response:", targetResponse.data);
+        //console.log("Target post response:", targetResponse.data);
 
         const targetAuthor = targetResponse.data.author;
 
-        console.log("TARGETAUTHOR:", targetAuthor);
+        //console.log("TARGETAUTHOR:", targetAuthor);
 
         const likePayload = {
           type: "like",
@@ -164,11 +164,11 @@ export default {
           object: `${targetAuthor.id}/posts/${this.postId}`,
           published: new Date().toISOString(),
         };
-        console.log("printingPAYLOAD", likePayload);
+        //console.log("printingPAYLOAD", likePayload);
 
         if (targetAuthor.host === this.user.host) {
           // Same-node handling
-          console.log("Same-node request for post. Handling like locally.");
+          //console.log("Same-node request for post. Handling like locally.");
           const likeApiUrl = `posts/${this.postId}/like/`;
 
           await axios.post(likeApiUrl, likePayload, {
@@ -184,7 +184,7 @@ export default {
           this.postLikeCount += 1;
         } else {
           // Handle remote-node requests
-          console.log("Remote-node request for post. Sending to inbox.");
+          //console.log("Remote-node request for post. Sending to inbox.");
           await this.sendToInbox(targetAuthor, likePayload, jwtToken);
         }
       } catch (error) {
@@ -195,21 +195,21 @@ export default {
 
     async likeComment(jwtToken, csrfToken) {
       try {
-        console.log("Liking a comment...");
+        //console.log("Liking a comment...");
 
         const targetItemUrl = `comments/${this.commentId}/`;
-        console.log("Target item URL for comment:", targetItemUrl);
+        //console.log("Target item URL for comment:", targetItemUrl);
 
         const targetResponse = await axios.get(targetItemUrl, {
         headers: {
           Authorization: `Token ${jwtToken}`,
         },
       });
-      console.log("Target comment response:", targetResponse.data);
+      //console.log("Target comment response:", targetResponse.data);
 
       const targetAuthor = targetResponse.data.author;
       
-      console.log("TARGETAUTHOR:", targetAuthor);
+      //console.log("TARGETAUTHOR:", targetAuthor);
 
       // Construct the "like" payload
       const likePayload = {
@@ -264,7 +264,7 @@ export default {
             targetauthorHost = targetAuthor.host.split("api/")[0];
         }
         const inboxUrl = `${targetauthorHost}api/authors/${targetAuthor.id.split("/").pop()}/inbox`;
-        console.log("Inbox URL:", inboxUrl);
+        //console.log("Inbox URL:", inboxUrl);
 
         const response = await axios.get("/connected-nodes/", {
           headers: {
@@ -272,11 +272,11 @@ export default {
           },
         });
         const connectedNodes = response.data;
-        console.log("Connected nodes:", connectedNodes);
+        //console.log("Connected nodes:", connectedNodes);
         const targetAuthorHostToFind = targetauthorHost.replace(/\/$/, "");
-        console.log("Target author host:", targetAuthorHostToFind);
+        //console.log("Target author host:", targetAuthorHostToFind);
         const targetNode = connectedNodes.find((node) => node.url === targetAuthorHostToFind);
-        console.log("Target node:", targetNode);
+        //console.log("Target node:", targetNode);
         if (!targetNode) {
           console.error(`No connected node matches the target host: ${targetAuthorHostToFind}`);
           this.errorMessage = "Unable to find a connected node for the target host.";
@@ -284,7 +284,7 @@ export default {
         }
 
         const credentials = btoa(`${targetNode.username}:${targetNode.password}`);
-        console.log("payload:", likePayload);
+        //console.log("payload:", likePayload);
         await axios.post(inboxUrl, likePayload, {
           headers: {
             "Content-Type": "application/json",
@@ -292,7 +292,7 @@ export default {
           },
         });
 
-        console.log("Like sent to inbox successfully.");
+        //console.log("Like sent to inbox successfully.");
       } catch (error) {
         console.error("Error sending like to inbox:", error.response || error);
         this.errorMessage = "An error occurred while sending the like to the inbox.";
