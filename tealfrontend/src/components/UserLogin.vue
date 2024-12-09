@@ -124,7 +124,7 @@ export default {
             'Authorization': `Basic ${accessToken}`,
           },
         });
-        //console.log("Sync successful:", syncResponse.data);
+        console.log("Sync successful:", syncResponse.data);
       } catch (syncError) {
         console.error("Error syncing posts:", syncError);
         // Optionally display an error message to the user

@@ -243,7 +243,7 @@ export default {
         };
 
         this.socket.onclose = (event) => {
-          //console.log("WebSocket connection closed:", event.code, event.reason);
+          console.log("WebSocket connection closed:", event.code, event.reason);
           setTimeout(() => {
             if (this.$el && document.body.contains(this.$el)) {
               this.initializeWebSocket();
