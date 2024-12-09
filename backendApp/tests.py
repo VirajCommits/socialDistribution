@@ -1,3 +1,4 @@
+# tests.py was generated with the help of chatGPT. "How should I setup and create test cases for the following user stories? ..." 12-05-2024
 from markdown import markdown
 from unittest.mock import patch
 from django.test import TestCase
@@ -1009,54 +1010,6 @@ class UserStoryTests(TestCase):
             "post_serial": non_existent_uuid,
         }))
         self.assertEqual(response.status_code, 404)
-
-    # def test_friends_only_posts_and_images(self):
-    #     """Test user story: As an author, I don't want anyone who isn't a friend to see my friends-only posts and images."""
-    #     # Create a mutual friend
-    #     author2 = Author.objects.create_user(
-    #         username="author2",
-    #         password="password",
-    #         displayName="Author Two"
-    #     )
-    #     self.author1.followers.add(author2)
-    #     author2.followers.add(self.author1)
-
-    #     # Create a non-friend
-    #     author3 = Author.objects.create_user(
-    #         username="author3",
-    #         password="password",
-    #         displayName="Author Three"
-    #     )
-
-    #     # Create a friends-only post
-    #     friends_post = Post.objects.create(
-    #         title="Friends Only Post",
-    #         content="This is a friends-only post.",
-    #         contentType="text/plain",
-    #         visibility="FRIENDS",
-    #         author=self.author1,
-    #         published=timezone.now(),
-    #     )
-
-    #     # Authenticate as a friend
-    #     self.client.force_authenticate(user=author2)
-    #     response_friend = self.client.get(reverse("post_detail", kwargs={
-    #         "author_serial": str(self.author1.uuid),
-    #         "post_serial": str(friends_post.id),
-    #     }))
-    #     self.assertEqual(response_friend.status_code, 200, "Friend should be able to access friends-only post.")
-
-    #     # Authenticate as a non-friend
-    #     self.client.force_authenticate(user=author3)
-    #     response_non_friend = self.client.get(reverse("post_detail", kwargs={
-    #         "author_serial": str(self.author1.uuid),
-    #         "post_serial": str(friends_post.id),
-    #     }))
-    #     self.assertEqual(response_non_friend.status_code, 403, "Non-friend should not access friends-only post.")
-
-    #     # Log responses for debugging if necessary
-    #     print("Response status code (friend):", response_friend.status_code)
-    #     print("Response status code (non-friend):", response_non_friend.status_code)
 
     def test_can_get_link_to_public_or_unlisted_post(self):
         """Test user story: As a reader, I can get a link to a public or unlisted post so I can send it to my friends."""

@@ -171,12 +171,10 @@ def create_post(request, author_serial):
 
     serializer = PostSerializer(data=data)
 
-    # print("YES CR4EATING POSTS")
 
     if serializer.is_valid():
         post = serializer.save()
         response_serializer = PostSerializer(post)
-        # print("POSTS CREATED SUCCESFULLY")
 
         return Response(response_serializer.data, status=status.HTTP_201_CREATED)
     else:
@@ -1134,7 +1132,6 @@ def send_follow_request(request, author_uuid):
 
     my_host = request.build_absolute_uri('/').rstrip('/')
     target_host = target_author.host.rstrip('/')
-    print("yes>>>>>>>>>>>>>>>>>>>>" , my_host , target_host)
 
     # Check if already following
     if current_author in target_author.followers.all():
@@ -1273,17 +1270,11 @@ def accept_follow_request(request, author_uuid):
             status=status.HTTP_400_BAD_REQUEST,
         )
     post_data = construct_posts_data(current_author)
-    print(post_data , requesting_author.host , current_author.host)
     if requesting_author.host != current_author.host:
-
-
-        print("ACCEPTED NOW SENDING DATA" , post_data)
-        # post_data = construct_posts_data(current_author)
 
         # Send the constructed object to the remote node
         send_data_to_remote_node(requesting_author.host, post_data , requesting_author.uuid)
 
-        print("DATA SENT TO REMOTE NODE: ============================== ")
 
 
     # Accept the request
@@ -1321,7 +1312,6 @@ def send_data_to_remote_node(url, data , uuid):
         raise ValueError("No matching remote node found for the provided URL.")
 
     # The endpoint is 'inbox/'
-    print("This is the data i got:(Viraj) " , data)
     endpoint = f'api/authors/{uuid}/inbox/'
 
     # Send the POST request via make_node_request
@@ -1635,8 +1625,6 @@ def get_all_authors(request):
     except Exception as e:
         import traceback
 
-        print(f"Error in get_all_authors: {str(e)}")
-        print(f"Traceback: {traceback.format_exc()}")
         return Response(
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
@@ -1895,11 +1883,9 @@ def signup(request):
             user.is_approved = False  # Require admin approval
 
         user.save()
-        print("user saved")
 
         # Notify the user about their approval status
         if user.is_approved:
-            print("user approved")
             refresh = RefreshToken.for_user(user)
             return Response(
                 {
@@ -2007,10 +1993,8 @@ def signup(request):
 def login(request):
     username = request.data.get("username")
     password = request.data.get("password")
-    print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" , username , password)
     user = authenticate(username=username, password=password)
 
-    print("This is the user:" , user , username , password)
 
     if user:
         if not user.is_approved:
@@ -3716,16 +3700,13 @@ def inbox_handler(request, author_serial):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     elif request.method == 'POST':
-        print("AAAAAAAAAAAAA" , request.headers , author_serial)
         data = request.data
         item_type = data.get('type', '').lower()
 
         try:
             if item_type == "posts":
 
-                print("WE ARE INSIDE INBOX POSTS")
                 # Handle multiple posts
-                print("Handling multiple posts.")
                 posts_data = data.get('src', [])
                 for post_data in posts_data:
                     # Process each post individually
@@ -3964,7 +3945,6 @@ def inbox_handler(request, author_serial):
                 return Response({'message': 'Posts added to inbox and created locally.'}, status=status.HTTP_201_CREATED)
 
             if item_type == 'post':
-                print("WE ARE INSIDE SINGLE POST HANDLER")
                 # Handle a single post
                 author_data = data.get('author', {})
                 author_id = author_data.get('id')
@@ -4151,7 +4131,6 @@ def inbox_handler(request, author_serial):
                     return Response({'message': 'Like added to inbox successfully.'}, status=status.HTTP_201_CREATED)
 
                 except Exception as e:
-                    print(f"Error processing like: {e}")
                     return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
                   
             elif item_type == 'comment':
@@ -4215,7 +4194,6 @@ def inbox_handler(request, author_serial):
 
             elif item_type == 'follow':
                 # Handle Follow Activity
-                print("Handling follow request.")
                     # Extract actor and object data
                 actor_data = data.get('actor', {})
                 object_data = data.get('object', {})
@@ -4261,11 +4239,9 @@ def inbox_handler(request, author_serial):
 
             else:
                 # Unsupported activity type
-                print(f"Unsupported activity type: {item_type}")
                 return Response({'error': f"Unsupported activity type: {item_type}"}, status=status.HTTP_400_BAD_REQUEST)
 
         except Exception as e:
-            print(f"Error in inbox_handler: {e}")
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     elif request.method == 'DELETE':
@@ -4274,7 +4250,6 @@ def inbox_handler(request, author_serial):
         inbox.likes.clear()
         inbox.comments.clear()
         inbox.follow_requests.clear()
-        print(f"Inbox for author {author_serial} has been cleared.")
         return Response({'message': 'Inbox cleared.'}, status=status.HTTP_204_NO_CONTENT)
     
 def create_local_post(request, post):
@@ -4304,7 +4279,6 @@ def create_local_post(request, post):
 @authentication_classes([])
 def sync_remote_authors(request):
 
-    print("INCOMING REQUEST BODY:" ,)
     try:
         # Get all active remote nodes
         remote_nodes = ToWhichItsConnected.objects.filter(active=True)
@@ -4347,7 +4321,6 @@ def sync_remote_authors(request):
                                 continue  # Skip if author ID is missing
 
                             if Author.objects.filter(id=author_id).exists():
-                                print("Skipping author", author_id)
                                 continue  # Author already exists, skip to next
 
 
@@ -4373,7 +4346,6 @@ def sync_remote_authors(request):
                             node_result['authors_synced'] += 1
 
                         except Exception as e:
-                            print("THIS IS THE AUTHOR DATA", author_data)
                             error_message = f"Error processing author {author_data.get('id')}: {e}"
                             node_result['errors'].append(error_message)
                             continue  # Skip to the next author
@@ -4559,7 +4531,6 @@ def send_follow_request_to_remote_authors(request, author_serial):
     """
     try:
         # Extract the follow activity from the request data
-        print("Incoming request data: ", request.data)
         follow_activity = request.data
 
         # Validate required fields in the follow activity
@@ -4596,7 +4567,6 @@ def send_follow_request_to_remote_authors(request, author_serial):
                 "message": f"No active remote node found for host {target_host}"
             }, status=status.HTTP_404_NOT_FOUND)
 
-        print("Preparing follow activity for node:", node.url)
 
         # Make a deep copy of the follow activity to avoid mutating the original data
         follow_activity_copy = copy.deepcopy(follow_activity)
@@ -4618,7 +4588,6 @@ def send_follow_request_to_remote_authors(request, author_serial):
             data=follow_activity_copy
         )
 
-        print("Response from node:", response.status_code, response.text)
 
         if response.status_code in [200, 201]:
             return Response({
@@ -4627,14 +4596,12 @@ def send_follow_request_to_remote_authors(request, author_serial):
             }, status=status.HTTP_200_OK)
         else:
             error_message = f"Failed to send follow request to {node.url}: Status {response.status_code}, Response: {response.text}"
-            print(error_message)
             return Response({
                 "status": "error",
                 "message": error_message
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     except Exception as e:
-        print("Exception occurred: ", str(e))
         return Response({
             "status": "error",
             "message": str(e),

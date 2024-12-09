@@ -110,7 +110,6 @@ class Post(models.Model):
             # Generate a unique post ID based on the author's host and a new UUID
             post_uuid = uuid.uuid4()
             self.id = f"{self.author.host}/authors/{self.author.id.split('/')[-1]}/posts/{post_uuid}"
-            print("This is self.id", self.id)
         if not self.page:
             # Set the page URL to the post's ID or modify as needed
             self.page = self.id

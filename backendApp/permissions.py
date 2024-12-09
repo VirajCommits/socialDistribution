@@ -18,13 +18,10 @@ class AllowAuthenticatedOrAllowAny(BasePermission):
 class IsNode(permissions.BasePermission):
     def has_permission(self, request, view):
         # Log the request user for debugging
-        print("request user:", request.user)
         
         # Check if the user is a RemoteNode
         if isinstance(request.user, RemoteNode):
-            print("Authenticated as RemoteNode")
             return True
         
         # If neither, deny access
-        print("Access denied")
         return False
