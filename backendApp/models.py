@@ -11,7 +11,7 @@ class Author(AbstractUser):
     type = models.CharField(max_length=6, default="author", editable=False)
     uuid = models.UUIDField(unique=True, editable=False, default=uuid.uuid4)
     id = models.URLField(primary_key=True, max_length=500)
-    host = models.URLField(default="https://teal-darrenkrz-c0d7276a7808.herokuapp.com/")
+    host = models.URLField(default="https://project-teal-1-2b076456090f.herokuapp.com/")
     displayName = models.CharField(max_length=255)
     github = models.URLField(blank=True)
     is_approved = models.BooleanField(default=False)
@@ -26,9 +26,9 @@ class Author(AbstractUser):
 
     def save(self, *args, **kwargs):
         if not self.id:
-            self.id = f"{self.host}authors/{self.uuid}"
+            self.id = f"{self.host}/authors/{self.uuid}"
         if not self.page:
-            self.page = f"{self.host.replace('project/', '')}authors/{self.username}"
+            self.page = f"{self.host.replace('project/', '')}/authors/{self.username}"
         if not self.displayName:
             self.displayName = self.username
         super().save(*args, **kwargs)
@@ -40,10 +40,8 @@ class Author(AbstractUser):
 
     def is_friend_with(self, other_author):
         """Check if this author and other_author are mutual followers (friends)"""
-        return (
-            self.followers.filter(id=other_author.id).exists()
-            and other_author.followers.filter(id=self.id).exists()
-        )
+        return (self.followers.filter(id=other_author.id).exists() and
+                other_author.followers.filter(id=self.id).exists())
 
     @property
     def github_username(self):
@@ -205,32 +203,6 @@ class GitHubPost(models.Model):
 
     def __str__(self):
         return f"{self.author.displayName}'s GitHub {self.activity_type}"
-
-
-# class RemoteNode(models.Model):
-#     url = models.URLField(unique=True)
-#     username = models.CharField(max_length=255)
-#     _password = models.TextField()  # Store encrypted password
-#     connected = models.BooleanField(default=False)
-
-#     def set_password(self, raw_password):
-#         """Encrypt and save the password."""
-#         cipher = Fernet(settings.FERNET_KEY)
-#         self._password = cipher.encrypt(raw_password.encode()).decode()
-
-#     def get_password(self):
-#         """Decrypt and retrieve the password."""
-#         cipher = Fernet(settings.FERNET_KEY)
-#         return cipher.decrypt(self._password.encode()).decode()
-
-#     def save(self, *args, **kwargs):
-#         """Automatically encrypt the password if it's not encrypted before saving."""
-#         if self._password and not self._password.startswith("gAAAA"):
-#             self.set_password(self._password)
-#         super().save(*args, **kwargs)
-
-#     def __str__(self):
-#         return f"Remote Node at {self.url} (Connected: {self.connected})"
 
 class Inbox(models.Model):
     author = models.OneToOneField(
