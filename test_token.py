@@ -17,6 +17,4 @@ test_user = Author.objects.create_user(username="testuser", password="password12
 # Generate a fresh token
 token = AccessToken.for_user(test_user)  # Keep it as an AccessToken object
 
-# Print the token and its payload for debugging
-# print(f"Generated Token: {str(token)}")
-# print(f"Token Payload: {token.payload}")
+

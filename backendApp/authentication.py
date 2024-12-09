@@ -9,9 +9,7 @@ class NodeBasicAuthentication(authentication.BaseAuthentication):
     """
     def authenticate(self, request):
         # Get credentials from header
-        print("REQUEST IN NODE BASIC AUTHENTICATIONjknefknlknvelke: " , request)
         auth_header = request.META.get('HTTP_AUTHORIZATION', '')
-        print("AUTH HEADER IN NODE BASIC AUTHENTICATION: " , auth_header)
         
         # Fail if no authorization header or not Basic auth
         if not auth_header or not auth_header.startswith('Basic '):
