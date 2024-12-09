@@ -220,10 +220,10 @@ export default {
           `${wsProtocol}//${wsBaseUrl}/ws/notifications/${uuid}/`
         );
 
-        console.log("Connecting to WebSocket:", this.socket.url); // Debug log
+        //console.log("Connecting to WebSocket:", this.socket.url); // Debug log
 
         this.socket.onopen = () => {
-          console.log("WebSocket connected successfully");
+          //console.log("WebSocket connected successfully");
           this.socket.send(
             JSON.stringify({
               type: "authenticate",
@@ -243,7 +243,7 @@ export default {
         };
 
         this.socket.onclose = (event) => {
-          console.log("WebSocket connection closed:", event.code, event.reason);
+          //console.log("WebSocket connection closed:", event.code, event.reason);
           setTimeout(() => {
             if (this.$el && document.body.contains(this.$el)) {
               this.initializeWebSocket();

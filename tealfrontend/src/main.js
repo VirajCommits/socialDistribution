@@ -18,8 +18,8 @@ axios.defaults.headers.common["X-CSRFToken"] = Cookies.get("csrftoken");
 axios.defaults.withCredentials = true;
 axios.defaults.baseURL = baseURL;
 
-console.log('Environment:', process.env.NODE_ENV === 'production' ? 'Production' : 'Development');
-console.log('Using API URL:', baseURL);
+// console.log('Environment:', process.env.NODE_ENV === 'production' ? 'Production' : 'Development');
+// console.log('Using API URL:', baseURL);
 
 // Create the Vue app
 const app = createApp(App);
@@ -28,7 +28,7 @@ axios.interceptors.request.use(
   config => {
     const token = localStorage.getItem('token'); // Get the token from localStorage
     if (token) {
-      console.log("inside config headers: =================== " , config.headers["Authorization"])
+      // console.log("inside config headers: =================== " , config.headers["Authorization"])
       if(!config.headers["Authorization"]){
         config.headers['Authorization'] = `Bearer ${token}`
       }
@@ -36,7 +36,7 @@ axios.interceptors.request.use(
         config.headers['Authorization'] = `Bearer ${token}`; // Set the Authorization header
         
       }
-      console.log("inside config headers: =================== " , config.headers["Authorization"])
+      // console.log("inside config headers: =================== " , config.headers["Authorization"])
       if(!config.headers["Authorization"]){
         config.headers['Authorization'] = `Bearer ${token}`
       }

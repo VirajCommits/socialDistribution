@@ -248,14 +248,14 @@ export default {
           },
         });
 
-        console.log('Response:', response.data);
+        //console.log('Response:', response.data);
         this.stats.following = response.data.following?.length || 0;
         this.stats.followers = response.data.followers?.length || 0;
         this.stats.friends = response.data.friends?.length || 0;
       } catch (error) {
         console.error("Error fetching stats:", error);
         if (error.response) {
-          console.log('Error status:', error.response.status);
+          //console.log('Error status:', error.response.status);
         }
       }
     },

@@ -185,7 +185,7 @@ export default {
           },
         });
 
-        console.log(response.data); // This will help you understand the response format
+        //console.log(response.data); // This will help you understand the response format
 
         // Handling different formats of response
         if (Array.isArray(response.data)) {
@@ -238,11 +238,11 @@ export default {
       }
     },
     async sendFollowRequest(authorId) {
-  console.log("This is the authorID: ", authorId);
+  //console.log("This is the authorID: ", authorId);
   try {
     const targetUuid = authorId.split("/").pop();
     let targethost = authorId.split('/authors/')[0];
-    console.log("This is the host: ", targethost);
+    //console.log("This is the host: ", targethost);
     if (targethost.includes("/api")) { targethost = targethost.split("/api")[0]; }
       
     // Fetch the list of connected nodes
@@ -250,13 +250,13 @@ export default {
       headers: { Authorization: `Token ${this.token}` },
     });
     const connectedNodes = response.data;
-    console.log(connectedNodes);
+    //console.log(connectedNodes);
 
     const targetNode = connectedNodes.find(node => node.url === targethost);
-    console.log("This is the target node: ", targetNode);
+    //console.log("This is the target node: ", targetNode);
 
     const user = JSON.parse(localStorage.getItem("user"));
-    console.log("This is the user: ", user);
+    //console.log("This is the user: ", user);
 
     // Get the target author's full data from the authors array
     const targetAuthor = this.authors.find(author => author.id === authorId);
@@ -279,7 +279,7 @@ export default {
     if (targetNode) {
       // Define the endpoint on your server
       const endpoint = `/authors/${targetUuid}/sendRemoteRequest/`;
-      console.log("Sending request to this endpoint:" , endpoint)
+      //console.log("Sending request to this endpoint:" , endpoint)
       // const csrfToken = Cookies.get("csrftoken"); // Get CSRF token from cookies
 
       // Send the follow request to your server's sendRemoteRequest endpoint
@@ -303,8 +303,8 @@ export default {
       );
       this.relationships[authorId] = { is_following: true };
     } else {
-      console.log(`This is the author sending the request: ${user.displayName}`)
-      console.log(`This is a local author: ${targetAuthor.displayName}`);
+      //console.log(`This is the author sending the request: ${user.displayName}`)
+      //console.log(`This is a local author: ${targetAuthor.displayName}`);
       // For local authors, use your own endpoint
       // const csrfToken = Cookies.get("csrftoken"); // Get CSRF token from cookies
       await axios.post(
@@ -406,7 +406,7 @@ export default {
     setupWebSocket() {
       const uuid = localStorage.getItem("uuid");
       if (!uuid) {
-        console.log("No UUID found, skipping WebSocket setup");
+        //console.log("No UUID found, skipping WebSocket setup");
         return;
       }
 
@@ -421,19 +421,19 @@ export default {
       
       const wsUrl = `${wsProtocol}://${wsHost}/ws/notifications/${uuid}/`;
 
-      console.log("Setting up WebSocket connection to:", wsUrl);
+      //console.log("Setting up WebSocket connection to:", wsUrl);
 
       const ws = new WebSocket(wsUrl);
 
       // WebSocket event handlers
       ws.onopen = () => {
-        console.log("WebSocket connected successfully");
+        //console.log("WebSocket connected successfully");
       };
 
       ws.onmessage = async (event) => {
         try {
           const data = JSON.parse(event.data);
-          console.log("Received WebSocket message:", data);
+          //console.log("Received WebSocket message:", data);
 
           if (data.type === "follow_request_notification") {
             await this.fetchAuthors();
@@ -454,8 +454,8 @@ export default {
       };
 
       ws.onclose = () => {
-        console.log(
-          "WebSocket connection closed, attempting to reconnect..."
+        //console.log(
+        //  "WebSocket connection closed, attempting to reconnect..."
         );
         setTimeout(() => this.setupWebSocket(), 1000);
       };
@@ -488,13 +488,14 @@ export default {
         if (targetNode) {
           // For remote nodes, send to their inbox
           const inboxEndpoint = `${targethost}/api/authors/${targetUuid}/inbox`;
-          console.log('Sending unfollow request to remote inbox:', {
-            endpoint: inboxEndpoint,
-            credentials: {
-              username: targetNode.username,
-              password: '********' // masked for security
-            }
-          });
+        //   console.log('Sending unfollow request to remote inbox:', {
+        //     endpoint: inboxEndpoint,
+        //     credentials: {
+        //       username: targetNode.username,
+        //       password: '********' // masked for security
+        //     }
+        //   }
+        // );
 
           // Prepare the unfollow activity object
           const unfollowActivity = {

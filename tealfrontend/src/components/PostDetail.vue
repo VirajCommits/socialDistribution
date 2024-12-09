@@ -85,7 +85,7 @@ export default {
     // Method to fetch the post details
     async fetchPost() {
       try {
-        console.log("fetching post");
+        //console.log("fetching post");
         const apiUrl = `/posts/${this.postId}/`;
         const response = await axios.get(apiUrl);
         this.post = response.data;
