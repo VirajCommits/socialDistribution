@@ -4147,13 +4147,11 @@ def inbox_handler(request, author_serial):
             elif item_type == 'like':
                 try:
                     # Extract data
-                    like_data = request.data
+                    like_data = request.data                    
                     author_data = like_data.get('author', {})
-                    target_data = like_data.get('object', {})
                     like_id = like_data.get('id', str(uuid.uuid4()))  # Generate a UUID if not provided
-
-                    # Parse and validate the target
-                    target_id = target_data.get('id', '').rstrip('/')
+                    target_id = like_data.get('object')
+                    
                     if '/posts/' in target_id:
                         # Like is for a Post
                         post_uuid = target_id.split('/')[-1]
@@ -4164,7 +4162,6 @@ def inbox_handler(request, author_serial):
                         target = get_object_or_404(Comment, id=comment_uuid)
                     else:
                         return Response({'error': 'Invalid target for like.'}, status=status.HTTP_400_BAD_REQUEST)
-
                     # Get or create the author
                     author_id = author_data.get('id', '').rstrip('/')
                     author_uuid = author_id.split('/')[-1]
@@ -4178,7 +4175,8 @@ def inbox_handler(request, author_serial):
                             'profileImage': author_data.get('profileImage', ''),
                         }
                     )
-
+                    # like_id = like_id.rstrip('/')
+                    like_id = like_id.split('/')[-1]
                     # Create or update the Like
                     like, created = Like.objects.get_or_create(
                         id=like_id,
@@ -4189,12 +4187,10 @@ def inbox_handler(request, author_serial):
                             'published': like_data.get('published', timezone.now())
                         }
                     )
-
                     # Optionally update existing like's timestamp
                     if not created:
                         like.published = like_data.get('published', like.published)
                         like.save()
-
                     # Add the like to the inbox
                     inbox.likes.add(like)
 
@@ -4203,7 +4199,6 @@ def inbox_handler(request, author_serial):
                 except Exception as e:
                     print(f"Error processing like: {e}")
                     return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
             elif item_type == 'comment':
                 data = request.data
 

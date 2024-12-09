@@ -135,22 +135,6 @@ export default {
       try {
         console.log("Liking a post...");
 
-        const likePayload = {
-          type: "like",
-          id: crypto.randomUUID(),
-          author: {
-            type: "author",
-            id: this.user.id,
-            host: this.user.host,
-            displayName: this.user.displayName,
-            page: this.user.page,
-            github: this.user.github,
-            profileImage: this.user.profileImage,
-          },
-          object: `/posts/${this.postId}/`,
-          published: new Date().toISOString(),
-        };
-
         const targetItemUrl = `posts/${this.postId}/`;
         console.log("Target item URL for post:", targetItemUrl);
 
@@ -162,6 +146,26 @@ export default {
         console.log("Target post response:", targetResponse.data);
 
         const targetAuthor = targetResponse.data.author;
+
+        console.log("TARGETAUTHOR:", targetAuthor);
+
+        const likePayload = {
+          type: "like",
+          author: {
+            type: "author",
+            id: this.user.id,
+            host: this.user.host,
+            displayName: this.user.displayName,
+            page: this.user.page,
+            github: this.user.github,
+            profileImage: this.user.profileImage,
+          },
+          id: `${this.user.id}/liked/${crypto.randomUUID()}`,
+          object: `${targetAuthor.id}/posts/${this.postId}`,
+          published: new Date().toISOString(),
+        };
+        console.log("printingPAYLOAD", likePayload);
+
         if (targetAuthor.host === this.user.host) {
           // Same-node handling
           console.log("Same-node request for post. Handling like locally.");
@@ -193,33 +197,37 @@ export default {
       try {
         console.log("Liking a comment...");
 
-        const likePayload = {
-          type: "like",
-          id: crypto.randomUUID(),
-          author: {
-            type: "author",
-            id: this.user.id,
-            host: this.user.host,
-            displayName: this.user.displayName,
-            page: this.user.page,
-            github: this.user.github,
-            profileImage: this.user.profileImage,
-          },
-          object: `/comments/${this.commentId}/`,
-          published: new Date().toISOString(),
-        };
-
         const targetItemUrl = `comments/${this.commentId}/`;
         console.log("Target item URL for comment:", targetItemUrl);
 
         const targetResponse = await axios.get(targetItemUrl, {
-          headers: {
-            Authorization: `Token ${jwtToken}`,
-          },
-        });
-        console.log("Target comment response:", targetResponse.data);
+        headers: {
+          Authorization: `Token ${jwtToken}`,
+        },
+      });
+      console.log("Target comment response:", targetResponse.data);
 
-        const targetAuthor = targetResponse.data.author;
+      const targetAuthor = targetResponse.data.author;
+      
+      console.log("TARGETAUTHOR:", targetAuthor);
+
+      // Construct the "like" payload
+      const likePayload = {
+        type: "like",
+        author: {
+          type: "author",
+          id: this.user.id, 
+          page: this.user.page, 
+          host: this.user.host, 
+          displayName: this.user.displayName, 
+          github: this.user.github,
+          profileImage: this.user.profileImage,
+        },
+        published: new Date().toISOString(), // ISO 8601 timestamp
+        id: `${this.user.id}/liked/${crypto.randomUUID()}`, // Unique "like" ID
+        object: `${targetAuthor.host}/comments/${this.commentId}`, // Reference the post or comment
+      };
+
         if (targetAuthor.host === this.user.host) {
           // Same-node handling
           console.log("Same-node request for comment. Handling like locally.");
@@ -238,7 +246,9 @@ export default {
           this.commentLikeCount += 1;
         } else {
           // Handle remote-node requests
-          console.log("Remote-node request for comment. Sending to inbox.");
+          this.liked = true;
+          this.postLikeCount += 1;
+          // console.log("Remote-node request for comment. Sending to inbox.");
           await this.sendToInbox(targetAuthor, likePayload, jwtToken);
         }
       } catch (error) {
@@ -249,7 +259,11 @@ export default {
 
     async sendToInbox(targetAuthor, likePayload, jwtToken) {
       try {
-        const inboxUrl = `${targetAuthor.host}api/authors/${targetAuthor.id.split("/").pop()}/inbox`;
+        let targetauthorHost = targetAuthor.host;
+        if (targetAuthor.host.includes("api/")) {
+            targetauthorHost = targetAuthor.host.split("api/")[0];
+        }
+        const inboxUrl = `${targetauthorHost}api/authors/${targetAuthor.id.split("/").pop()}/inbox`;
         console.log("Inbox URL:", inboxUrl);
 
         const response = await axios.get("/connected-nodes/", {
@@ -257,20 +271,20 @@ export default {
             Authorization: `Token ${jwtToken}`,
           },
         });
-        console.log("Target author host:", targetAuthor.host);
         const connectedNodes = response.data;
         console.log("Connected nodes:", connectedNodes);
-        const targetauthorHost = targetAuthor.host.split('/api/')[0];
-        console.log("Target author host:", targetauthorHost);
-        const targetNode = connectedNodes.find((node) => node.url === targetauthorHost);
+        const targetAuthorHostToFind = targetauthorHost.replace(/\/$/, "");
+        console.log("Target author host:", targetAuthorHostToFind);
+        const targetNode = connectedNodes.find((node) => node.url === targetAuthorHostToFind);
         console.log("Target node:", targetNode);
         if (!targetNode) {
-          console.error(`No connected node matches the target host: ${targetAuthor.host}`);
+          console.error(`No connected node matches the target host: ${targetAuthorHostToFind}`);
           this.errorMessage = "Unable to find a connected node for the target host.";
           return;
         }
 
         const credentials = btoa(`${targetNode.username}:${targetNode.password}`);
+        console.log("payload:", likePayload);
         await axios.post(inboxUrl, likePayload, {
           headers: {
             "Content-Type": "application/json",
