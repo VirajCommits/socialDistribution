@@ -340,7 +340,7 @@ export default {
         const response = await axios.get('/connected-nodes/', {
           headers: { Authorization: `Token ${this.token}` },
         });
-        const connectedNodes = response;
+        // const connectedNodes = response;
         const connected_nodes = response.data;
         // console.log("CONNECTED NODES IN COMMENT SECTION:" , connectedNodes)
         // console.log("CONNECTED NODES DATA IN COMMENT SECTION:" , connected_nodes)

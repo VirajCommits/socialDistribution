@@ -201,7 +201,7 @@ export default {
           },
         });
         const authors = authorsResponse.data;
-        // console.log("AUTHORS IN CREATE POST:" , authors , this.user.id)
+        console.log("AUTHORS IN CREATE POST:" , authors , this.user.id)
         const currentAuthorId = this.user.id.split("/").pop();
         // console.log("Current auth id:" , currentAuthorId)
 
@@ -291,7 +291,7 @@ export default {
         const response = await axios.get('/connected-nodes/', {
           headers: { Authorization: `Token ${this.token}` },
         });
-        const connectedNodes = response;
+        // const connectedNodes = response;
         const connected_nodes = response.data;
         //console.log("CONNECTED NODES:" , connectedNodes)
         //console.log("CONNECTED NODES DATA:" , connected_nodes)

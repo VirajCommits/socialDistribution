@@ -146,7 +146,7 @@ export default {
     },
     showNotification(message, type = "success") {
       // Placeholder for notification system (console for now)
-      //console.log(type.toUpperCase() + ": " + message);
+      console.log(type.toUpperCase() + ": " + message);
     },
     isImageContent(content) {
       if (!content) return false;
