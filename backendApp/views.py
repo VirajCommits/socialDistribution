@@ -47,8 +47,6 @@ from datetime import datetime
 
 from rest_framework.test import APIRequestFactory
 from django.urls import reverse
-from rest_framework_simplejwt.authentication import JWTAuthentication
-
 
 
 def defaultPath(request):
@@ -511,10 +509,10 @@ def like_comment(request, comment_id):
 
     # Check if the user has already liked the comment
     if Like.objects.filter(comment=comment, author=author).exists():
-        return Response(
-            {"detail": "You have already liked this comment."},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
+        existing_like = Like.objects.filter(comment=comment, author=author).first()
+        existing_like.delete()
+        return Response({"detail": "Comment unliked successfully."}, status=status.HTTP_200_OK)
+        
 
     data = {
         "author_id": str(author.id),
@@ -707,10 +705,9 @@ def like_post(request, post_id):
     # Check if the user has already liked the post
     existing_like = Like.objects.filter(post=post, author=author).first()
     if existing_like:
-        return Response(
-            {"detail": "You have already liked this post."},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
+        existing_like = Like.objects.filter(post=post, author=author).first()
+        existing_like.delete()
+        return Response({"detail": "Post unliked successfully."}, status=status.HTTP_200_OK)
 
     data = {
         "author_id": str(author.id),
@@ -724,6 +721,26 @@ def like_post(request, post_id):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
     else:
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+class CommentDetailView(APIView):
+    def get(self, request, comment_id):
+        try:
+            comment = Comment.objects.get(id=comment_id)
+            data = {
+                "id": str(comment.id),
+                "author": {
+                    "id": comment.author.id,
+                    "displayName": comment.author.username,
+                    "host": comment.author.host,
+                },
+                "content": comment.content,
+                "published": comment.published,
+            }
+            return Response(data, status=status.HTTP_200_OK)
+        except Comment.DoesNotExist:
+            return Response(
+                {"detail": "Comment not found"}, status=status.HTTP_404_NOT_FOUND
+            )
 
 class CommentDetailView(APIView):
     def get(self, request, comment_id):
@@ -1637,7 +1654,7 @@ def get_all_authors(request):
 
     **How to use:**
     - Send a `GET` request with the `author_id` as a URL parameter, which represents the UUID of the author.
-    - The response will return a paginated list of posts with details like the post title, content, visibility, and repost count.
+    - The response will return a paginated list of posts with details like the post title, content, and visibility.
     - The stream includes posts from mutual friends, followed authors, followers, and public posts. Posts are filtered based on visibility and relationship.
     - Pagination is used to limit the number of posts per page. You can navigate through pages using the `next` and `previous` fields in the response.
 
@@ -1721,10 +1738,6 @@ def get_all_authors(request):
                                     type=openapi.TYPE_STRING,
                                     format=openapi.FORMAT_DATETIME,
                                     description="Post publication timestamp",
-                                ),
-                                "repost_count": openapi.Schema(
-                                    type=openapi.TYPE_INTEGER,
-                                    description="Count of reposts",
                                 ),
                             },
                         ),
@@ -2501,138 +2514,7 @@ def get_author_stats(request, author_uuid):
             {'error': str(e)}, 
             status=status.HTTP_400_BAD_REQUEST
         )
-
-
-@swagger_auto_schema(
-    method="post",
-    operation_summary="Repost a Post",
-    operation_description="""
-    Allows a user to create a repost of an existing post. The original post must be public for reposting. 
-    This action will create a new post that references the original post, incrementing its repost count.
-    
-    **When to use:**
-    - Use this endpoint when you want to repost a public post to your profile. 
-    - This is helpful for users who want to share content from others with their followers.
-    
-    **How to use:**
-    - Send a `POST` request to this endpoint with the `post_id` of the original post that you wish to repost.
-    - The `post_id` should be provided as a path parameter and corresponds to the ID of the post you wish to repost.
-    - The request will check if the post is public and whether the current user has already reposted it. If either condition is not met, an appropriate error will be returned.
-    - If the repost is successful, a new post will be created on your profile referencing the original post, and the repost count of the original post will be updated.
-    
-    **Why use or not use:**
-    - Use this endpoint to share public posts from others and increase visibility for that post.
-    - Do not use this endpoint for reposting private posts, as only public posts can be reposted. 
-    - Avoid reposting a post you have already reposted, as it will trigger an error.
-    """,
-    manual_parameters=[
-        openapi.Parameter(
-            "post_id",
-            openapi.IN_PATH,
-            description="ID of the post to repost",
-            type=openapi.TYPE_INTEGER,
-            required=True,
-        )
-    ],
-    responses={
-        200: openapi.Response(
-            description="Post reposted successfully.",
-            schema=openapi.Schema(
-                type=openapi.TYPE_OBJECT,
-                properties={
-                    "message": openapi.Schema(
-                        type=openapi.TYPE_STRING, description="Success message"
-                    ),
-                    "repost_count": openapi.Schema(
-                        type=openapi.TYPE_INTEGER,
-                        description="Updated repost count of the original post",
-                    ),
-                },
-            ),
-        ),
-        400: openapi.Response(
-            description="You have already reposted this post.",
-            schema=openapi.Schema(
-                type=openapi.TYPE_OBJECT,
-                properties={
-                    "error": openapi.Schema(
-                        type=openapi.TYPE_STRING, description="Error message"
-                    )
-                },
-            ),
-        ),
-        403: openapi.Response(
-            description="Post is not public.",
-            schema=openapi.Schema(
-                type=openapi.TYPE_OBJECT,
-                properties={
-                    "error": openapi.Schema(
-                        type=openapi.TYPE_STRING, description="Error message"
-                    )
-                },
-            ),
-        ),
-        404: openapi.Response(
-            description="Post not found.",
-            schema=openapi.Schema(
-                type=openapi.TYPE_OBJECT,
-                properties={
-                    "error": openapi.Schema(
-                        type=openapi.TYPE_STRING, description="Error message"
-                    )
-                },
-            ),
-        ),
-        401: "Unauthorized",
-    },
-    tags=["Posts"],
-)
-@api_view(["POST"])
-@permission_classes([IsAuthenticated])
-def repost_post(request, post_id):
-    reposted_post = get_object_or_404(Post, id=post_id)
-
-    # Determine the original post
-    if reposted_post.is_repost:
-        original_post = get_object_or_404(Post, id=reposted_post.original_post_id)
-    else:
-        original_post = reposted_post
-
-    # Check if the original post is public
-    if original_post.visibility != "PUBLIC":
-        return Response({"error": "Post is not public."}, status=403)
-
-    # Check if the user has already reposted the original post
-    if request.user in original_post.reposted_by.all():
-        return Response({"error": "You have already reposted this post."}, status=400)
-
-    # Create a new post for the repost
-    new_repost = Post(
-        author=request.user,
-        title=f"Reposted: {original_post.author.displayName} {original_post.title}",
-        description=original_post.description,
-        content=original_post.content,
-        contentType=original_post.contentType,
-        visibility="PUBLIC",
-        published=timezone.now(),
-        is_repost=True,
-        original_post_id=original_post.id,  # Reference the original post ID
-    )
-    new_repost.save()
-
-    # Track the repost and increment the count
-    original_post.reposted_by.add(request.user)
-    original_post.repost_count += 1
-    original_post.save()
-
-    return Response(
-        {
-            "message": "Post reposted successfully.",
-            "repost_count": original_post.repost_count,
-        },
-        status=200,
-    )
-
+        
 
 @swagger_auto_schema(
     method="get",
@@ -3730,8 +3612,10 @@ def test_node_connection(request):
         
     except Exception as e:
         return Response({
-            "detail": str(e)
-        }, status=status.HTTP_400_BAD_REQUEST)
+            "status": "error",
+            "message": str(e),
+            "type": str(type(e))
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @swagger_auto_schema(
     method="post",
@@ -4212,13 +4096,11 @@ def inbox_handler(request, author_serial):
             elif item_type == 'like':
                 try:
                     # Extract data
-                    like_data = request.data
+                    like_data = request.data                    
                     author_data = like_data.get('author', {})
-                    target_data = like_data.get('object', {})
                     like_id = like_data.get('id', str(uuid.uuid4()))  # Generate a UUID if not provided
+                    target_id = like_data.get('object')
 
-                    # Parse and validate the target
-                    target_id = target_data.get('id', '').rstrip('/')
                     if '/posts/' in target_id:
                         # Like is for a Post
                         post_uuid = target_id.split('/')[-1]
@@ -4243,6 +4125,8 @@ def inbox_handler(request, author_serial):
                             'profileImage': author_data.get('profileImage', ''),
                         }
                     )
+                    
+                    like_id = like_id.split('/')[-1]
 
                     # Create or update the Like
                     like, created = Like.objects.get_or_create(
@@ -4268,7 +4152,7 @@ def inbox_handler(request, author_serial):
                 except Exception as e:
                     print(f"Error processing like: {e}")
                     return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
+                  
             elif item_type == 'comment':
                 data = request.data
 

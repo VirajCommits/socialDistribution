@@ -62,6 +62,8 @@
 
 <script>
 import axios from "axios";
+import Cookies from 'js-cookie';
+axios.defaults.headers.common["X-CSRFToken"] = Cookies.get("csrftoken");
 
 export default {
   name: "UserLogin",

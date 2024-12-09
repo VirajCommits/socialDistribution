@@ -238,26 +238,22 @@ export default {
       this.$router.push("/addPost");
     },
 
-    showPost() {
-      this.$router.push("/posts/all");
-    },
     async fetchStats() {
       try {
-        // Debug logs
         const url = `/authors/${this.user.uuid}/stats/`;
-        
+
         const response = await axios.get(url, {
           headers: {
             Authorization: `Token ${localStorage.getItem("token")}`,
           },
         });
+
         console.log('Response:', response.data);
         this.stats.following = response.data.following?.length || 0;
         this.stats.followers = response.data.followers?.length || 0;
         this.stats.friends = response.data.friends?.length || 0;
       } catch (error) {
         console.error("Error fetching stats:", error);
-        // More detailed error logging
         if (error.response) {
           console.log('Error status:', error.response.status);
         }
