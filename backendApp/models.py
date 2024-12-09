@@ -11,7 +11,7 @@ class Author(AbstractUser):
     type = models.CharField(max_length=6, default="author", editable=False)
     uuid = models.UUIDField(unique=True, editable=False, default=uuid.uuid4)
     id = models.URLField(primary_key=True, max_length=500)
-    host = models.URLField(default="https://teal-darrenkrz-c0d7276a7808.herokuapp.com/")
+    host = models.URLField(default="https://project-teal-1-2b076456090f.herokuapp.com/")
     displayName = models.CharField(max_length=255)
     github = models.URLField(blank=True)
     is_approved = models.BooleanField(default=False)
@@ -26,9 +26,9 @@ class Author(AbstractUser):
 
     def save(self, *args, **kwargs):
         if not self.id:
-            self.id = f"{self.host}authors/{self.uuid}"
+            self.id = f"{self.host}/authors/{self.uuid}"
         if not self.page:
-            self.page = f"{self.host.replace('project/', '')}authors/{self.username}"
+            self.page = f"{self.host.replace('project/', '')}/authors/{self.username}"
         if not self.displayName:
             self.displayName = self.username
         super().save(*args, **kwargs)
@@ -40,10 +40,8 @@ class Author(AbstractUser):
 
     def is_friend_with(self, other_author):
         """Check if this author and other_author are mutual followers (friends)"""
-        return (
-            self.followers.filter(id=other_author.id).exists()
-            and other_author.followers.filter(id=self.id).exists()
-        )
+        return (self.followers.filter(id=other_author.id).exists() and
+                other_author.followers.filter(id=self.id).exists())
 
     @property
     def github_username(self):
@@ -54,7 +52,6 @@ class Author(AbstractUser):
                 return path_parts[-1]  # The username should be the last part of the URL
         return None
 
-    
     def get_full_data(self):
         """Return the author data in the format required by the API"""
         return {
@@ -103,14 +100,6 @@ class Post(models.Model):
     published = models.DateTimeField()
     visibility = models.CharField(max_length=10, choices=VISIBILITY_CHOICES)
     edited_at = models.DateTimeField(auto_now=True)
-    reposted_by = models.ManyToManyField(
-        Author, related_name="reposted_posts", blank=True
-    )
-    repost_count = models.PositiveIntegerField(default=0)
-    is_repost = models.BooleanField(default=False)
-    original_post = models.ForeignKey(
-        "self", null=True, blank=True, related_name="reposts", on_delete=models.CASCADE
-    )
     # is_github_post = models.BooleanField(default=False)
 
     def __str__(self):
@@ -121,17 +110,12 @@ class Post(models.Model):
             # Generate a unique post ID based on the author's host and a new UUID
             post_uuid = uuid.uuid4()
             self.id = f"{self.author.host}/authors/{self.author.id.split('/')[-1]}/posts/{post_uuid}"
-            print("This is self.id", self.id)
         if not self.page:
             # Set the page URL to the post's ID or modify as needed
             self.page = self.id
         if not self.published:
             self.published = timezone.now()
         super(Post, self).save(*args, **kwargs)
-
-    def repost(self, author):
-        self.reposted_by.add(author)
-        self.save()
 
     def get_post_url(self):
         return f"{self.author.host}api/posts/{self.id}/link/"
@@ -178,7 +162,6 @@ class Like(models.Model):
     published = models.DateTimeField(default=timezone.now)
     def __str__(self):
         return f"Like by {self.author.displayName} on {self.post.title if self.post else self.comment.id}"
-
 
 
 class InboxItem(models.Model):
@@ -250,15 +233,22 @@ class RemoteNode(models.Model):
     username = models.CharField(max_length=255)  # Node's username
     password = models.CharField(max_length=255)  # Node's password (or token)
     active = models.BooleanField(default=True)
+
+    @property
+    def is_authenticated(self):
+        return True  # or implement your logic if needed
     
     def str(self):
         return self.url
-    
+
 class ToWhichItsConnected(models.Model):
     url = models.URLField(unique=True)  # The base URL of the remote node
     username = models.CharField(max_length=255)  # Node's username
     password = models.CharField(max_length=255)  # Node's password (or token)
     active = models.BooleanField(default=True)
 
+    @property
+    def is_authenticated(self):
+            return True  # or implement your logic if needed
     def str(self):
         return self.url

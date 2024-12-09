@@ -5,38 +5,32 @@
       <button class="back-button" @click="goBack">
         <i class="fas fa-arrow-left"></i>
       </button>
-      <h1>{{ user.displayName }}</h1>
+      <div class="header-bg">
+        <div class="profile-image-container">
+          <img
+            :src="user.profileImage || defaultProfileImage"
+            alt="Profile Image"
+            class="profile-image"
+            @error="handleImageError"
+          />
+        </div>
+      </div>
     </div>
 
     <!-- Profile Info Section -->
     <div class="profile-info">
-      <img
-        :src="user.profileImage || defaultProfileImage"
-        :alt="`${user.displayName}'s profile image`"
-        class="profile-image"
-        @error="handleImageError"
-      />
-      <div class="user-info">
-        <p><strong>Username:</strong> {{ user.username }}</p>
-        <p v-if="user.github">
-          <strong>GitHub:</strong>
-          <a :href="user.github" target="_blank">{{ user.github }}</a>
-        </p>
-        <p v-else><strong>GitHub:</strong> Not Connected</p>
-      </div>
-
-      <!-- Stats Section -->
+      <h2 class="display-name">{{ user.displayName }}</h2>
       <div class="stats-container">
         <div class="stat">
-          <h2>{{ stats.followers }}</h2>
-          <p>Followers</p>
-        </div>
-        <div class="stat">
-          <h2>{{ stats.following }}</h2>
+          <h3>{{ stats.following }}</h3>
           <p>Following</p>
         </div>
         <div class="stat">
-          <h2>{{ stats.friends }}</h2>
+          <h3>{{ stats.followers }}</h3>
+          <p>Followers</p>
+        </div>
+        <div class="stat">
+          <h3>{{ stats.friends }}</h3>
           <p>Friends</p>
         </div>
       </div>
@@ -49,28 +43,39 @@
         <i class="fas fa-spinner fa-spin"></i> Loading posts...
       </div>
       <div v-else-if="!publicPosts.length" class="no-posts">
-        <p>No public posts available for this author.</p>
+        No public posts available for this author.
       </div>
       <div v-else class="posts-container">
         <div v-for="post in publicPosts" :key="post.id" class="post-card">
-          <div class="post-header">
-            <h3 v-if="post.title && post.title.trim()">{{ post.title }}</h3>
-            <span v-if="post.visibility === 'PUBLIC'" class="visibility-tag">PUBLIC</span>
-          </div>
-          <p v-if="post.description && post.description.trim()" class="post-description">
-            {{ post.description }}
-          </p>
-          <div v-if="isImageContent(post.content)" class="post-image">
-            <img :src="post.content" alt="Post Content" />
-          </div>
-          <p v-if="post.content && post.content.trim()" class="post-content">
-            {{ post.content }}
-          </p>
-          <div class="post-footer">
-            <span><strong>Author:</strong> {{ user.displayName }}</span>
+          <div class="post-content">
+            <h3 v-if="post.title && post.title.trim()" v-html="post.title"></h3>
+            <p v-if="post.description && post.description.trim()" v-html="post.description"></p>
+
+            <!-- Content Logic -->
+            <div v-if="post.content && post.content.trim()">
+              <!-- Image Content -->
+              <div v-if="isImageContent(post.content)" class="post-image">
+                <img :src="extractImageSrc(post.content)" alt="Post Content" />
+              </div>
+              <!-- Text Content -->
+              <p v-else v-html="post.content"></p>
+            </div>
+
+
+            <!-- Fallback for No Description and Content -->
+            <div v-else>
+              <p class="no-content">No description or content available.</p>
+            </div>
+
+            <p><strong>Author:</strong> {{ user.displayName }}</p>
+            <p><strong>Visibility:</strong> {{ post.visibility }}</p>
+
+            <!-- Like Button -->
             <LikeButton :postId="post.id" />
+
+            <!-- Comments Section -->
+            <CommentSection :postId="post.id" />
           </div>
-          <CommentSection :postId="post.id" />
         </div>
       </div>
     </div>
@@ -84,7 +89,7 @@ import LikeButton from "./LikeButton.vue";
 
 export default {
   name: "PublicProfilePage",
-  props: ["authorId"], // Accept authorId as a prop
+  props: ["authorId"],
   components: {
     CommentSection,
     LikeButton,
@@ -103,30 +108,35 @@ export default {
     };
   },
   async mounted() {
-    await this.fetchPublicProfile(this.authorId);
-    await this.fetchStats(this.authorId);
-    await this.fetchPublicPosts(this.authorId);
+    const authorUuid = this.extractUuid(this.authorId);
+    await this.fetchPublicProfile(authorUuid);
+    await this.fetchStats(authorUuid);
+    await this.fetchPublicPosts(authorUuid);
   },
   methods: {
-    async fetchPublicProfile(authorId) {
+    extractUuid(authorId) {
+      // Extract UUID from authorId (URL)
+      return authorId.split("/").pop();
+    },
+    async fetchPublicProfile(authorUuid) {
       try {
-        const response = await axios.get(`/authors/${authorId}/public/`);
+        const response = await axios.get(`/authors/${authorUuid}/public/`);
         this.user = response.data;
       } catch (error) {
         console.error("Error fetching public profile:", error);
       }
     },
-    async fetchStats(authorId) {
+    async fetchStats(authorUuid) {
       try {
-        const response = await axios.get(`/authors/${authorId}/stats/public/`);
+        const response = await axios.get(`/authors/${authorUuid}/stats/public/`);
         this.stats = response.data;
       } catch (error) {
         console.error("Error fetching stats:", error);
       }
     },
-    async fetchPublicPosts(authorId) {
+    async fetchPublicPosts(authorUuid) {
       try {
-        const response = await axios.get(`/authors/${authorId}/post/public/`);
+        const response = await axios.get(`/authors/${authorUuid}/post/public/`);
         this.publicPosts = response.data;
       } catch (error) {
         console.error("Error fetching public posts:", error);
@@ -134,12 +144,18 @@ export default {
         this.loadingPosts = false;
       }
     },
+    showNotification(message, type = "success") {
+      // Placeholder for notification system (console for now)
+      //console.log(type.toUpperCase() + ": " + message);
+    },
     isImageContent(content) {
       if (!content) return false;
-      const regex = /https?:\/\/.*\.(jpg|jpeg|png|gif)$/i; // Check for valid image URLs
+      const regex = /https?:\/\/.*\.(jpg|jpeg|png|gif)$/i;
       return regex.test(content);
     },
-
+    extractImageSrc(content) {
+      return content; // Modify this method if you need to parse the content
+    },
     handleImageError(e) {
       e.target.src = this.defaultProfileImage;
     },
@@ -148,130 +164,122 @@ export default {
     },
   },
 };
+
 </script>
 
 <style scoped>
 /* General Styling */
-.public-profile-container {
-  padding: 20px;
-  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+.back-button {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  z-index: 10;
+  background-color: white;
+  border: none;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+}
+
+.back-button i {
+  font-size: 16px;
+  color: #3498db;
 }
 
 .public-profile-header {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  margin-bottom: 20px;
+  background: linear-gradient(90deg, #4facfe, #00f2fe);
+  padding: 40px 0;
+  text-align: center;
+  position: relative;
+}
+
+.profile-image-container {
+}
+
+.profile-image {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  border: 3px solid white;
 }
 
 .profile-info {
   text-align: center;
-  margin-bottom: 2rem;
+  margin-top: 20px;
 }
 
-.profile-image {
-  width: 150px;
-  height: 150px;
-  border-radius: 50%;
-  margin-bottom: 1rem;
-  border: 3px solid #ccc;
+.display-name {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #333;
 }
 
-.user-info p {
-  margin: 0.5rem 0;
-  font-size: 1rem;
-}
-
-/* Stats Section */
 .stats-container {
   display: flex;
   justify-content: center;
-  gap: 2rem;
-  margin-top: 1rem;
+  margin-top: 15px;
+  gap: 30px;
 }
 
-.stat {
-  text-align: center;
-}
-
-.stat h2 {
-  margin: 0;
-  font-size: 1.8rem;
-  color: #2980b9;
-}
-
-.stat p {
-  margin: 0;
-  font-size: 1rem;
-  color: #7f8c8d;
-}
-
-/* Public Posts Section */
-.single-post-container {
-  padding: 20px;
-  max-width: 800px;
-  margin: 0 auto;
-  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-  background-color: #f5f6fa;
-  border-radius: 15px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  max-height: 90vh;
-  overflow-y: auto;
-  padding-right: 10px;
-}
-
-h3 {
-  color: #2980b9;
-}
-
-.loading {
-  text-align: center;
-  font-size: 1.2em;
+.stat h3 {
+  font-size: 1.2rem;
   color: #3498db;
 }
 
-.no-post {
-  text-align: center;
-  font-size: 1.1em;
+.stat p {
+  font-size: 0.9rem;
   color: #7f8c8d;
+}
+
+.posts-container {
+  padding: 20px;
 }
 
 .post-card {
   background-color: #ffffff;
   border: 1px solid #ecf0f1;
   border-radius: 8px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   padding: 20px;
+  margin-bottom: 15px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
-
-.post-content p {
-  color: #34495e;
-  line-height: 1.6;
-}
-
-.error-message {
-  margin-top: 20px;
-  padding: 15px;
-  border: 1px solid #e74c3c;
-  border-radius: 4px;
-  background-color: #f2dede;
-  color: #a94442;
-}
-
-.login-message {
-  text-align: center;
-  font-size: 1em;
+.no-content {
   color: #7f8c8d;
+  font-style: italic;
+  margin-top: 10px;
+}
+.follow-button {
+  background-color: #4caf50;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 10px 20px;
+  font-size: 1rem;
+  cursor: pointer;
   margin-top: 20px;
+  transition: background-color 0.3s ease;
 }
 
-.login-message a {
-  color: #3498db;
-  font-weight: bold;
-  text-decoration: none;
+.follow-button.following {
+  background-color: #f44336; /* Red for unfollow */
 }
 
-.login-message a:hover {
-  text-decoration: underline;
+.follow-button.pending {
+  background-color: #ffc107; /* Yellow for pending */
+  cursor: not-allowed;
 }
+
+.follow-button:hover:not(.pending) {
+  background-color: #45a049; /* Darker green for hover */
+}
+
+.follow-button.following:hover {
+  background-color: #d32f2f; /* Darker red for hover */
+}
+
 </style>

@@ -9,8 +9,6 @@ from rest_framework import permissions
 
 # from .views import TestRemoteNodeConnectionView
 
-# from .views import TestRemoteNodeConnectionView
-
 schema_view = get_schema_view(
     openapi.Info(
         title="Your API Title",
@@ -25,16 +23,24 @@ schema_view = get_schema_view(
 )
 
 urlpatterns = [
-    # path("", views.defaultPath, name="defaultPath"),
-    path("api/signup/", views.signup, name="signup"),
-    path("api/login/", views.login, name="login"),
+    path("api/signup/",
+         views.signup,
+         name="signup"
+    ),
+    path("api/login/",
+         views.login,
+         name="login"
+    ),
     # Swagger paths
     path(
         "swagger/",
         schema_view.with_ui("swagger", cache_timeout=0),
         name="schema-swagger-ui",
     ),
-    path("redoc/", schema_view.with_ui("redoc", cache_timeout=0), name="schema-redoc"),
+    path("redoc/",
+         schema_view.with_ui("redoc", cache_timeout=0),
+         name="schema-redoc"
+    ),
     # API paths
     path(
         "api/authors/<path:author_serial>/posts/",
@@ -66,11 +72,9 @@ urlpatterns = [
         views.post_comment,
         name="post_comment",
     ),
-    path("api/posts/<uuid:post_id>/like/", views.like_post, name="like_post"),
-    path(
-        "api/posts/<uuid:post_id>/repost/",
-        views.repost_post,
-        name="repost_post",
+    path("api/posts/<uuid:post_id>/like/",
+         views.like_post,
+         name="like_post"
     ),
     # Follow request paths
     path(
@@ -161,6 +165,11 @@ urlpatterns = [
         name="comment_likes",
     ),
     path(
+        "api/comments/<uuid:comment_id>/",
+        views.CommentDetailView.as_view(),
+        name="comment_detail",
+    ),
+    path(
         "api/authors/<uuid:author_uuid>/",
         views.update_author_profile,
         name="update_author_profile",
@@ -180,19 +189,13 @@ urlpatterns = [
         views.PublicPostsView.as_view(),
         name="public-author-posts",
     ),
-    # path(
-    #     "nodes/<int:pk>/test_connection/",
-    #     TestRemoteNodeConnectionView.as_view(),
-    #     name="test_connection",
-    # ),
     path(
-        'api/authors/<str:author_serial>/inbox/', 
+        'api/authors/<str:author_serial>/inbox', 
         views.inbox_handler, 
         name='inbox'
     ),
-
     path(
-        'api/authors/<str:author_serial>/inbox', 
+        'api/authors/<str:author_serial>/inbox/', 
         views.inbox_handler, 
         name='inbox'
     ),
@@ -215,22 +218,25 @@ urlpatterns = [
         name="specific_follower_handler"
     ),
     path(
-        "stream", TemplateView.as_view(template_name="index.html"), name="stream"
+        "stream",
+        TemplateView.as_view(template_name="index.html"),
+        name="stream"
     ),
     path(
         "api/sync_remote_authors/",
         views.sync_remote_authors,
         name="sync_remote_authors",
     ),
+
+    path(
+        "api/comments/<uuid:comment_id>/",
+        views.CommentDetailView.as_view(),
+        name="comment_detail",
+    ),
     
     path('api/connected-nodes/', views.connected_nodes, name='connected_nodes'),
-    path('verify-connection/', views.verify_node_connection, name='verify_node_connection'),
-    path(
-        "posts/<uuid:post_id>/",
-        TemplateView.as_view(template_name="index.html"),
-        name="post_detail",
-    ),
     path('api/connected-nodes/', views.connected_nodes, name='connected_nodes'),
+
     # Catch-all route for Vue frontend
     re_path(
         r"^(?!api|admin|swagger|static|media).*$",

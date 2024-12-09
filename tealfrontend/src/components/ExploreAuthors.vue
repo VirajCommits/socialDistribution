@@ -126,6 +126,11 @@
 
 <script>
 import axios from "axios";
+import Cookies from 'js-cookie';
+
+axios.defaults.headers.common["X-CSRFToken"] = Cookies.get("csrftoken");
+
+
 
 export default {
   name: "ExploreAuthors",
@@ -167,11 +172,7 @@ export default {
     },
     async fetchAuthors() {
       if (!this.token) {
-        this.showNotification(
-          "Authentication required",
-          "error",
-          "fas fa-lock"
-        );
+        this.showNotification("Authentication required", "error", "fas fa-lock");
         this.$router.push("/login");
         return;
       }
@@ -183,30 +184,37 @@ export default {
             "Content-Type": "application/json",
           },
         });
-        // Extract `username` from `author.id`
-        this.authors = response.data.map((author) => ({
-          ...author,
-          username: author.id.split("/").pop(),
-        }));
+
+        //console.log(response.data); // This will help you understand the response format
+
+        // Handling different formats of response
+        if (Array.isArray(response.data)) {
+          this.authors = response.data.map((author) => ({
+            ...author,
+            username: author.id.split("/").pop(),
+          }));
+        } else if (response.data.authors && Array.isArray(response.data.authors)) {
+          this.authors = response.data.authors.map((author) => ({
+            ...author,
+            username: author.id.split("/").pop(),
+          }));
+        } else {
+          console.error("Unexpected data format:", response.data);
+          this.authors = [];
+        }
+
         await this.fetchPendingRequests();
       } catch (error) {
         console.error("Error fetching authors:", error);
         if (error.response?.status === 401) {
-          this.showNotification(
-            "Session expired. Please login again",
-            "error",
-            "fas fa-lock"
-          );
+          this.showNotification("Session expired. Please login again", "error", "fas fa-lock");
           this.$router.push("/login");
         } else {
-          this.showNotification(
-            "Failed to load authors",
-            "error",
-            "fas fa-exclamation-circle"
-          );
+          this.showNotification("Failed to load authors", "error", "fas fa-exclamation-circle");
         }
       }
     },
+
     goBack() {
       this.$router.push("/stream");
     },
@@ -230,24 +238,25 @@ export default {
       }
     },
     async sendFollowRequest(authorId) {
-  console.log("This is the authorID: ", authorId);
+  //console.log("This is the authorID: ", authorId);
   try {
     const targetUuid = authorId.split("/").pop();
-    const targethost = authorId.split('/authors/')[0];
-    console.log("This is the host: ", targethost);
-
+    let targethost = authorId.split('/authors/')[0];
+    //console.log("This is the host: ", targethost);
+    if (targethost.includes("/api")) { targethost = targethost.split("/api")[0]; }
+      
     // Fetch the list of connected nodes
     const response = await axios.get('/connected-nodes/', {
       headers: { Authorization: `Token ${this.token}` },
     });
     const connectedNodes = response.data;
-    console.log(connectedNodes);
+    //console.log(connectedNodes);
 
     const targetNode = connectedNodes.find(node => node.url === targethost);
-    console.log("This is the target node: ", targetNode);
+    //console.log("This is the target node: ", targetNode);
 
     const user = JSON.parse(localStorage.getItem("user"));
-    console.log("This is the user: ", user);
+    //console.log("This is the user: ", user);
 
     // Get the target author's full data from the authors array
     const targetAuthor = this.authors.find(author => author.id === authorId);
@@ -270,6 +279,8 @@ export default {
     if (targetNode) {
       // Define the endpoint on your server
       const endpoint = `/authors/${targetUuid}/sendRemoteRequest/`;
+      //console.log("Sending request to this endpoint:" , endpoint)
+      // const csrfToken = Cookies.get("csrftoken"); // Get CSRF token from cookies
 
       // Send the follow request to your server's sendRemoteRequest endpoint
       await axios.post(
@@ -278,26 +289,33 @@ export default {
         {
           headers: {
             Authorization: `Token ${this.token}`,
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            
           }
         }
       );
-
+        // Update the UI instantly to show "Following"
+      this.pendingRequests.push(authorId);
       this.showNotification(
         "Follow request sent successfully!",
         "success",
         "fas fa-user-plus"
       );
+      this.relationships[authorId] = { is_following: true };
     } else {
+      //console.log(`This is the author sending the request: ${user.displayName}`)
+      //console.log(`This is a local author: ${targetAuthor.displayName}`);
       // For local authors, use your own endpoint
+      // const csrfToken = Cookies.get("csrftoken"); // Get CSRF token from cookies
       await axios.post(
         `/authors/${targetUuid}/send_follow_request/`,
         followActivity,
         {
-          headers: { Authorization: `Token ${this.token}` },
+          headers: { Authorization: `Token ${this.token}`},
+          
         }
       );
-
+      this.pendingRequests.push(authorId);
       this.showNotification(
         "Follow request sent successfully!",
         "success",
@@ -305,7 +323,7 @@ export default {
       );
     }
 
-    this.pendingRequests.push(authorId);
+    
     this.fetchAuthors();
   } catch (error) {
     this.showNotification(
@@ -388,7 +406,7 @@ export default {
     setupWebSocket() {
       const uuid = localStorage.getItem("uuid");
       if (!uuid) {
-        console.log("No UUID found, skipping WebSocket setup");
+        //console.log("No UUID found, skipping WebSocket setup");
         return;
       }
 
@@ -403,19 +421,19 @@ export default {
       
       const wsUrl = `${wsProtocol}://${wsHost}/ws/notifications/${uuid}/`;
 
-      console.log("Setting up WebSocket connection to:", wsUrl);
+      //console.log("Setting up WebSocket connection to:", wsUrl);
 
       const ws = new WebSocket(wsUrl);
 
       // WebSocket event handlers
       ws.onopen = () => {
-        console.log("WebSocket connected successfully");
+        //console.log("WebSocket connected successfully");
       };
 
       ws.onmessage = async (event) => {
         try {
           const data = JSON.parse(event.data);
-          console.log("Received WebSocket message:", data);
+          //console.log("Received WebSocket message:", data);
 
           if (data.type === "follow_request_notification") {
             await this.fetchAuthors();
@@ -436,9 +454,9 @@ export default {
       };
 
       ws.onclose = () => {
-        console.log(
-          "WebSocket connection closed, attempting to reconnect..."
-        );
+        // console.log(
+        //  "WebSocket connection closed, attempting to reconnect..."
+        // );
         setTimeout(() => this.setupWebSocket(), 1000);
       };
 
@@ -469,14 +487,15 @@ export default {
         const targetNode = connectedNodes.find(node => node.url === targethost);
         if (targetNode) {
           // For remote nodes, send to their inbox
-          const inboxEndpoint = `${targethost}/api/authors/${targetUuid}/inbox/`;
-          console.log('Sending unfollow request to remote inbox:', {
-            endpoint: inboxEndpoint,
-            credentials: {
-              username: targetNode.username,
-              password: '********' // masked for security
-            }
-          });
+          const inboxEndpoint = `${targethost}/api/authors/${targetUuid}/inbox`;
+        //   console.log('Sending unfollow request to remote inbox:', {
+        //     endpoint: inboxEndpoint,
+        //     credentials: {
+        //       username: targetNode.username,
+        //       password: '********' // masked for security
+        //     }
+        //   }
+        // );
 
           // Prepare the unfollow activity object
           const unfollowActivity = {
@@ -490,7 +509,7 @@ export default {
               id: authorId
             }
           };
-
+          // const csrfToken = Cookies.get("csrftoken"); // Get CSRF token from cookies
           await axios.post(inboxEndpoint, unfollowActivity, {
             headers: {
               'node-username': targetNode.username,

@@ -1,3 +1,4 @@
+# Swagger auto schemas adapted from chatGPT, "Create a swagger autoschema for x function"
 import copy
 import uuid
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
@@ -22,7 +23,7 @@ from .serializers import (
 from .models import Author, Post, Comment, Like, FollowRequest, Inbox , ToWhichItsConnected,GitHubPost
 
 from .authentication import NodeBasicAuthentication
-from .permissions import IsAuthenticatedOrNode
+from .permissions import IsNode
 from .utils import make_node_request
 
 # from .utils import connect_to_remote_node
@@ -47,8 +48,6 @@ from datetime import datetime
 
 from rest_framework.test import APIRequestFactory
 from django.urls import reverse
-from rest_framework_simplejwt.authentication import JWTAuthentication
-
 
 
 def defaultPath(request):
@@ -129,9 +128,7 @@ def defaultPath(request):
                     "errors": openapi.Schema(
                         type=openapi.TYPE_OBJECT,
                         additional_properties=openapi.Schema(
-                            type=openapi.TYPE_ARRAY,
-                            items=openapi.Schema(type=openapi.TYPE_STRING),
-                        ),
+                            type=openapi.TYPE_ARRAY, items=openapi.Schema(type=openapi.TYPE_STRING)),
                     )
                 },
             ),
@@ -174,12 +171,10 @@ def create_post(request, author_serial):
 
     serializer = PostSerializer(data=data)
 
-    print("YES CR4EATING POSTS")
 
     if serializer.is_valid():
         post = serializer.save()
         response_serializer = PostSerializer(post)
-        print("POSTS CREATED SUCCESFULLY")
 
         return Response(response_serializer.data, status=status.HTTP_201_CREATED)
     else:
@@ -392,6 +387,13 @@ def post_detail(request, author_serial, post_serial):
 
     # Handle PUT request for updating the post
     if request.method == "PUT" and not action:
+        
+        if post.author != request.user:
+            return Response(
+                {"error": "You do not have permission to edit this post."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
         data = request.data
         if "content" in data:
             markdown_content = data["content"]
@@ -411,84 +413,6 @@ def post_detail(request, author_serial, post_serial):
     return Response({"detail": "Invalid request"}, status=status.HTTP_400_BAD_REQUEST)
 
 
-@swagger_auto_schema(
-    method="post",
-    operation_summary="Post a comment on a specific post",
-    operation_description="""
-    Use this endpoint to post a comment on a specific post identified by its post_id. 
-    The comment will be associated with the authenticated user as the author.
-
-    **When to use:**
-    - Use this endpoint when you need to post a comment on an existing post.
-    - The post to which you are commenting is identified by the `post_id` in the URL.
-
-    **How to use:**
-    - Send a `POST` request to this endpoint with the `post_id` in the URL path, along with the `content` and `contentType` of the comment in the request body.
-    - `content` refers to the actual text or content of the comment, while `contentType` specifies the format of the comment (e.g., `text/plain`).
-    - The request requires authentication to ensure that the user posting the comment is authenticated.
-
-    **Why use or not use:**
-    - This endpoint should be used when you want to allow a user to add a comment to a post.
-    - Do not use this endpoint if the post does not exist or if the user is not authenticated.
-    - Make sure to include all required fields (`content` and `contentType`) in the request.
-    """,
-    manual_parameters=[
-        openapi.Parameter(
-            "post_id",
-            openapi.IN_PATH,
-            description="UUID of the post to comment on",
-            type=openapi.TYPE_STRING,
-            required=True,
-        )
-    ],
-    request_body=openapi.Schema(
-        type=openapi.TYPE_OBJECT,
-        properties={
-            "content": openapi.Schema(
-                type=openapi.TYPE_STRING, description="Content of the comment"
-            ),
-            "contentType": openapi.Schema(
-                type=openapi.TYPE_STRING,
-                description="Type of content (e.g., text/plain)",
-            ),
-        },
-        required=["content", "contentType"],
-    ),
-    responses={
-        201: openapi.Response(
-            description="Comment posted successfully.", schema=CommentSerializer()
-        ),
-        400: openapi.Response(
-            description="Invalid input data.",
-            schema=openapi.Schema(
-                type=openapi.TYPE_OBJECT,
-                properties={
-                    "detail": openapi.Schema(
-                        type=openapi.TYPE_STRING, description="Error message"
-                    ),
-                    "content": openapi.Schema(
-                        type=openapi.TYPE_ARRAY,
-                        items=openapi.Schema(type=openapi.TYPE_STRING),
-                    ),
-                    # Add other fields as needed based on your serializer errors
-                },
-            ),
-        ),
-        404: openapi.Response(
-            description="Post not found.",
-            schema=openapi.Schema(
-                type=openapi.TYPE_OBJECT,
-                properties={
-                    "detail": openapi.Schema(
-                        type=openapi.TYPE_STRING, description="Error message"
-                    )
-                },
-            ),
-        ),
-        401: "Unauthorized",
-    },
-    tags=["Comments"],
-)
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def post_comment(request, post_id):
@@ -584,10 +508,10 @@ def like_comment(request, comment_id):
 
     # Check if the user has already liked the comment
     if Like.objects.filter(comment=comment, author=author).exists():
-        return Response(
-            {"detail": "You have already liked this comment."},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
+        existing_like = Like.objects.filter(comment=comment, author=author).first()
+        existing_like.delete()
+        return Response({"detail": "Comment unliked successfully."}, status=status.HTTP_200_OK)
+        
 
     data = {
         "author_id": str(author.id),
@@ -780,10 +704,9 @@ def like_post(request, post_id):
     # Check if the user has already liked the post
     existing_like = Like.objects.filter(post=post, author=author).first()
     if existing_like:
-        return Response(
-            {"detail": "You have already liked this post."},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
+        existing_like = Like.objects.filter(post=post, author=author).first()
+        existing_like.delete()
+        return Response({"detail": "Post unliked successfully."}, status=status.HTTP_200_OK)
 
     data = {
         "author_id": str(author.id),
@@ -797,7 +720,46 @@ def like_post(request, post_id):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
     else:
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+class CommentDetailView(APIView):
+    def get(self, request, comment_id):
+        try:
+            comment = Comment.objects.get(id=comment_id)
+            data = {
+                "id": str(comment.id),
+                "author": {
+                    "id": comment.author.id,
+                    "displayName": comment.author.username,
+                    "host": comment.author.host,
+                },
+                "content": comment.content,
+                "published": comment.published,
+            }
+            return Response(data, status=status.HTTP_200_OK)
+        except Comment.DoesNotExist:
+            return Response(
+                {"detail": "Comment not found"}, status=status.HTTP_404_NOT_FOUND
+            )
 
+class CommentDetailView(APIView):
+    def get(self, request, comment_id):
+        try:
+            comment = Comment.objects.get(id=comment_id)
+            data = {
+                "id": str(comment.id),
+                "author": {
+                    "id": comment.author.id,
+                    "displayName": comment.author.username,
+                    "host": comment.author.host,
+                },
+                "content": comment.content,
+                "published": comment.published,
+            }
+            return Response(data, status=status.HTTP_200_OK)
+        except Comment.DoesNotExist:
+            return Response(
+                {"detail": "Comment not found"}, status=status.HTTP_404_NOT_FOUND
+            )
 
 @swagger_auto_schema(
     method="get",
@@ -969,80 +931,116 @@ def stream_page_likes(request, post_id):
     return Response(serializer.data, status=200)
 
 
-@swagger_auto_schema(
-    method="GET",
-    operation_summary="Retrieve all posts for a specific author",
-    operation_description="""
-    Fetch all posts created by the author specified by the `author_serial` UUID.
+def construct_likes_data(post):
+    likes = Like.objects.filter(post=post).order_by('-published')[:5]
+    likes_data = {
+        "type": "likes",
+        "page": f"{post.author.page}/posts/{post.id}",
+        "id": f"{post.author.host}authors/{post.author.uuid}/posts/{post.id}/likes",
+        "page_number": 1,
+        "size": 5,
+        "count": post.likes.count(),
+        "src": []
+    }
 
-    **When to use:**
-    - Use this endpoint when you need to retrieve all posts created by a specific author.
-    - It is helpful when displaying a list of posts for a given author or fetching a specific author's content.
+    for like in likes:
+        like_data = {
+            "type": "like",
+            "author": {
+                "type": "author",
+                "id": f"{like.author.host}authors/{like.author.uuid}",
+                "page": like.author.page,
+                "host": like.author.host,
+                "displayName": like.author.displayName,
+                "github": like.author.github,
+                "profileImage": like.author.profileImage
+            },
+            "published": like.published.isoformat(),
+            "id": f"{like.author.host}authors/{like.author.uuid}/liked/{like.id}",
+            "object": f"{post.author.page}/posts/{post.id}"
+        }
+        likes_data["src"].append(like_data)
 
-    **How to use:**
-    - Send a `GET` request to this endpoint, including the `author_serial` parameter in the URL path.
-    - The `author_serial` parameter should be the unique UUID identifier for the author whose posts you want to fetch.
-    - You can paginate the response to limit the number of posts returned at once.
+    return likes_data
 
-    **Why to use or not use:**
-    - Use this endpoint to get a complete list of posts for an author.
-    - This is a read-only operation, meaning you can view the posts but cannot modify them.
-    - If the author does not exist, you will receive a `404` error.
-    - This API supports pagination to handle large datasets. Be sure to check the paginated results.
-    """,
-    manual_parameters=[
-        openapi.Parameter(
-            "author_serial",
-            openapi.IN_PATH,
-            description="UUID of the author whose posts you want to retrieve",
-            type=openapi.TYPE_STRING,
-            required=True,
-        )
-    ],
-    responses={
-        200: openapi.Response(
-            description="A list of posts for the specified author",
-            schema=openapi.Schema(
-                type=openapi.TYPE_OBJECT,
-                properties={
-                    "type": openapi.Schema(type=openapi.TYPE_STRING, example="posts"),
-                    "items": openapi.Schema(
-                        type=openapi.TYPE_ARRAY,
-                        items=openapi.Schema(
-                            type=openapi.TYPE_OBJECT,
-                            properties={
-                                "id": openapi.Schema(
-                                    type=openapi.TYPE_STRING, example="post_id_here"
-                                ),
-                                "author_id": openapi.Schema(
-                                    type=openapi.TYPE_STRING, example="author_id_here"
-                                ),
-                                "title": openapi.Schema(
-                                    type=openapi.TYPE_STRING,
-                                    example="Sample Post Title",
-                                ),
-                                "content": openapi.Schema(
-                                    type=openapi.TYPE_STRING,
-                                    example="Post content goes here...",
-                                ),
-                                "published": openapi.Schema(
-                                    type=openapi.TYPE_STRING,
-                                    example="2023-01-01T00:00:00Z",
-                                ),
-                            },
-                        ),
-                    ),
-                },
-            ),
-        ),
-        404: "Author not found",
-    },
-    tags=["Posts"],
-)
+def construct_comments_data(post):
+    comments = Comment.objects.filter(post=post).order_by('-published')[:5]
+    comments_data = {
+        "type": "comments",
+        "page": f"{post.author.page}/posts/{post.id}",
+        "id": f"{post.author.host}authors/{post.author.uuid}/posts/{post.id}/comments",
+        "page_number": 1,
+        "size": 5,
+        "count": post.comments.count(),
+        "src": []
+    }
+
+    for comment in comments:
+        comment_data = {
+            "type": "comment",
+            "author": {
+                "type": "author",
+                "id": f"{comment.author.host}authors/{comment.author.uuid}",
+                "page": comment.author.page,
+                "host": comment.author.host,
+                "displayName": comment.author.displayName,
+                "github": comment.author.github,
+                "profileImage": comment.author.profileImage
+            },
+            "comment": comment.content,
+            "contentType": comment.contentType,
+            "published": comment.published.isoformat(),
+            "id": f"{comment.post.author.host}authors/{comment.post.author.uuid}/comments/{comment.id}",
+            "post": f"{post.author.host}authors/{post.author.uuid}/posts/{post.id}",
+            "page": f"{comment.author.page}/posts/{post.id}",
+        }
+        comments_data["src"].append(comment_data)
+
+    return comments_data
+
+def construct_posts_data(author):
+    # Get all public and friends-only posts of the author
+    posts = Post.objects.filter(author=author, visibility__in=['PUBLIC', 'FRIENDS']).order_by('-published')
+
+    posts_data = {
+        "type": "posts",
+        "page_number": 1,
+        "size": len(posts),
+        "count": posts.count(),
+        "src": []
+    }
+
+    for post in posts:
+        post_data = {
+            "type": "post",
+            "title": post.title,
+            "id": f"{post.author.host}authors/{post.author.uuid}/posts/{post.id}",
+            "page": f"{post.author.page}/posts/{post.id}",
+            "description": post.description,
+            "contentType": post.contentType,
+            "content": post.content,
+            "author": {
+                "type": "author",
+                "id": f"{post.author.host}authors/{post.author.uuid}",
+                "host": post.author.host,
+                "displayName": post.author.displayName,
+                "page": post.author.page,
+                "github": post.author.github,
+                "profileImage": post.author.profileImage,
+            },
+            "published": post.published.isoformat(),
+            "visibility": post.visibility,
+            "comments": construct_comments_data(post),
+            "likes": construct_likes_data(post),
+        }
+        posts_data["src"].append(post_data)
+
+    return posts_data
+
+
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def get_all_posts(request, author_serial):
-    print("(((((((((((((((((((((((((((((())))))))))))))))))))))))))))))")
     author_serial = unquote(author_serial)
     author = get_object_or_404(Author, uuid=author_serial)
     posts = Post.objects.filter(author=author).order_by("-edited_at")
@@ -1052,9 +1050,19 @@ def get_all_posts(request, author_serial):
     paginator.page_size = 100  # Adjust as needed
     result_page = paginator.paginate_queryset(posts, request)
 
-    serializer = PostSerializer(result_page, many=True)
+    # Use the helper function to construct post data
+    posts_data = construct_posts_data(author)
+    
+    # Update the posts_data to only include paginated results
+    # paginated_posts_data = {
+    #     "type": posts_data["type"],
+    #     "page_number": 1,  # Updated by paginator if needed
+    #     "size": len(result_page),
+    #     "count": posts.count(),
+    #     "src": [construct_posts_data(post)["src"] for post in result_page]
+    # }
 
-    return paginator.get_paginated_response({"type": "posts", "items": serializer.data})
+    return paginator.get_paginated_response(posts_data)
 
 
 @swagger_auto_schema(
@@ -1124,7 +1132,6 @@ def send_follow_request(request, author_uuid):
 
     my_host = request.build_absolute_uri('/').rstrip('/')
     target_host = target_author.host.rstrip('/')
-    print("yes>>>>>>>>>>>>>>>>>>>>" , my_host , target_host)
 
     # Check if already following
     if current_author in target_author.followers.all():
@@ -1163,6 +1170,7 @@ def send_follow_request(request, author_uuid):
     )
 
     return Response({"detail": "Follow request sent."}, status=status.HTTP_201_CREATED)
+
 
 
 @swagger_auto_schema(
@@ -1262,17 +1270,11 @@ def accept_follow_request(request, author_uuid):
             status=status.HTTP_400_BAD_REQUEST,
         )
     post_data = construct_posts_data(current_author)
-    print(post_data , requesting_author.host , current_author.host)
     if requesting_author.host != current_author.host:
-
-
-        print("ACCEPTED NOW SENDING DATA" , post_data)
-        # post_data = construct_posts_data(current_author)
 
         # Send the constructed object to the remote node
         send_data_to_remote_node(requesting_author.host, post_data , requesting_author.uuid)
 
-        print("DATA SENT TO REMOTE NODE: ============================== ")
 
 
     # Accept the request
@@ -1310,7 +1312,6 @@ def send_data_to_remote_node(url, data , uuid):
         raise ValueError("No matching remote node found for the provided URL.")
 
     # The endpoint is 'inbox/'
-    print("This is the data i got:(Viraj) " , data)
     endpoint = f'api/authors/{uuid}/inbox/'
 
     # Send the POST request via make_node_request
@@ -1322,6 +1323,7 @@ def send_data_to_remote_node(url, data , uuid):
     )
 
     return response
+
 
 
 @swagger_auto_schema(
@@ -1416,6 +1418,7 @@ def decline_follow_request(request, author_uuid):
     )
 
     return Response({"detail": "Follow request declined."}, status=status.HTTP_200_OK)
+
 
 
 @swagger_auto_schema(
@@ -1546,12 +1549,11 @@ def get_follow_requests(request):
                         "followers": openapi.Schema(
                             type=openapi.TYPE_ARRAY,
                             items=openapi.Schema(
-                                type=openapi.TYPE_STRING, example="follower-uuid"
-                            ),
-                        ),
-                    },
-                ),
-            ),
+                                type=openapi.TYPE_STRING, example='follower-uuid')
+                        )
+                    }
+                )
+            )
         ),
         401: openapi.Response(
             description="Unauthorized access",
@@ -1580,8 +1582,6 @@ def get_follow_requests(request):
     tags=["Authors"],
 )
 @api_view(["GET"])
-@authentication_classes([JWTAuthentication, NodeBasicAuthentication])
-@permission_classes([IsAuthenticatedOrNode])
 def get_all_authors(request):
     try:
         current_author = request.user
@@ -1594,33 +1594,40 @@ def get_all_authors(request):
         author_data = []
         for author in authors:
             # Serialize the author data
-            serialized_author = AuthorSerializer(author).data
+            # serialized_author = AuthorSerializer(author).data
+            serialized_author = {
+                "type": "author",
+                "id": author.id,  # This should be the full URL
+                "host": author.host,
+                "displayName": author.displayName,
+                "github": author.github,
+                "profileImage": author.profileImage,
+                "page": author.page,  # This should be the full URL to author's page
+            }
 
             # Add followers data
-            followers = author.followers.all()
-            serialized_author["followers"] = [
-                str(follower.uuid) for follower in followers
-            ]
+            # followers = author.followers.all()
+            # serialized_author["followers"] = [
+            #     str(follower.uuid) for follower in followers
+            # ]
             serialized_author["type"] = "author"
 
             author_data.append(serialized_author)
-        response_data = {}
-        response_data["type"] = "authors"
-        response_data["authors"] = author_data
+        # response_data = {}
+        # response_data["type"] = "authors"
+        # response_data["authors"] = author_data
+        response_data = {
+            "type": "authors",
+            "authors": author_data
+        }
         
-
-
         return Response(response_data)
     except Exception as e:
         import traceback
 
-        print(f"Error in get_all_authors: {str(e)}")
-        print(f"Traceback: {traceback.format_exc()}")
         return Response(
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
-
-
 @swagger_auto_schema(
     method="get",
     operation_summary="Fetch the stream of posts for a specific author",
@@ -1636,7 +1643,7 @@ def get_all_authors(request):
 
     **How to use:**
     - Send a `GET` request with the `author_id` as a URL parameter, which represents the UUID of the author.
-    - The response will return a paginated list of posts with details like the post title, content, visibility, and repost count.
+    - The response will return a paginated list of posts with details like the post title, content, and visibility.
     - The stream includes posts from mutual friends, followed authors, followers, and public posts. Posts are filtered based on visibility and relationship.
     - Pagination is used to limit the number of posts per page. You can navigate through pages using the `next` and `previous` fields in the response.
 
@@ -1720,10 +1727,6 @@ def get_all_authors(request):
                                     type=openapi.TYPE_STRING,
                                     format=openapi.FORMAT_DATETIME,
                                     description="Post publication timestamp",
-                                ),
-                                "repost_count": openapi.Schema(
-                                    type=openapi.TYPE_INTEGER,
-                                    description="Count of reposts",
                                 ),
                             },
                         ),
@@ -1855,12 +1858,11 @@ def stream_page(request, author_id):
             schema=openapi.Schema(
                 type=openapi.TYPE_OBJECT,
                 properties={
-                    "errors": openapi.Schema(
-                        type=openapi.TYPE_OBJECT
-                    )  # Detailed error messages
-                },
-            ),
-        ),
+                    # Detailed error messages
+                    'errors': openapi.Schema(type=openapi.TYPE_OBJECT)
+                }
+            )
+        )
     },
     tags=["Authentication"],
 )
@@ -1868,7 +1870,6 @@ def stream_page(request, author_id):
 @csrf_exempt
 @api_view(["POST"])
 @authentication_classes([])
-@permission_classes([AllowAny])
 def signup(request):
     serializer = AuthorSerializer(data=request.data)
     if serializer.is_valid():
@@ -1882,11 +1883,9 @@ def signup(request):
             user.is_approved = False  # Require admin approval
 
         user.save()
-        print("user saved")
 
         # Notify the user about their approval status
         if user.is_approved:
-            print("user approved")
             refresh = RefreshToken.for_user(user)
             return Response(
                 {
@@ -1989,14 +1988,13 @@ def signup(request):
 )
 @csrf_exempt
 @api_view(["POST"])
-@permission_classes([AllowAny])
+@authentication_classes([])
+@authentication_classes([])
 def login(request):
     username = request.data.get("username")
     password = request.data.get("password")
-    print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" , username , password)
     user = authenticate(username=username, password=password)
 
-    print("This is the user:" , user , username , password)
 
     if user:
         if not user.is_approved:
@@ -2193,6 +2191,7 @@ def remove_follow_request(request, author_uuid):
     )
 
     return Response({"detail": "Follow request removed."}, status=status.HTTP_200_OK)
+
 
 
 @swagger_auto_schema(
@@ -2500,138 +2499,7 @@ def get_author_stats(request, author_uuid):
             {'error': str(e)}, 
             status=status.HTTP_400_BAD_REQUEST
         )
-
-
-@swagger_auto_schema(
-    method="post",
-    operation_summary="Repost a Post",
-    operation_description="""
-    Allows a user to create a repost of an existing post. The original post must be public for reposting. 
-    This action will create a new post that references the original post, incrementing its repost count.
-    
-    **When to use:**
-    - Use this endpoint when you want to repost a public post to your profile. 
-    - This is helpful for users who want to share content from others with their followers.
-    
-    **How to use:**
-    - Send a `POST` request to this endpoint with the `post_id` of the original post that you wish to repost.
-    - The `post_id` should be provided as a path parameter and corresponds to the ID of the post you wish to repost.
-    - The request will check if the post is public and whether the current user has already reposted it. If either condition is not met, an appropriate error will be returned.
-    - If the repost is successful, a new post will be created on your profile referencing the original post, and the repost count of the original post will be updated.
-    
-    **Why use or not use:**
-    - Use this endpoint to share public posts from others and increase visibility for that post.
-    - Do not use this endpoint for reposting private posts, as only public posts can be reposted. 
-    - Avoid reposting a post you have already reposted, as it will trigger an error.
-    """,
-    manual_parameters=[
-        openapi.Parameter(
-            "post_id",
-            openapi.IN_PATH,
-            description="ID of the post to repost",
-            type=openapi.TYPE_INTEGER,
-            required=True,
-        )
-    ],
-    responses={
-        200: openapi.Response(
-            description="Post reposted successfully.",
-            schema=openapi.Schema(
-                type=openapi.TYPE_OBJECT,
-                properties={
-                    "message": openapi.Schema(
-                        type=openapi.TYPE_STRING, description="Success message"
-                    ),
-                    "repost_count": openapi.Schema(
-                        type=openapi.TYPE_INTEGER,
-                        description="Updated repost count of the original post",
-                    ),
-                },
-            ),
-        ),
-        400: openapi.Response(
-            description="You have already reposted this post.",
-            schema=openapi.Schema(
-                type=openapi.TYPE_OBJECT,
-                properties={
-                    "error": openapi.Schema(
-                        type=openapi.TYPE_STRING, description="Error message"
-                    )
-                },
-            ),
-        ),
-        403: openapi.Response(
-            description="Post is not public.",
-            schema=openapi.Schema(
-                type=openapi.TYPE_OBJECT,
-                properties={
-                    "error": openapi.Schema(
-                        type=openapi.TYPE_STRING, description="Error message"
-                    )
-                },
-            ),
-        ),
-        404: openapi.Response(
-            description="Post not found.",
-            schema=openapi.Schema(
-                type=openapi.TYPE_OBJECT,
-                properties={
-                    "error": openapi.Schema(
-                        type=openapi.TYPE_STRING, description="Error message"
-                    )
-                },
-            ),
-        ),
-        401: "Unauthorized",
-    },
-    tags=["Posts"],
-)
-@api_view(["POST"])
-@permission_classes([IsAuthenticated])
-def repost_post(request, post_id):
-    reposted_post = get_object_or_404(Post, id=post_id)
-
-    # Determine the original post
-    if reposted_post.is_repost:
-        original_post = get_object_or_404(Post, id=reposted_post.original_post_id)
-    else:
-        original_post = reposted_post
-
-    # Check if the original post is public
-    if original_post.visibility != "PUBLIC":
-        return Response({"error": "Post is not public."}, status=403)
-
-    # Check if the user has already reposted the original post
-    if request.user in original_post.reposted_by.all():
-        return Response({"error": "You have already reposted this post."}, status=400)
-
-    # Create a new post for the repost
-    new_repost = Post(
-        author=request.user,
-        title=f"Reposted: {original_post.author.displayName} {original_post.title}",
-        description=original_post.description,
-        content=original_post.content,
-        contentType=original_post.contentType,
-        visibility="PUBLIC",
-        published=timezone.now(),
-        is_repost=True,
-        original_post_id=original_post.id,  # Reference the original post ID
-    )
-    new_repost.save()
-
-    # Track the repost and increment the count
-    original_post.reposted_by.add(request.user)
-    original_post.repost_count += 1
-    original_post.save()
-
-    return Response(
-        {
-            "message": "Post reposted successfully.",
-            "repost_count": original_post.repost_count,
-        },
-        status=200,
-    )
-
+        
 
 @swagger_auto_schema(
     method="get",
@@ -3612,69 +3480,6 @@ class PublicPostsView(APIView):
             )
 
 
-@swagger_auto_schema(
-    method="get",
-    operation_summary="Verify the connection for the Node user",
-    operation_description="""
-    Use this endpoint to verify the connection for a Node user. It returns a success message along with the user's connection details.
-
-    **When to use:**
-    - Use this endpoint when you need to verify the connection of a Node user.
-    - The response will confirm the connection status and provide details about the authenticated user.
-
-    **How to use:**
-    - Send a `GET` request to this endpoint.
-    - The response will indicate the connection status and return the user's URL if available, or the user’s identifier.
-
-    **Why use or not use:**
-    - This endpoint is useful when checking if the Node user is successfully connected or authenticated.
-    - Do not use if the user is not authenticated or doesn't have a valid Node connection.
-    """,
-    request_body=None,
-    responses={
-        200: openapi.Response(
-            description="Connection successfully verified.",
-            schema=openapi.Schema(
-                type=openapi.TYPE_OBJECT,
-                properties={
-                    "status": openapi.Schema(type=openapi.TYPE_STRING, description="Status of the request"),
-                    "message": openapi.Schema(type=openapi.TYPE_STRING, description="Success message"),
-                    "node": openapi.Schema(type=openapi.TYPE_STRING, description="URL or identifier of the authenticated user"),
-                },
-            ),
-        ),
-        401: "Unauthorized - The user must be authenticated.",
-        400: openapi.Response(
-            description="Error occurred during the connection verification.",
-            schema=openapi.Schema(
-                type=openapi.TYPE_OBJECT,
-                properties={
-                    "status": openapi.Schema(type=openapi.TYPE_STRING, description="Error status"),
-                    "message": openapi.Schema(type=openapi.TYPE_STRING, description="Error message"),
-                },
-            ),
-        ),
-    },
-    tags=["Node Connection"],
-)
-@api_view(['GET'])
-@authentication_classes([NodeBasicAuthentication])
-@permission_classes([IsAuthenticatedOrNode])
-def verify_node_connection(request):
-    try:
-        # Log incoming request details
-        return Response({
-            "status": "success",
-            "message": "Connection verified",
-            "node": request.user.url if hasattr(request.user, 'url') else str(request.user)
-        })
-    except Exception as e:
-        # Log any exceptions
-        return Response({
-            "status": "error",
-            "message": str(e)
-        })
-
 
 @swagger_auto_schema(
     method="get",
@@ -3797,43 +3602,6 @@ def test_node_connection(request):
             "type": str(type(e))
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-
-@swagger_auto_schema(
-    method="get",
-    operation_summary="Retrieve the inbox contents for a given author",
-    operation_description="""
-    Use this endpoint to retrieve the inbox contents of a specific author identified by their UUID.
-
-    **When to use:**
-    - Use this endpoint to get the inbox data for an author, which includes posts, likes, comments, and follow requests.
-    - It is useful for checking activities related to a specific author.
-
-    **How to use:**
-    - Send a `GET` request to this endpoint with the `author_serial` as part of the URL.
-    - The inbox contents for the specified author will be returned.
-
-    **Why use or not use:**
-    - This endpoint should be used when you need to retrieve the activities for a specific author.
-    - Do not use this endpoint if you are not authenticated or if the author UUID does not exist.
-    """,
-    responses={
-        200: openapi.Response(
-            description="Inbox retrieved successfully.",
-            schema=InboxSerializer()
-        ),
-        404: openapi.Response(
-            description="Author not found.",
-            schema=openapi.Schema(
-                type=openapi.TYPE_OBJECT,
-                properties={
-                    "detail": openapi.Schema(type=openapi.TYPE_STRING, description="Error message")
-                }
-            )
-        ),
-        401: "Unauthorized",
-    },
-    tags=["Inbox"],
-)
 @swagger_auto_schema(
     method="post",
     operation_summary="Add activity to the author's inbox",
@@ -3908,52 +3676,13 @@ def test_node_connection(request):
     },
     tags=["Inbox"],
 )
-@swagger_auto_schema(
-    method="delete",
-    operation_summary="Clear all activities from the author's inbox",
-    operation_description="""
-    Use this endpoint to clear all activities from a given author's inbox.
-
-    **When to use:**
-    - Use this endpoint to clear all posts, likes, comments, and follow requests from the inbox of the specified author.
-    - This is useful for managing inbox contents or clearing outdated activities.
-
-    **How to use:**
-    - Send a `DELETE` request to this endpoint with the `author_serial` as part of the URL.
-    - This will clear all activities from the author's inbox.
-
-    **Why use or not use:**
-    - This endpoint should be used when you want to reset or clear the inbox of an author.
-    - Do not use if you want to retain the inbox contents.
-    """,
-    responses={
-        204: openapi.Response(
-            description="Inbox cleared successfully.",
-            schema=openapi.Schema(
-                type=openapi.TYPE_OBJECT,
-                properties={
-                    "message": openapi.Schema(type=openapi.TYPE_STRING, description="Success message")
-                }
-            ),
-        ),
-        404: openapi.Response(
-            description="Author not found.",
-            schema=openapi.Schema(
-                type=openapi.TYPE_OBJECT,
-                properties={
-                    "detail": openapi.Schema(type=openapi.TYPE_STRING, description="Error message")
-                }
-            )
-        ),
-        401: "Unauthorized",
-    },
-    tags=["Inbox"],
-)
 
 @csrf_exempt
+@api_view(['POST'])
 @authentication_classes([NodeBasicAuthentication])
-@permission_classes([IsAuthenticatedOrNode])
-@api_view(['POST', 'GET', 'DELETE'])
+@permission_classes([AllowAny])
+@authentication_classes([NodeBasicAuthentication])
+@permission_classes([AllowAny])
 def inbox_handler(request, author_serial):
     """
     Handles inbox activities for a given author. Supports POST (to add activities),
@@ -3971,16 +3700,13 @@ def inbox_handler(request, author_serial):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     elif request.method == 'POST':
-        print("AAAAAAAAAAAAA")
         data = request.data
         item_type = data.get('type', '').lower()
 
         try:
             if item_type == "posts":
 
-                print("WE ARE INSIDE INBOX POSTS")
                 # Handle multiple posts
-                print("Handling multiple posts.")
                 posts_data = data.get('src', [])
                 for post_data in posts_data:
                     # Process each post individually
@@ -4219,7 +3945,6 @@ def inbox_handler(request, author_serial):
                 return Response({'message': 'Posts added to inbox and created locally.'}, status=status.HTTP_201_CREATED)
 
             if item_type == 'post':
-                print("WE ARE INSIDE SINGLE POST HANDLER")
                 # Handle a single post
                 author_data = data.get('author', {})
                 author_id = author_data.get('id')
@@ -4228,6 +3953,9 @@ def inbox_handler(request, author_serial):
 
                 # Parse author UUID from the author_id URL
                 author_uuid = author_id.rstrip('/').split('/')[-1]
+
+                if author_data.get('github')== None:
+                    author_data["github"]=''
 
                 # Get or create the author
                 author, created = Author.objects.get_or_create(
@@ -4345,11 +4073,66 @@ def inbox_handler(request, author_serial):
                         comment.save()
 
                 return Response({'message': 'Post added to inbox and created locally.'}, status=status.HTTP_201_CREATED)
+            
             elif item_type == 'like':
-                print("WE ARE INSIDE THE LIKE SECTION ...IMPLEMENT THE INBOX!")
-                return Response({'message': 'Comment added to inbox and created locally.'}, status=status.HTTP_201_CREATED)
-                pass
+                try:
+                    # Extract data
+                    like_data = request.data                    
+                    author_data = like_data.get('author', {})
+                    like_id = like_data.get('id', str(uuid.uuid4()))  # Generate a UUID if not provided
+                    target_id = like_data.get('object')
 
+                    if '/posts/' in target_id:
+                        # Like is for a Post
+                        post_uuid = target_id.split('/')[-1]
+                        target = get_object_or_404(Post, id=post_uuid)
+                    elif '/comments/' in target_id:
+                        # Like is for a Comment
+                        comment_uuid = target_id.split('/')[-1]
+                        target = get_object_or_404(Comment, id=comment_uuid)
+                    else:
+                        return Response({'error': 'Invalid target for like.'}, status=status.HTTP_400_BAD_REQUEST)
+
+                    # Get or create the author
+                    author_id = author_data.get('id', '').rstrip('/')
+                    author_uuid = author_id.split('/')[-1]
+                    author, _ = Author.objects.get_or_create(
+                        uuid=author_uuid,
+                        defaults={
+                            'displayName': author_data.get('displayName', ''),
+                            'host': author_data.get('host', ''),
+                            'page': author_data.get('page', ''),
+                            'github': author_data.get('github', ''),
+                            'profileImage': author_data.get('profileImage', ''),
+                        }
+                    )
+                    
+                    like_id = like_id.split('/')[-1]
+
+                    # Create or update the Like
+                    like, created = Like.objects.get_or_create(
+                        id=like_id,
+                        defaults={
+                            'author': author,
+                            'post': target if isinstance(target, Post) else None,
+                            'comment': target if isinstance(target, Comment) else None,
+                            'published': like_data.get('published', timezone.now())
+                        }
+                    )
+
+                    # Optionally update existing like's timestamp
+                    if not created:
+                        like.published = like_data.get('published', like.published)
+                        like.save()
+
+                    # Add the like to the inbox
+                    inbox.likes.add(like)
+
+                    return Response({'message': 'Like added to inbox successfully.'}, status=status.HTTP_201_CREATED)
+
+                except Exception as e:
+                    return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+                  
             elif item_type == 'comment':
                 data = request.data
 
@@ -4411,7 +4194,6 @@ def inbox_handler(request, author_serial):
 
             elif item_type == 'follow':
                 # Handle Follow Activity
-                print("Handling follow request.")
                     # Extract actor and object data
                 actor_data = data.get('actor', {})
                 object_data = data.get('object', {})
@@ -4457,11 +4239,9 @@ def inbox_handler(request, author_serial):
 
             else:
                 # Unsupported activity type
-                print(f"Unsupported activity type: {item_type}")
                 return Response({'error': f"Unsupported activity type: {item_type}"}, status=status.HTTP_400_BAD_REQUEST)
 
         except Exception as e:
-            print(f"Error in inbox_handler: {e}")
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     elif request.method == 'DELETE':
@@ -4470,7 +4250,6 @@ def inbox_handler(request, author_serial):
         inbox.likes.clear()
         inbox.comments.clear()
         inbox.follow_requests.clear()
-        print(f"Inbox for author {author_serial} has been cleared.")
         return Response({'message': 'Inbox cleared.'}, status=status.HTTP_204_NO_CONTENT)
     
 def create_local_post(request, post):
@@ -4478,147 +4257,28 @@ def create_local_post(request, post):
     Processes a post activity by creating a local post via the API.
     """
     try:
-        factory = APIRequestFactory()
-        api_request = factory.post(
-            reverse('post-list'),  # Ensure this URL name matches your URL configuration
-            data={
-                'type': post.type,
-                'title': post.title,
-                'id': post.id,
-                'page': post.page,
-                'description': post.description,
-                'contentType': post.contentType,
-                'content': post.content,
-                'published': post.published,
-                'visibility': post.visibility,
-                'author': post.author.id,  # Assuming author is referenced by ID
-            },
-            format='json'
-        )
-        api_request.user = request.user
-        response = create_post(api_request)  # Call your post creation view
-        return response
-    except Exception as e:
-        print(f"Error creating local post: {e}")
-        return Response({'error': 'Failed to create local post.'}, status=status.HTTP_400_BAD_REQUEST)
+        current_author = request.user
+        target_author = get_object_or_404(Author, uuid=author_uuid)
 
-def create_local_comment(request, comment):
-    """
-    Processes a comment activity by creating a local comment via the API.
-    """
-    try:
-        factory = APIRequestFactory()
-        api_request = factory.post(
-            reverse('comment-list'),  # Ensure this URL name matches your URL configuration
-            data={
-                'type': comment.type,
-                'id': comment.id,
-                'author': comment.author.id,
-                'post': comment.post,
-                'comment': comment.comment,
-                'contentType': comment.contentType,
-                'published': comment.published,
-            },
-            format='json'
-        )
-        api_request.user = request.user
-        response = post_comment(api_request)  # Call your comment creation view
-        return response
-    except Exception as e:
-        print(f"Error creating local comment: {e}")
-        return Response({'error': 'Failed to create local comment.'}, status=status.HTTP_400_BAD_REQUEST)
+        is_following = target_author.followers.filter(
+            id=current_author.id).exists()
+        is_followed_by = current_author.followers.filter(
+            id=target_author.id).exists()
+        is_friend = is_following and is_followed_by
 
-def process_follow_request(request, follow_request):
-    """
-    Processes a follow request by accepting it via the API.
-    """
-    try:
-        factory = APIRequestFactory()
-        api_request = factory.post(
-            reverse('follow-request-accept', args=[follow_request.id]),  # Ensure this URL name matches your URL configuration
-            data={},  # If your accept_follow_request view requires additional data, include it here
-            format='json'
-        )
-        api_request.user = request.user
-        response = accept_follow_request(api_request, follow_request.id)  # Call your follow request acceptance view
-        return response
-    except Exception as e:
-        print(f"Error processing follow request: {e}")
-        return Response({'error': 'Failed to process follow request.'}, status=status.HTTP_400_BAD_REQUEST)
-    
-    
-@swagger_auto_schema(
-    method="get",
-    operation_summary="Sync remote authors from active remote nodes",
-    operation_description="""
-    Use this endpoint to synchronize authors from active remote nodes.
+        return Response({
+            'is_following': is_following,
+            'is_followed_by': is_followed_by,
+            'is_friend': is_friend
+        })
+    except Author.DoesNotExist:
+        return Response({'error': 'Author not found'}, status=404)
 
-    **When to use:**
-    - Use this endpoint to fetch authors from connected remote nodes and sync them with your local database.
-    - This is useful when you want to keep the list of authors in your local system up to date with remote nodes.
 
-    **How to use:**
-    - Send a `GET` request to this endpoint to start the synchronization process.
-    - The system will attempt to fetch all authors from the active remote nodes and add them to the local database.
-    - The response will include the synchronization status and any errors encountered during the process.
-
-    **Why use or not use:**
-    - This endpoint should be used when you need to update the list of remote authors in your local system.
-    - If no remote nodes are active or if the network is unreachable, the synchronization will fail.
-    """,
-    responses={
-        200: openapi.Response(
-            description="Authors synchronized successfully.",
-            schema=openapi.Schema(
-                type=openapi.TYPE_OBJECT,
-                properties={
-                    "status": openapi.Schema(type=openapi.TYPE_STRING, description="Sync status"),
-                    "sync_results": openapi.Schema(
-                        type=openapi.TYPE_ARRAY,
-                        items=openapi.Schema(
-                            type=openapi.TYPE_OBJECT,
-                            properties={
-                                "node_url": openapi.Schema(type=openapi.TYPE_STRING, description="Remote node URL"),
-                                "authors_synced": openapi.Schema(type=openapi.TYPE_INTEGER, description="Number of authors successfully synced"),
-                                "errors": openapi.Schema(
-                                    type=openapi.TYPE_ARRAY,
-                                    items=openapi.Schema(type=openapi.TYPE_STRING, description="Error messages")
-                                ),
-                            }
-                        ),
-                    ),
-                }
-            )
-        ),
-        404: openapi.Response(
-            description="No remote nodes found in the database.",
-            schema=openapi.Schema(
-                type=openapi.TYPE_OBJECT,
-                properties={
-                    "status": openapi.Schema(type=openapi.TYPE_STRING, description="Error status"),
-                    "message": openapi.Schema(type=openapi.TYPE_STRING, description="Error message")
-                }
-            )
-        ),
-        500: openapi.Response(
-            description="Internal server error during sync.",
-            schema=openapi.Schema(
-                type=openapi.TYPE_OBJECT,
-                properties={
-                    "status": openapi.Schema(type=openapi.TYPE_STRING, description="Error status"),
-                    "message": openapi.Schema(type=openapi.TYPE_STRING, description="Error message"),
-                    "type": openapi.Schema(type=openapi.TYPE_STRING, description="Error type")
-                }
-            )
-        ),
-        401: "Unauthorized",
-    },
-    tags=["Sync"],
-)
-@csrf_exempt
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
+@authentication_classes([])
 def sync_remote_authors(request):
+
     try:
         # Get all active remote nodes
         remote_nodes = ToWhichItsConnected.objects.filter(active=True)
@@ -4647,9 +4307,10 @@ def sync_remote_authors(request):
                 )
 
                 if response.status_code == 200:
+                    print(response)
                     data = response.json()
                     # Adjust based on the remote node's response structure
-                    remote_authors = data
+                    remote_authors = data["authors"]
 
                     # Iterate over authors and save them to the local database
                     for author_data in remote_authors:
@@ -4659,17 +4320,23 @@ def sync_remote_authors(request):
                             if not author_id:
                                 continue  # Skip if author ID is missing
 
+                            if Author.objects.filter(id=author_id).exists():
+                                continue  # Author already exists, skip to next
+
+
+
                             # Ensure username is unique
                             # unique_username = f"{author_data.get('displayName', '').lower()}_{author_id.split('/')[-1][:8]}"
+                            if author_data.get('github')== None:
+                                author_data['github']=''
 
                             author_defaults = {
-                                'uuid': author_data.get('uuid'),
+                                'uuid': author_data.get('id').split('/')[-1],
+                                'username':author_data.get('id').split('/')[-1],
                                 'host': author_data.get('host', base_url),
                                 'displayName': author_data.get('displayName', ''),
                                 'github': author_data.get('github', ''),
                                 'profileImage': author_data.get('profileImage', ''),
-                                'username': author_data.get('username',''),  # Ensure unique usernames
-                                'email': '',  # Email might not be available
                                 'is_active': True,  # Remote authors are not local users
                             }
                             author, created = Author.objects.update_or_create(
@@ -4693,9 +4360,9 @@ def sync_remote_authors(request):
                 results.append(node_result)
 
         return Response({
-            "status": "completed",
-            "sync_results": results
-
+            'followers': followers_count,
+            'following': following_count,
+            'friends': friends_count
         })
 
     except Exception as e:
@@ -4854,16 +4521,16 @@ def construct_comment_likes_data(comment):
         likes_data["src"].append(like_data)
 
     return likes_data
-@csrf_exempt
+
 @api_view(['POST'])
 @permission_classes([AllowAny])
+@authentication_classes([])
 def send_follow_request_to_remote_authors(request, author_serial):
     """
     Send a follow request to an author on a connected remote node.
     """
     try:
         # Extract the follow activity from the request data
-        print("Incoming request data: ", request.data)
         follow_activity = request.data
 
         # Validate required fields in the follow activity
@@ -4884,6 +4551,8 @@ def send_follow_request_to_remote_authors(request, author_serial):
 
         # Get the target host from object_author
         target_host = object_author.get('host')
+        if "/api" in target_host:
+            target_host = target_host.split('/api')[0]
         if not target_host:
             # Extract the host from the 'id' field if 'host' is not provided
             target_host = '/'.join(object_author.get('id').split('/')[:3])
@@ -4898,7 +4567,6 @@ def send_follow_request_to_remote_authors(request, author_serial):
                 "message": f"No active remote node found for host {target_host}"
             }, status=status.HTTP_404_NOT_FOUND)
 
-        print("Preparing follow activity for node:", node.url)
 
         # Make a deep copy of the follow activity to avoid mutating the original data
         follow_activity_copy = copy.deepcopy(follow_activity)
@@ -4920,7 +4588,6 @@ def send_follow_request_to_remote_authors(request, author_serial):
             data=follow_activity_copy
         )
 
-        print("Response from node:", response.status_code, response.text)
 
         if response.status_code in [200, 201]:
             return Response({
@@ -4929,14 +4596,12 @@ def send_follow_request_to_remote_authors(request, author_serial):
             }, status=status.HTTP_200_OK)
         else:
             error_message = f"Failed to send follow request to {node.url}: Status {response.status_code}, Response: {response.text}"
-            print(error_message)
             return Response({
                 "status": "error",
                 "message": error_message
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     except Exception as e:
-        print("Exception occurred: ", str(e))
         return Response({
             "status": "error",
             "message": str(e),
