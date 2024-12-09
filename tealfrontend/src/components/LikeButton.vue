@@ -246,10 +246,10 @@ export default {
           this.commentLikeCount += 1;
         } else {
           // Handle remote-node requests
-          console.log("Remote-node request for comment. Sending to inbox.");
-          await this.sendToInbox(targetAuthor, likePayload, jwtToken);
           this.liked = true;
           this.postLikeCount += 1;
+          // console.log("Remote-node request for comment. Sending to inbox.");
+          await this.sendToInbox(targetAuthor, likePayload, jwtToken);
         }
       } catch (error) {
         console.error("Error liking comment:", error.response || error);
